@@ -108,10 +108,12 @@ class MorfWordGroup(object):
         return 1+len(self.forms)
 
 
-class Worddb(base.Worddb):
-    def __init__(self, dbfilename):
-        base.Worddb.__init__(self, dbfilename)
+class WorddbBuilder(base.Worddb):
+    def __init__(self, dbfilename, rw=False):
+        base.Worddb.__init__(self, dbfilename, no_classes=True)
         self.__create_tables()
+        self.__load_classes()
+        self.ft = Forms()
 
     def __load_classes(self):
         self.classes = WordClassesBuilder(self.conn, self.cursor)
@@ -197,40 +199,35 @@ class Worddb(base.Worddb):
 
         self.__build_wordlist_index()
 
-    def load_words(self, file_name, max_words=None):
+    def add_words(self, words_iter, max_count=None):
+        count = 0
         self.alphabet = [l for n, l in self.get_alphabet()]
-
         self.__drop_word_index()
+        self.cursor.execute('PRAGMA synchronous=0;')
 
-        with open(file_name) as f:
-            self.cursor.execute('PRAGMA synchronous=0;')
-
-            self.ft = Forms()
-            cnt = 0
-
-            wf = MorfWordGroup()
-            for line in f.xreadlines():
-                if len(line) <= 6:
-                    if wf.len() == 0:
-                        continue
-                    self.add_word_group(wf)
-                    wf = MorfWordGroup()
-                    if cnt % 1000 == 0:
-                        print "Inserted", cnt, "lines"
+        wf = MorfWordGroup()
+        while words_iter.has_data() and (max_count is None or count < max_count):
+            line = words_iter.get()
+            if len(line) <= 6:
+                if wf.len() == 0:
                     continue
+                self.add_word_group(wf)
+                wf = MorfWordGroup()
+                if count % 1000 == 0:
+                    print "Inserted", count, "lines"
+                continue
 
-                w, i = self.line_to_form(line)
-                w = w.strip()
-                if not self.check_word(w):
-                    # print "Dropping <"+w+"> with wrong symbols"
-                    continue
+            w, i = self.line_to_form(line)
+            w = w.strip()
+            if not self.check_word(w):
+                continue
 
-                wf.add_entry(w, i)
+            wf.add_entry(w, i)
 
-                if max_words is not None and cnt >= max_words:
-                    break
-                cnt += 1
-            self.__build_word_index()
+            if max_count is not None and count >= max_count:
+                break
+            count += 1
+        self.__build_word_index()
 
     def __get_word_forms(self, word_id):
         res = []

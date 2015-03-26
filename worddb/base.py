@@ -6,9 +6,10 @@ import sqlite3
 
 
 class Worddb(object):
-    def __init__(self, dbfilename, rw=False):
+    def __init__(self, dbfilename, rw=False, no_classes=False):
         self.__init_connection(dbfilename)
-        self.__load_classes()
+        if not no_classes:
+            self.__load_classes()
 
     def __load_classes(self):
         self.classes = WordClasses(self.conn, self.cursor)
