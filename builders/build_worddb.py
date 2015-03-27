@@ -14,6 +14,7 @@ def parse_opts():
     parser.add_argument('-c', '--create', action='store_true', default=False)
     parser.add_argument('-o', '--optimize', action='store_true', default=False)
     parser.add_argument('-t', '--txt')
+    parser.add_argument('-l', '--limit', type=int, default=0)
     parser.add_argument('db')
     res = parser.parse_args(sys.argv[1:])
 
@@ -22,6 +23,12 @@ def parse_opts():
 
     if res.create and res.txt is None:
         raise ValueError('--create option requires --txt option specified to source file')
+
+    if res.limit == 0:
+        res.limit = None
+
+    if res.create and os.path.exists(res.db):
+        raise ValueError('--create option suggested while ' + res.db + ' already exists. Remove file first')
 
     return res
 
@@ -33,7 +40,7 @@ def execute(opts):
             raise ValueError('File ' + opts.txt + ' not found')
         wdtxt = adaptors.wordtxt.WordtxtAdapter(opts.txt)
         wddb.add_alphabet(u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
-        wddb.add_words(wdtxt)
+        wddb.add_words(wdtxt, max_count=opts.limit)
     if opts.optimize:
         wddb.build_optimized()
 
