@@ -275,16 +275,24 @@ class OptimizedDbBuilder(object):
         self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
         self.__dbbuild.conn.commit()
 
-    def __build_blobs(self, max_count=None):
+    def __build_blobs(self, max_count=None, chunk_size=100):
         print "Building word blobs..."
-        sql_request = 'SELECT word, uword_id FROM wordlist;'
-        self.__dbbuild.cursor.execute(sql_request)
-        word_word_ids = self.__dbbuild.cursor.fetchall()
-        for word, uword_id in word_word_ids:
-            info = self.__dbbuild.get_word_info(word)
-            blob = self.__dbbuild.word_info_str(info)
-            self.__insert_blob(word, uword_id, blob)
-        self.__dbbuild.conn.commit()
+        offset = 0
+        while True:
+            self.__dbbuild.cursor.execute('SELECT word, uword_id FROM wordlist LIMIT ? OFFSET ?;', (chunk_size, offset))
+            word_word_ids = self.__dbbuild.cursor.fetchall()
+            res_len = len(word_word_ids)
+            offset += res_len
+
+            for word, uword_id in word_word_ids:
+                info = self.__dbbuild.get_word_info(word)
+                blob = self.__dbbuild.word_info_str(info)
+                self.__insert_blob(word, uword_id, blob)
+            self.__dbbuild.conn.commit()
+
+            print offset, " entries complete"
+            if res_len < chunk_size or (max_count is not None and max_count <= offset):
+                break
 
     def build(self, max_count=None):
         print "Started to build optimized table"

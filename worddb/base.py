@@ -150,7 +150,6 @@ class WordClasses(object):
     def __table_exists(self, name):
         self.cursor.execute('SELECT name from sqlite_master WHERE (type==\'table\');')
         tables = self.cursor.fetchall()
-        print tables
         for t, in tables:
             if name == t:
                 return True
