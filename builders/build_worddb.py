@@ -12,14 +12,15 @@ import worddb.builders
 def parse_opts():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--create', action='store_true', default=False)
+    parser.add_argument('-w', '--wordlist', action='store_true', default=False)
     parser.add_argument('-o', '--optimize', action='store_true', default=False)
     parser.add_argument('-t', '--txt')
     parser.add_argument('-l', '--limit', type=int, default=0)
     parser.add_argument('db')
     res = parser.parse_args(sys.argv[1:])
 
-    if not res.create and not res.optimize:
-        raise ValueError('Neither --create or --optimize option specified')
+    if not res.create and not res.optimize and not res.wordlist:
+        raise ValueError('Neither --create or --wordlist nor --optimize option specified')
 
     if res.create and res.txt is None:
         raise ValueError('--create option requires --txt option specified to source file')
@@ -41,8 +42,10 @@ def execute(opts):
         wdtxt = adaptors.wordtxt.WordtxtAdapter(opts.txt)
         wddb.add_alphabet(u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
         wddb.add_words(wdtxt, max_count=opts.limit)
+    if opts.wordlist:
+        wddb.build_wordlist(max_count=opts.limit)
     if opts.optimize:
-        wddb.build_optimized()
+        wddb.build_optimized(max_count=opts.limit)
 
 
 if __name__ == '__main__':

@@ -86,6 +86,14 @@ class Worddb(object):
         return res
 
     def word_info_str(self, info):
+        res = "["
+        for wi in info:
+            res += self.__word_form_info_str(wi)
+            res += ', '
+        res += ']'
+        return res
+
+    def __word_form_info_str(self, info):
         res = "form: ["
         for f in info['form']:
             res += '{'
@@ -142,10 +150,14 @@ class WordClasses(object):
     def __table_exists(self, name):
         self.cursor.execute('SELECT name from sqlite_master WHERE (type==\'table\');')
         tables = self.cursor.fetchall()
-        return name in tables
+        print tables
+        for t, in tables:
+            if name == t:
+                return True
+        return False
 
     def __load_classes(self):
-        if not self.__table_exists('word_classes'):
+        if not self.__table_exists(u'word_classes'):
             return
 
         self.cursor.execute('SELECT * from word_classes;')

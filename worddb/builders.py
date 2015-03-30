@@ -176,7 +176,7 @@ class WorddbBuilder(base.Worddb):
         self.cursor.execute('DROP TABLE IF EXISTS wordlist;')
         self.cursor.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, UNIQUE(word));')
 
-    def build_wordlist(self):
+    def build_wordlist(self, max_count=None):
         print "Building full word list..."
         self.__recreate_wordlist()
 
@@ -235,6 +235,65 @@ class WorddbBuilder(base.Worddb):
         for word_id, word, root, class_id in self.cursor.fetchall():
             res.append({"word": word, "class_id": class_id})
         return res
+
+    def build_optimized(self, max_count=None):
+        odb = OptimizedDbBuilder(self)
+        odb.build(max_count)
+
+
+class OptimizedDbBuilder(object):
+    def __init__(self, dbbuilder):
+        self.__dbbuild = dbbuilder
+
+    def __insert_blob(self, word, word_id, blob):
+        self.__dbbuild.cursor.execute('INSERT INTO word_blobs (word, word_id, blob) VALUES (?, ?, ?)', (word, word_id, blob))
+
+    def __drop_optimized_table(self):
+        print "Dropping existing optimized tables..."
+        self.__dbbuild.cursor.execute('DROP INDEX IF EXISTS word_blobs_bw_idx;')
+        self.__dbbuild.cursor.execute('DROP INDEX IF EXISTS word_blobs_bi_idx;')
+        self.__dbbuild.cursor.execute('DROP TABLE IF EXISTS word_blobs;')
+        self.__dbbuild.conn.commit()
+
+        print "Running vacuum..."
+        self.__dbbuild.cursor.execute('VACUUM;')
+        self.__dbbuild.conn.commit()
+
+    def __create_optimized_table(self):
+        print "Creating new optimized tables..."
+        self.__dbbuild.cursor.execute('CREATE TABLE IF NOT EXISTS word_blobs (word TEXT, word_id INTEGER, blob TEXT);')
+        self.__dbbuild.conn.commit()
+
+    def __disable_synchronous_mode(self):
+        print "Disabling synchronous mode..."
+        self.__dbbuild.cursor.execute('PRAGMA synchronous=0;')
+
+    def __build_index(self):
+        print "Creating index on words..."
+        self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bw_idx ON word_blobs (word) ;')
+        print "Creating index on word ids..."
+        self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
+        self.__dbbuild.conn.commit()
+
+    def __build_blobs(self, max_count=None):
+        print "Building word blobs..."
+        sql_request = 'SELECT word, uword_id FROM wordlist;'
+        self.__dbbuild.cursor.execute(sql_request)
+        word_word_ids = self.__dbbuild.cursor.fetchall()
+        for word, uword_id in word_word_ids:
+            info = self.__dbbuild.get_word_info(word)
+            blob = self.__dbbuild.word_info_str(info)
+            self.__insert_blob(word, uword_id, blob)
+        self.__dbbuild.conn.commit()
+
+    def build(self, max_count=None):
+        print "Started to build optimized table"
+        self.__drop_optimized_table()
+        self.__create_optimized_table()
+        self.__disable_synchronous_mode()
+        self.__build_blobs(max_count)
+        self.__build_index()
+        self.__dbbuild.conn.commit()
 
 
 class WordClassesBuilder(base.WordClasses):
