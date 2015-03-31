@@ -159,11 +159,15 @@ class WorddbBuilder(base.Worddb):
     def __build_word_index(self):
         print "Building words index..."
         self.cursor.execute('CREATE INDEX IF NOT EXISTS words_idx ON words (word) ;')
+        self.cursor.execute('CREATE INDEX IF NOT EXISTS words_root_idx ON words (root) ;')
+        self.cursor.execute('CREATE INDEX IF NOT EXISTS words_class_idx ON words (class_id) ;')
         self.conn.commit()
 
     def __drop_word_index(self):
         print "Dropping words index..."
         self.cursor.execute('DROP INDEX IF EXISTS words_idx;')
+        self.cursor.execute('DROP INDEX IF EXISTS words_root_idx;')
+        self.cursor.execute('DROP INDEX IF EXISTS words_class_idx;')
 
     def __build_wordlist_index(self):
         print "Building wordlist index..."
@@ -275,7 +279,7 @@ class OptimizedDbBuilder(object):
         self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
         self.__dbbuild.conn.commit()
 
-    def __build_blobs(self, max_count=None, chunk_size=100):
+    def __build_blobs(self, max_count=None, chunk_size=10000):
         print "Building word blobs..."
         offset = 0
         while True:
