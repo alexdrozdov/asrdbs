@@ -122,7 +122,7 @@ class WorddbBuilder(base.Worddb):
         commands = ['CREATE TABLE IF NOT EXISTS words (word_id INTEGER PRIMARY KEY, word TEXT, root INTEGER, commit_id INTEGER, class_id INTEGER, UNIQUE(word,class_id) );',
                     'CREATE TABLE IF NOT EXISTS commits (commit_id INTEGER PRIMARY KEY, commit_time TEXT, comment TEXT);',
                     'CREATE TABLE IF NOT EXISTS alphabet (letter_id INTEGER PRIMARY KEY, letter TEXT, UNIQUE (letter));',
-                    'CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, UNIQUE(word));',
+                    'CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, count INTEGER, UNIQUE(word));',
                     ]
 
         for c in commands:
@@ -244,6 +244,11 @@ class WorddbBuilder(base.Worddb):
         odb = OptimizedDbBuilder(self)
         odb.build(max_count)
 
+    def update_wordlist(self, wle):
+        if wle is None:
+            return
+        self.cursor.execute('UPDATE wordlist SET word=? count=? WHERE (wordlist.uword_id=?);', (wle.get_word(), wle.get_count(), wle.get_uword_id()))
+
 
 class OptimizedDbBuilder(object):
     def __init__(self, dbbuilder):
@@ -306,6 +311,118 @@ class OptimizedDbBuilder(object):
         self.__build_blobs(max_count)
         self.__build_index()
         self.__dbbuild.conn.commit()
+
+
+class LruEntry(object):
+    def __init__(self, obj, left=None, right=None):
+        self.__obj = obj
+        self.__left = left
+        self.__right = right
+
+    def self_extract(self):
+        if self.__left is not None:
+            self.__left.__right = self.__right
+        if self.__right is not None:
+            self.__right.__left = self.__left
+        self.__left = None
+        self.__right = None
+
+    def self_insert_righter_than(self, left_entry):
+        self.__left = left_entry
+        if left_entry.__right is not None:
+            self.__right = left_entry.__right
+            self.__right.__left = self
+        left_entry.__right = self
+
+    def get_object(self):
+        return self.__obj
+
+
+class Shadow(object):
+    def __init_(self, lru_len=1000):
+        self.__lru_max_len = lru_len
+        self.__cache = {}
+        self.__lru_head = None
+        self.__lru_tail = None
+        self.__lru_len = 0
+        self.__obj2objid_dict = {}
+
+    def __pop_tail(self):
+        if self.__lru_tail is None or self.__lru_len == 0:
+            return
+        rm = self.__lru_tail
+        self.__lru_tail = self.__lru_tail.__right
+        rm.self_extract()
+        if self.__lru_tail is None:
+            self.__lru_head = None
+        self.__lru_len -= 1
+        return rm
+
+    def __pop_head(self):
+        if self.__lru_head is None or self.__lru_len == 0:
+            return
+        rm = self.__lru_head
+        self.__lru_head = self.__lru_head.__head
+        rm.self_extract()
+        if self.__lru_head is None:
+            self.__lru_tail = None
+        self.__lru_len -= 1
+
+    def __del_from_cache(self, lru_entry):
+        _, objid = self.__obj2objid_dict.pop(lru_entry)
+        _, _ = self.__cache.popitem(objid)
+
+    def __extract_lru(self, lru_entry):
+        self.__del_from_cache(lru_entry)
+        if self.__lru_tail == lru_entry:
+            self.__pop_tail()
+            return
+        if self.__lru_head == lru_entry:
+            self.__pop_head()
+            return
+        lru_entry.self_extract()
+        self.__lru_len -= 1
+
+    def __push_head(self, lru_entry):
+        if self.__lru_len >= self.__lru_max_len:
+            rm = self.__pop_tail()
+            self.dump_object_cb(rm.get_object())
+            self.__del_from_cache(rm)
+        if self.__lru_head is None:
+            self.__lru_head = lru_entry
+            self.__lru_tail = lru_entry
+        else:
+            lru_entry.self_insert_righter_than(self.__lru_head)
+            self.__lru_head = lru_entry
+        self.__lru_len += 1
+
+    def get_object(self, objid, cache_none=True):
+        obj = self.get_object_cb(objid)
+        if not cache_none:
+            return obj
+        if self.__cache.has_key(objid):
+            lru = self.__cache[objid]
+            if lru != self.__lru_head:
+                self.__extract_lru(lru)
+                self.__push_head(lru)
+            return lru.get_object()
+        lru = LruEntry(obj)
+        self.__push_head(lru)
+        self.__cache[objid] = lru
+        self.__obj2objid_dict[lru] = objid
+        return lru.get_object()
+
+
+class WorddbCounterShadow(Shadow):
+    def __init__(self, worddb):
+        Shadow.__init__(self, lru_len=1000)
+        self.__worddb = worddb
+
+    def get_object_cb(self, objid):
+        return self.__worddb.get_wordlist_by_word(objid)
+
+    def dump_object_cb(self, obj):
+        self.__worddb.update_wordlist(obj)
 
 
 class WordClassesBuilder(base.WordClasses):

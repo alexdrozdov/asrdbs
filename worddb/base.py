@@ -36,6 +36,14 @@ class Worddb(object):
             res.append({"word": word, "class_id": class_id})
         return res
 
+    def get_wordlist_by_word(self, word):
+        self.cursor.execute('SELECT uword_id, word, count FROM wordlist WHERE (wordlist.word=?);', (word, ))
+        e = self.cursor.fetchall()
+        if len(e) == 0:
+            return None
+        u, w, c = e[0]
+        return WordlistEntry(u, w, c)
+
     def get_class_info(self, class_id):
         return self.classes.get_class_by_id(class_id)
 
@@ -175,3 +183,22 @@ class WordClasses(object):
 
     def get_class_by_id(self, cid):
         return self.id_to_json[cid]
+
+
+class WordlistEntry(object):
+    def __init__(self, uword_id, word, count):
+        self.__uword_id = uword_id
+        self.__word = word
+        self.__count = count
+
+    def incr(self, val=1):
+        self.__count += val
+
+    def get_uword_id(self):
+        return self.__uword_id
+
+    def get_word(self):
+        return self.__word
+
+    def get_count(self):
+        return self.__count
