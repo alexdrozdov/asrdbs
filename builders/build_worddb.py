@@ -13,17 +13,22 @@ def parse_opts():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--create', action='store_true', default=False)
     parser.add_argument('-w', '--wordlist', action='store_true', default=False)
+    parser.add_argument('-n', '--countwords', action='store_true', default=False)
     parser.add_argument('-o', '--optimize', action='store_true', default=False)
     parser.add_argument('-t', '--txt')
+    parser.add_argument('-i', '--libdb')
     parser.add_argument('-l', '--limit', type=int, default=0)
     parser.add_argument('db')
     res = parser.parse_args(sys.argv[1:])
 
-    if not res.create and not res.optimize and not res.wordlist:
-        raise ValueError('Neither --create or --wordlist nor --optimize option specified')
+    if not res.create and not res.optimize and not res.wordlist and not res.countwords:
+        raise ValueError('Neither --create or --wordlist or --countwords nor --optimize option specified')
 
     if res.create and res.txt is None:
         raise ValueError('--create option requires --txt option specified to source file')
+
+    if res.countwords and res.libdb is None:
+        raise ValueError('--countwords option requires --libdb option specified to source file')
 
     if res.limit == 0:
         res.limit = None

@@ -244,6 +244,10 @@ class WorddbBuilder(base.Worddb):
         odb = OptimizedDbBuilder(self)
         odb.build(max_count)
 
+    def count_words(self, word_iter, max_count=None):
+        wdc = WorddbCounter(self)
+        wdc.add_words(word_iter, max_count)
+
     def update_wordlist(self, wle):
         if wle is None:
             return
@@ -396,6 +400,9 @@ class Shadow(object):
             self.__lru_head = lru_entry
         self.__lru_len += 1
 
+    def flush(self):
+        pass
+
     def get_object(self, objid, cache_none=True):
         obj = self.get_object_cb(objid)
         if not cache_none:
@@ -413,7 +420,7 @@ class Shadow(object):
         return lru.get_object()
 
 
-class WorddbCounterShadow(Shadow):
+class WorddbCounter(Shadow):
     def __init__(self, worddb):
         Shadow.__init__(self, lru_len=1000)
         self.__worddb = worddb
@@ -423,6 +430,21 @@ class WorddbCounterShadow(Shadow):
 
     def dump_object_cb(self, obj):
         self.__worddb.update_wordlist(obj)
+
+    def add_words(self, words_iter, max_count=None):
+        count = 0
+        self.cursor.execute('PRAGMA synchronous=0;')
+
+        while words_iter.has_data() and (max_count is None or count < max_count):
+            word = words_iter.get()
+            wle = self.get_object(word, cache_none=False)
+            if wle is None:
+                continue
+            wle.incr()
+            count += 1
+            if count % 1000 == 0:
+                print "Inserted", count, "words"
+        self.flush()
 
 
 class WordClassesBuilder(base.WordClasses):
