@@ -6,6 +6,7 @@ import sys
 import argparse
 import os
 import adaptors.wordtxt
+import adaptors.libtxt
 import worddb.builders
 
 
@@ -17,6 +18,7 @@ def parse_opts():
     parser.add_argument('-o', '--optimize', action='store_true', default=False)
     parser.add_argument('-t', '--txt')
     parser.add_argument('-i', '--libdb')
+    parser.add_argument('-b', '--libtxt')
     parser.add_argument('-l', '--limit', type=int, default=0)
     parser.add_argument('db')
     res = parser.parse_args(sys.argv[1:])
@@ -27,8 +29,8 @@ def parse_opts():
     if res.create and res.txt is None:
         raise ValueError('--create option requires --txt option specified to source file')
 
-    if res.countwords and res.libdb is None:
-        raise ValueError('--countwords option requires --libdb option specified to source file')
+    if res.countwords and res.libdb is None and res.libtxt is None:
+        raise ValueError('--countwords option requires --libdb or --libtxt option specified to source file')
 
     if res.limit == 0:
         res.limit = None
@@ -49,6 +51,10 @@ def execute(opts):
         wddb.add_words(wdtxt, max_count=opts.limit)
     if opts.wordlist:
         wddb.build_wordlist(max_count=opts.limit)
+    if opts.countwords:
+        if opts.libtxt is not None:
+            ltxt = adaptors.libtxt.LibtxtAdapter(opts.libtxt)
+            wddb.count_words(ltxt, max_count=opts.limit)
     if opts.optimize:
         wddb.build_optimized(max_count=opts.limit)
 

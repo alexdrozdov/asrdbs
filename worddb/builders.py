@@ -122,7 +122,7 @@ class WorddbBuilder(base.Worddb):
         commands = ['CREATE TABLE IF NOT EXISTS words (word_id INTEGER PRIMARY KEY, word TEXT, root INTEGER, commit_id INTEGER, class_id INTEGER, UNIQUE(word,class_id) );',
                     'CREATE TABLE IF NOT EXISTS commits (commit_id INTEGER PRIMARY KEY, commit_time TEXT, comment TEXT);',
                     'CREATE TABLE IF NOT EXISTS alphabet (letter_id INTEGER PRIMARY KEY, letter TEXT, UNIQUE (letter));',
-                    'CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, count INTEGER, UNIQUE(word));',
+                    'CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, cnt INTEGER, UNIQUE(word));',
                     ]
 
         for c in commands:
@@ -178,7 +178,7 @@ class WorddbBuilder(base.Worddb):
         print "Dropping wordlist index..."
         self.cursor.execute('DROP INDEX IF EXISTS wordlist_idx;')
         self.cursor.execute('DROP TABLE IF EXISTS wordlist;')
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, UNIQUE(word));')
+        self.cursor.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, cnt INTEGER, UNIQUE(word));')
 
     def build_wordlist(self, max_count=None):
         print "Building full word list..."
@@ -251,7 +251,7 @@ class WorddbBuilder(base.Worddb):
     def update_wordlist(self, wle):
         if wle is None:
             return
-        self.cursor.execute('UPDATE wordlist SET word=? count=? WHERE (wordlist.uword_id=?);', (wle.get_word(), wle.get_count(), wle.get_uword_id()))
+        self.cursor.execute('UPDATE wordlist SET word=?, cnt=? WHERE (wordlist.uword_id=?);', (wle.get_word(), wle.get_count(), wle.get_uword_id()))
 
 
 class OptimizedDbBuilder(object):
@@ -318,7 +318,8 @@ class OptimizedDbBuilder(object):
 
 
 class LruEntry(object):
-    def __init__(self, obj, left=None, right=None):
+    def __init__(self, objid, obj, left=None, right=None):
+        self.__objid = objid
         self.__obj = obj
         self.__left = left
         self.__right = right
@@ -341,9 +342,18 @@ class LruEntry(object):
     def get_object(self):
         return self.__obj
 
+    def get_objid(self):
+        return self.__objid
 
-class Shadow(object):
-    def __init_(self, lru_len=1000):
+    def get_left(self):
+        return self.__left
+
+    def get_right(self):
+        return self.__right
+
+
+class Shadow:
+    def __init__(self, lru_len=1000):
         self.__lru_max_len = lru_len
         self.__cache = {}
         self.__lru_head = None
@@ -351,11 +361,15 @@ class Shadow(object):
         self.__lru_len = 0
         self.__obj2objid_dict = {}
 
+    def print_self(self):
+        print self.__lru_tail, type(self.__lru_tail)
+        print self.__lru_head, type(self.__lru_head)
+
     def __pop_tail(self):
         if self.__lru_tail is None or self.__lru_len == 0:
             return
         rm = self.__lru_tail
-        self.__lru_tail = self.__lru_tail.__right
+        self.__lru_tail = self.__lru_tail.get_right()
         rm.self_extract()
         if self.__lru_tail is None:
             self.__lru_head = None
@@ -366,15 +380,15 @@ class Shadow(object):
         if self.__lru_head is None or self.__lru_len == 0:
             return
         rm = self.__lru_head
-        self.__lru_head = self.__lru_head.__head
+        self.__lru_head = self.__lru_head.get_left()
         rm.self_extract()
         if self.__lru_head is None:
             self.__lru_tail = None
         self.__lru_len -= 1
 
     def __del_from_cache(self, lru_entry):
-        _, objid = self.__obj2objid_dict.pop(lru_entry)
-        _, _ = self.__cache.popitem(objid)
+        objid = self.__obj2objid_dict.pop(lru_entry)
+        self.__cache.pop(objid)
 
     def __extract_lru(self, lru_entry):
         self.__del_from_cache(lru_entry)
@@ -398,22 +412,29 @@ class Shadow(object):
         else:
             lru_entry.self_insert_righter_than(self.__lru_head)
             self.__lru_head = lru_entry
+        self.__cache[lru_entry.get_objid()] = lru_entry
+        self.__obj2objid_dict[lru_entry] = lru_entry.get_objid()
         self.__lru_len += 1
 
     def flush(self):
-        pass
+        lru = self.__lru_tail
+        while lru is not None:
+            self.dump_object_cb(lru.get_object())
+            lru = lru.get_right()
 
     def get_object(self, objid, cache_none=True):
-        obj = self.get_object_cb(objid)
-        if not cache_none:
-            return obj
         if self.__cache.has_key(objid):
             lru = self.__cache[objid]
             if lru != self.__lru_head:
                 self.__extract_lru(lru)
                 self.__push_head(lru)
             return lru.get_object()
-        lru = LruEntry(obj)
+
+        obj = self.get_object_cb(objid)
+        if obj is None and not cache_none:
+            return obj
+
+        lru = LruEntry(objid, obj)
         self.__push_head(lru)
         self.__cache[objid] = lru
         self.__obj2objid_dict[lru] = objid
@@ -422,7 +443,7 @@ class Shadow(object):
 
 class WorddbCounter(Shadow):
     def __init__(self, worddb):
-        Shadow.__init__(self, lru_len=1000)
+        Shadow.__init__(self, lru_len=10000)
         self.__worddb = worddb
 
     def get_object_cb(self, objid):
@@ -433,10 +454,10 @@ class WorddbCounter(Shadow):
 
     def add_words(self, words_iter, max_count=None):
         count = 0
-        self.cursor.execute('PRAGMA synchronous=0;')
+        self.__worddb.cursor.execute('PRAGMA synchronous=0;')
 
         while words_iter.has_data() and (max_count is None or count < max_count):
-            word = words_iter.get()
+            word = words_iter.get()[0]
             wle = self.get_object(word, cache_none=False)
             if wle is None:
                 continue
@@ -445,6 +466,7 @@ class WorddbCounter(Shadow):
             if count % 1000 == 0:
                 print "Inserted", count, "words"
         self.flush()
+        self.__worddb.conn.commit()
 
 
 class WordClassesBuilder(base.WordClasses):

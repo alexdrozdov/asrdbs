@@ -37,7 +37,7 @@ class Worddb(object):
         return res
 
     def get_wordlist_by_word(self, word):
-        self.cursor.execute('SELECT uword_id, word, count FROM wordlist WHERE (wordlist.word=?);', (word, ))
+        self.cursor.execute('SELECT uword_id, word, cnt FROM wordlist WHERE (wordlist.word=?);', (word, ))
         e = self.cursor.fetchall()
         if len(e) == 0:
             return None
@@ -189,7 +189,7 @@ class WordlistEntry(object):
     def __init__(self, uword_id, word, count):
         self.__uword_id = uword_id
         self.__word = word
-        self.__count = count
+        self.__count = count if count is not None else 0
 
     def incr(self, val=1):
         self.__count += val
