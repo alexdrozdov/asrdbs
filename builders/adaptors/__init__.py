@@ -1,2 +1,2 @@
 
-__all__ = ['odict', 'wordtxt', 'libtxt']
+__all__ = ['odict', 'wordtxt', 'libtxt', 'libdir']
