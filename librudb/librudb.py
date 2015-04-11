@@ -17,7 +17,7 @@ class DbRoIterator(object):
         if conditions is not None:
             self.__query_pattern += ' WHERE (' + '=? AND '.join([c[0] for c in conditions])
             self.__query_pattern += '=?)'
-        self.__query_pattern += ' OFFSET ? LIMIT ?;'
+        self.__query_pattern += ' LIMIT ? OFFSET ?;'
 
         self.__prefetched = None
 
@@ -26,8 +26,9 @@ class DbRoIterator(object):
             qlist = [c[1] for c in self.__conditions]
         else:
             qlist = []
-        qlist.extend([self.__offset, self.__chunk_size])
+        qlist.extend([self.__chunk_size, self.__offset])
         qtuple = tuple(qlist)
+        print self.__query_pattern, qtuple
         self.__prefetched = self.__db.cursor.execute(self.__query_pattern, qtuple).fetchall()
         self.__prefetched_len = len(self.__prefetched)
         self.__offset += self.__prefetched_len
@@ -49,6 +50,7 @@ class DbRoIterator(object):
                 return res
             res.append(self.__prefetched[self.__prefetched_offset])
             self.__prefetched_offset += 1
+        return res
 
 
 class Librudb(base.Librudb):

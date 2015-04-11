@@ -7,7 +7,7 @@ import argparse
 import os
 import adaptors.wordtxt
 import adaptors.libtxt
-import adaptors.librudb
+import adaptors.libdb
 import worddb.builders
 
 
@@ -57,7 +57,7 @@ def execute(opts):
             ltxt = adaptors.libtxt.LibtxtAdapter(opts.libtxt)
             wddb.count_words(ltxt, max_count=opts.limit)
         if opts.libdb is not None:
-            ldb = adaptors.librudb.LibrudbWordsAdapter(opts.libdb)
+            ldb = adaptors.libdb.LibrudbWordsAdapter(opts.libdb)
             wddb.count_words(ldb, max_count=opts.limit)
     if opts.optimize:
         wddb.build_optimized(max_count=opts.limit)

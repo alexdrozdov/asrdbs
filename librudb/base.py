@@ -26,7 +26,7 @@ class LibruText(object):
 
 
 class Librudb(object):
-    def __init__(self, dbfilename):
+    def __init__(self, dbfilename, rw=False):
         self.__init_connection(dbfilename)
 
     def __init_connection(self, dbfilename):
