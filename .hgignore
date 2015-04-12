@@ -5,3 +5,5 @@ syntax: glob
 *.pickle
 *.swp
 ./data/
+./build/
+

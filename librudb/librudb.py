@@ -28,7 +28,6 @@ class DbRoIterator(object):
             qlist = []
         qlist.extend([self.__chunk_size, self.__offset])
         qtuple = tuple(qlist)
-        print self.__query_pattern, qtuple
         self.__prefetched = self.__db.cursor.execute(self.__query_pattern, qtuple).fetchall()
         self.__prefetched_len = len(self.__prefetched)
         self.__offset += self.__prefetched_len
