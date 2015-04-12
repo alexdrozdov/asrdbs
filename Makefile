@@ -26,13 +26,13 @@ librudb: dirs ${LIBRU_DB}
 
 worddb: dirs ${WORD_DB}
 
-worddb-create: ${worddb_create}
+worddb-create: rm_create ${worddb_create}
 
-wordb-wordlist: ${worddb_wordlist}
+wordb-wordlist: rm_wordlist ${worddb_wordlist}
 
-worddb-count: ${worddb_count}
+worddb-count: rm_count ${worddb_count}
 
-worddb-optimize: ${worddb_optimize}
+worddb-optimize: rm_optimize ${worddb_optimize}
 
 ${LIBRU_DB}: ${libru_list_file}
 	PYTHONPATH=`pwd` ./builders/build_librudb.py -l ${TEXT_LIMIT} -a ${libru_list_file} ${LIBRU_DB}
@@ -57,11 +57,24 @@ ${worddb_count}: ${LIBRU_DB} ${worddb_wordlist}
 
 ${worddb_optimize}: ${worddb_count}
 	PYTHONPATH=`pwd` ./builders/build_worddb.py -o ${WORD_DB}
-	touch ${worddb_count}
+	touch ${worddb_optimize}
 
 
 clean:
 	rm -rf ${BUILD_DIR}
+
+rm_create:
+	rm -f ${worddb_create}
+
+rm_wordlist:
+	rm -f ${worddb_wordlist}
+
+rm_count:
+	rm -f ${worddb_count}
+
+rm_optimize:
+	rm -f ${worddb_optimize}
+
 
 .PHONY: dirs
 
