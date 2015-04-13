@@ -5,6 +5,7 @@
 import os
 import librudb.librudb
 import librudb.base
+import common.db
 
 
 class LibrudbAdapter(object):
@@ -24,7 +25,7 @@ class LibrudbAdapter(object):
     def __load(self):
         print 'Loading libdb ' + self.__libdb_filename + '...'
         self.__libdb = librudb.librudb.Librudb(self.__libdb_filename)
-        self.__iter = librudb.librudb.DbRoIterator(self.__libdb, 'lib', ['text_id', 'path', 'md5', 'content'])
+        self.__iter = common.db.DbRoIterator(self.__libdb, 'lib', ['text_id', 'path', 'md5', 'content'])
 
     def has_data(self):
         if self.__libdb is None:
@@ -61,7 +62,7 @@ class LibrudbWordsAdapter(object):
 
     def __get_next_text(self):
         lt = self.__libdb_adapt.get(1)[0]
-        txt = lt.get_content() # .decode('utf8')
+        txt = lt.get_content()  # .decode('utf8')
 
         unwanted_chars = '*+-()@#№%^&_{}[]"\'/\\<>~=,.:;!?\r\n'
         tt = {ord(c): ord(' ') for c in unwanted_chars}

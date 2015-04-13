@@ -7,8 +7,9 @@ import base
 
 class LibrudbBuilder(base.Librudb):
     def __init__(self, dbfilename, rw=False):
-        base.Librudb.__init__(self, dbfilename)
+        base.Librudb.__init__(self, dbfilename, rw=True)
         self.__create_tables()
+        self.mksync()
 
     def __create_tables(self):
         commands = ['CREATE TABLE IF NOT EXISTS lib'
@@ -17,8 +18,8 @@ class LibrudbBuilder(base.Librudb):
                     ]
 
         for c in commands:
-            self.cursor.execute(c)
-        self.conn.commit()
+            self.execute(c)
+        self.commit()
 
     def set_file_count(self, count):
         self.all_file_count = count
@@ -36,13 +37,13 @@ class LibrudbBuilder(base.Librudb):
             if self.md5_exists(md5):
                 print "\t\tMD5 exists, ignoring..."
                 return
-            self.cursor.execute('INSERT INTO lib (path, md5, content) VALUES(?,?,?);', (path, md5, content))
+            self.execute('INSERT INTO lib (path, md5, content) VALUES(?,?,?);', (path, md5, content))
         except:
             print traceback.format_exc()
 
     def add_files(self, file_iter, max_count=None):
         count = 0
-        self.cursor.execute('PRAGMA synchronous=0;')
+        self.mksync()
 
         while file_iter.has_data() and (max_count is None or count < max_count):
             filename = file_iter.get()
@@ -50,4 +51,4 @@ class LibrudbBuilder(base.Librudb):
             count += 1
             if count % 1000 == 0:
                 print "Inserted", count, "files"
-        self.conn.commit()
+        self.commit()
