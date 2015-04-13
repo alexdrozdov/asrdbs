@@ -2,26 +2,20 @@
 # -*- #coding: utf8 -*-
 
 
-import sqlite3
+import common.db
 
 
-class Worddb(object):
+class Worddb(common.db.Db):
     def __init__(self, dbfilename, rw=False, no_classes=False):
-        self.__init_connection(dbfilename)
+        common.db.Db.__init__(self, dbfilename=dbfilename, rw=rw)
         if not no_classes:
             self.__load_classes()
 
     def __load_classes(self):
-        self.classes = WordClasses(self.conn, self.cursor)
-
-    def __init_connection(self, dbfilename):
-        self.dbfilename = dbfilename
-        self.conn = sqlite3.connect(dbfilename)
-        self.cursor = self.conn.cursor()
+        self.classes = WordClasses(reuse_db=self)
 
     def get_alphabet(self):
-        self.cursor.execute(u'SELECT * FROM alphabet ;')
-        return self.cursor.fetchall()
+        return self.execute(u'SELECT * FROM alphabet ;').fetchall()
 
     def check_word(self, word):
         for w in word:
@@ -31,14 +25,13 @@ class Worddb(object):
 
     def __get_word_forms(self, word_id):
         res = []
-        self.cursor.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
-        for word_id, word, root, class_id in self.cursor.fetchall():
+        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
+        for word_id, word, root, class_id in self.fetchall():
             res.append({"word": word, "class_id": class_id})
         return res
 
     def get_wordlist_by_word(self, word):
-        self.cursor.execute('SELECT uword_id, word, cnt FROM wordlist WHERE (wordlist.word=?);', (word, ))
-        e = self.cursor.fetchall()
+        e = self.execute('SELECT uword_id, word, cnt FROM wordlist WHERE (wordlist.word=?);', (word, )).fetchall()
         if len(e) == 0:
             return None
         u, w, c = e[0]
@@ -52,8 +45,7 @@ class Worddb(object):
 
         original_word = word
 
-        self.cursor.execute('SELECT word_ids FROM wordlist WHERE (wordlist.word=?);', (word,))
-        ids = self.cursor.fetchall()
+        ids = self.execute('SELECT word_ids FROM wordlist WHERE (wordlist.word=?);', (word,)).fetchall()
         res = []
         if len(ids) == 0:
             return None
@@ -64,8 +56,8 @@ class Worddb(object):
             present_ids.append(i)
 
             entry = {}
-            self.cursor.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (i, ))
-            word_id, word, root, class_id = self.cursor.fetchall()[0]
+            self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (i, ))
+            word_id, word, root, class_id = self.fetchall()[0]
             present_ids.append(word_id)
             form = []
             if root == -1:
@@ -74,8 +66,8 @@ class Worddb(object):
                 entry["forms"] = self.__get_word_forms(word_id)
             else:
                 # Word is just form
-                self.cursor.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (root,))
-                word_id, word, root, class_id = self.cursor.fetchall()[0]
+                self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (root,))
+                word_id, word, root, class_id = self.fetchall()[0]
                 if word_id in present_ids:
                     continue
                 present_ids.append(word_id)
@@ -147,17 +139,16 @@ class Worddb(object):
         return res
 
 
-class WordClasses(object):
-    def __init__(self, connection, cursor):
+class WordClasses(common.db.Db):
+    def __init__(self, reuse_db, rw=False):
+        common.db.Db.__init__(self, reuse_db=reuse_db, rw=rw)
         self.json_to_id = {}
         self.id_to_json = {}
-        self.conn = connection
-        self.cursor = cursor
         self.__load_classes()
 
     def __table_exists(self, name):
-        self.cursor.execute('SELECT name from sqlite_master WHERE (type==\'table\');')
-        tables = self.cursor.fetchall()
+        self.execute('SELECT name from sqlite_master WHERE (type==\'table\');')
+        tables = self.fetchall()
         for t, in tables:
             if name == t:
                 return True
@@ -167,8 +158,8 @@ class WordClasses(object):
         if not self.__table_exists(u'word_classes'):
             return
 
-        self.cursor.execute('SELECT * from word_classes;')
-        for cid, json_info in self.cursor.fetchall():
+        self.execute('SELECT * from word_classes;')
+        for cid, json_info in self.fetchall():
             self.json_to_id[json_info] = cid
             self.id_to_json[cid] = json_info
 

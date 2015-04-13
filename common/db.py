@@ -52,6 +52,9 @@ class Db(object):
     def fetchall(self):
         return self.__cursor.fetchall()
 
+    def get_lastrowid(self):
+        return self.__cursor.lastrowid
+
 
 class DbRoIterator(object):
     def __init__(self, db, table, coloumns, conditions=None, chunk_size=10):

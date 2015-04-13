@@ -28,7 +28,7 @@ worddb: dirs ${WORD_DB}
 
 worddb-create: rm_create ${worddb_create}
 
-wordb-wordlist: rm_wordlist ${worddb_wordlist}
+worddb-wordlist: rm_wordlist ${worddb_wordlist}
 
 worddb-count: rm_count ${worddb_count}
 

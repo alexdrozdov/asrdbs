@@ -110,14 +110,14 @@ class MorfWordGroup(object):
 
 
 class WorddbBuilder(base.Worddb):
-    def __init__(self, dbfilename, rw=False):
-        base.Worddb.__init__(self, dbfilename, no_classes=True)
+    def __init__(self, dbfilename, rw=True):
+        base.Worddb.__init__(self, dbfilename, rw=rw, no_classes=True)
         self.__create_tables()
         self.__load_classes()
         self.ft = Forms()
 
     def __load_classes(self):
-        self.classes = WordClassesBuilder(self.conn, self.cursor)
+        self.classes = WordClassesBuilder(reuse_db=self)
 
     def __create_tables(self):
         commands = ['CREATE TABLE IF NOT EXISTS words (word_id INTEGER PRIMARY KEY, word TEXT, root INTEGER, commit_id INTEGER, class_id INTEGER, UNIQUE(word,class_id) );',
@@ -127,8 +127,8 @@ class WorddbBuilder(base.Worddb):
                     ]
 
         for c in commands:
-            self.cursor.execute(c)
-        self.conn.commit()
+            self.execute(c)
+        self.commit()
 
     def line_to_form(self, line):
         line_terms = line.split('\t')
@@ -140,46 +140,46 @@ class WorddbBuilder(base.Worddb):
 
     def add_alphabet(self, alphabet):
         alphabet_tuple = [(a,) for a in alphabet]
-        self.cursor.executemany('INSERT OR IGNORE INTO alphabet (letter) VALUES (?);', alphabet_tuple)
-        self.conn.commit()
+        self.executemany('INSERT OR IGNORE INTO alphabet (letter) VALUES (?);', alphabet_tuple)
+        self.commit()
 
     def add_word_group(self, word_group, commit_string="Automatic commit name"):
-        self.cursor.execute('INSERT INTO commits (commit_time, comment)  VALUES (CURRENT_TIMESTAMP, "'+commit_string+'");')
-        commit_id = self.cursor.lastrowid
+        self.execute('INSERT INTO commits (commit_time, comment)  VALUES (CURRENT_TIMESTAMP, "'+commit_string+'");')
+        commit_id = self.get_lastrowid()
 
         cid = self.classes.get_class_id(repr(word_group.primary[1]))
-        self.cursor.execute('INSERT OR IGNORE INTO words (word, root, commit_id, class_id) VALUES (?,?,?,?)',
-                            (word_group.primary[0], -1, commit_id, cid))
+        self.execute('INSERT OR IGNORE INTO words (word, root, commit_id, class_id) VALUES (?,?,?,?)',
+                     (word_group.primary[0], -1, commit_id, cid))
 
-        word_id = self.cursor.lastrowid
+        word_id = self.get_lastrowid()
 
         words_tuple = [(w, word_id, commit_id, self.classes.get_class_id(repr(i))) for w, i in word_group.forms]
-        self.cursor.executemany('INSERT OR IGNORE INTO words (word, root, commit_id, class_id) VALUES (?,?,?,?);', words_tuple)
-        self.conn.commit()
+        self.executemany('INSERT OR IGNORE INTO words (word, root, commit_id, class_id) VALUES (?,?,?,?);', words_tuple)
+        self.commit()
 
     def __build_word_index(self):
         print "Building words index..."
-        self.cursor.execute('CREATE INDEX IF NOT EXISTS words_idx ON words (word) ;')
-        self.cursor.execute('CREATE INDEX IF NOT EXISTS words_root_idx ON words (root) ;')
-        self.cursor.execute('CREATE INDEX IF NOT EXISTS words_class_idx ON words (class_id) ;')
-        self.conn.commit()
+        self.execute('CREATE INDEX IF NOT EXISTS words_idx ON words (word) ;')
+        self.execute('CREATE INDEX IF NOT EXISTS words_root_idx ON words (root) ;')
+        self.execute('CREATE INDEX IF NOT EXISTS words_class_idx ON words (class_id) ;')
+        self.commit()
 
     def __drop_word_index(self):
         print "Dropping words index..."
-        self.cursor.execute('DROP INDEX IF EXISTS words_idx;')
-        self.cursor.execute('DROP INDEX IF EXISTS words_root_idx;')
-        self.cursor.execute('DROP INDEX IF EXISTS words_class_idx;')
+        self.execute('DROP INDEX IF EXISTS words_idx;')
+        self.execute('DROP INDEX IF EXISTS words_root_idx;')
+        self.execute('DROP INDEX IF EXISTS words_class_idx;')
 
     def __build_wordlist_index(self):
         print "Building wordlist index..."
-        self.cursor.execute('CREATE INDEX IF NOT EXISTS wordslist_idx ON wordlist (word) ;')
-        self.conn.commit()
+        self.execute('CREATE INDEX IF NOT EXISTS wordslist_idx ON wordlist (word) ;')
+        self.commit()
 
     def __recreate_wordlist(self):
         print "Dropping wordlist index..."
-        self.cursor.execute('DROP INDEX IF EXISTS wordlist_idx;')
-        self.cursor.execute('DROP TABLE IF EXISTS wordlist;')
-        self.cursor.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, cnt INTEGER, UNIQUE(word));')
+        self.execute('DROP INDEX IF EXISTS wordlist_idx;')
+        self.execute('DROP TABLE IF EXISTS wordlist;')
+        self.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, cnt INTEGER, UNIQUE(word));')
 
     def build_wordlist(self, max_count=None):
         print "Building full word list..."
@@ -187,16 +187,16 @@ class WorddbBuilder(base.Worddb):
 
         print "Selecting complete word list..."
         query = 'SELECT DISTINCT word FROM words;'
-        self.cursor.execute(query)
-        words = self.cursor.fetchall()
+        self.execute(query)
+        words = self.fetchall()
 
         word_count = len(words)
         print_step = word_count / 20
         word_cnt = 0
         for w in words:
-            self.cursor.execute('SELECT word_id FROM words WHERE (words.word=?)', w)
-            word_ids = self.cursor.fetchall()
-            self.cursor.execute('INSERT OR IGNORE INTO wordlist (word, word_ids) VALUES (?,?)', (w[0], repr(word_ids)))
+            self.execute('SELECT word_id FROM words WHERE (words.word=?)', w)
+            word_ids = self.fetchall()
+            self.execute('INSERT OR IGNORE INTO wordlist (word, word_ids) VALUES (?,?)', (w[0], repr(word_ids)))
 
             word_cnt += 1
             if word_cnt % print_step == 0:
@@ -208,7 +208,7 @@ class WorddbBuilder(base.Worddb):
         count = 0
         self.alphabet = [l for n, l in self.get_alphabet()]
         self.__drop_word_index()
-        self.cursor.execute('PRAGMA synchronous=0;')
+        self.execute('PRAGMA synchronous=0;')
 
         wf = MorfWordGroup()
         while words_iter.has_data() and (max_count is None or count < max_count):
@@ -236,65 +236,66 @@ class WorddbBuilder(base.Worddb):
 
     def __get_word_forms(self, word_id):
         res = []
-        self.cursor.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
+        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
         for word_id, word, root, class_id in self.cursor.fetchall():
             res.append({"word": word, "class_id": class_id})
         return res
 
     def build_optimized(self, max_count=None):
-        odb = OptimizedDbBuilder(self)
+        odb = OptimizedDbBuilder(reuse_db=self, rw=True)
         odb.build(max_count)
 
     def count_words(self, word_iter, max_count=None):
-        wdc = WorddbCounter(self)
+        wdc = WorddbCounter(reuse_db=self, rw=True)
         wdc.add_words(word_iter, max_count)
 
     def update_wordlist(self, wle):
         if wle is None:
             return
-        self.cursor.execute('UPDATE wordlist SET word=?, cnt=? WHERE (wordlist.uword_id=?);', (wle.get_word(), wle.get_count(), wle.get_uword_id()))
+        self.execute('UPDATE wordlist SET word=?, cnt=? WHERE (wordlist.uword_id=?);', (wle.get_word(), wle.get_count(), wle.get_uword_id()))
 
 
-class OptimizedDbBuilder(object):
-    def __init__(self, dbbuilder):
-        self.__dbbuild = dbbuilder
+class OptimizedDbBuilder(common.db.Db):
+    def __init__(self, reuse_db, rw=False):
+        self.__dbbuild = reuse_db
+        common.db.Db.__init__(self, reuse_db=reuse_db, rw=rw)
 
     def __insert_blob(self, word, word_id, blob):
-        self.__dbbuild.cursor.execute('INSERT INTO word_blobs (word, word_id, blob) VALUES (?, ?, ?)', (word, word_id, blob))
+        self.execute('INSERT INTO word_blobs (word, word_id, blob) VALUES (?, ?, ?)', (word, word_id, blob))
 
     def __drop_optimized_table(self):
         print "Dropping existing optimized tables..."
-        self.__dbbuild.cursor.execute('DROP INDEX IF EXISTS word_blobs_bw_idx;')
-        self.__dbbuild.cursor.execute('DROP INDEX IF EXISTS word_blobs_bi_idx;')
-        self.__dbbuild.cursor.execute('DROP TABLE IF EXISTS word_blobs;')
-        self.__dbbuild.conn.commit()
+        self.execute('DROP INDEX IF EXISTS word_blobs_bw_idx;')
+        self.execute('DROP INDEX IF EXISTS word_blobs_bi_idx;')
+        self.execute('DROP TABLE IF EXISTS word_blobs;')
+        self.commit()
 
         print "Running vacuum..."
-        self.__dbbuild.cursor.execute('VACUUM;')
-        self.__dbbuild.conn.commit()
+        self.execute('VACUUM;')
+        self.commit()
 
     def __create_optimized_table(self):
         print "Creating new optimized tables..."
-        self.__dbbuild.cursor.execute('CREATE TABLE IF NOT EXISTS word_blobs (word TEXT, word_id INTEGER, blob TEXT);')
-        self.__dbbuild.conn.commit()
+        self.execute('CREATE TABLE IF NOT EXISTS word_blobs (word TEXT, word_id INTEGER, blob TEXT);')
+        self.commit()
 
     def __disable_synchronous_mode(self):
         print "Disabling synchronous mode..."
-        self.__dbbuild.cursor.execute('PRAGMA synchronous=0;')
+        self.mksync()
 
     def __build_index(self):
         print "Creating index on words..."
-        self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bw_idx ON word_blobs (word) ;')
+        self.execute('CREATE INDEX IF NOT EXISTS word_blobs_bw_idx ON word_blobs (word) ;')
         print "Creating index on word ids..."
-        self.__dbbuild.cursor.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
-        self.__dbbuild.conn.commit()
+        self.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
+        self.commit()
 
     def __build_blobs(self, max_count=None, chunk_size=10000):
         print "Building word blobs..."
         offset = 0
         while True:
-            self.__dbbuild.cursor.execute('SELECT word, uword_id FROM wordlist LIMIT ? OFFSET ?;', (chunk_size, offset))
-            word_word_ids = self.__dbbuild.cursor.fetchall()
+            self.execute('SELECT word, uword_id FROM wordlist LIMIT ? OFFSET ?;', (chunk_size, offset))
+            word_word_ids = self.fetchall()
             res_len = len(word_word_ids)
             offset += res_len
 
@@ -302,7 +303,7 @@ class OptimizedDbBuilder(object):
                 info = self.__dbbuild.get_word_info(word)
                 blob = self.__dbbuild.word_info_str(info)
                 self.__insert_blob(word, uword_id, blob)
-            self.__dbbuild.conn.commit()
+            self.commit()
 
             print offset, " entries complete"
             if res_len < chunk_size or (max_count is not None and max_count <= offset):
@@ -315,13 +316,14 @@ class OptimizedDbBuilder(object):
         self.__disable_synchronous_mode()
         self.__build_blobs(max_count)
         self.__build_index()
-        self.__dbbuild.conn.commit()
+        self.commit()
 
 
-class WorddbCounter(common.shadow.Shadow):
-    def __init__(self, worddb):
+class WorddbCounter(common.shadow.Shadow, common.db.Db):
+    def __init__(self, reuse_db, rw=False):
         common.shadow.Shadow.__init__(self, lru_len=10000)
-        self.__worddb = worddb
+        common.db.Db.__init__(self, reuse_db=reuse_db, rw=rw)
+        self.__worddb = reuse_db
 
     def get_object_cb(self, objid):
         return self.__worddb.get_wordlist_by_word(objid)
@@ -331,7 +333,7 @@ class WorddbCounter(common.shadow.Shadow):
 
     def add_words(self, words_iter, max_count=None):
         count = 0
-        self.__worddb.cursor.execute('PRAGMA synchronous=0;')
+        self.mksync()
 
         while words_iter.has_data() and (max_count is None or count < max_count):
             word = words_iter.get()[0]
@@ -343,23 +345,23 @@ class WorddbCounter(common.shadow.Shadow):
             if count % 1000 == 0:
                 print "Inserted", count, "words"
         self.flush()
-        self.__worddb.conn.commit()
+        self.commit()
 
 
 class WordClassesBuilder(base.WordClasses):
-    def __init__(self, connection, cursor):
-        base.WordClasses.__init__(self, connection, cursor)
+    def __init__(self, reuse_db):
+        base.WordClasses.__init__(self, reuse_db=reuse_db, rw=True)
         self.__create_tables()
 
     def __create_tables(self):
         commands = ['CREATE TABLE IF NOT EXISTS word_classes (class_id INTEGER PRIMARY KEY, json_info TEXT, UNIQUE(json_info));', ]
         for c in commands:
-            self.cursor.execute(c)
-        self.conn.commit()
+            self.execute(c)
+        self.commit()
 
     def add_class(self, json_info):
-        self.cursor.execute('INSERT INTO word_classes (json_info) VALUES (?);', (json_info,))
-        cid = self.cursor.lastrowid
+        self.execute('INSERT INTO word_classes (json_info) VALUES (?);', (json_info,))
+        cid = self.get_lastrowid()
         self.json_to_id[json_info] = cid
         self.id_to_json[cid] = json_info
 
