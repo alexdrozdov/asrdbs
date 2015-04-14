@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import json
 import base
 import common.shadow
 
@@ -109,11 +110,61 @@ class MorfWordGroup(object):
         return 1+len(self.forms)
 
 
+class WordFormsShadow(common.db.Db, common.shadow.Shadow):
+    def __init__(self, reuse_db, lru_len=1000):
+        common.shadow.Shadow.__init__(self, lru_len=lru_len)
+        common.db.Db.__init__(self, reuse_db=reuse_db)
+
+    def get_object_cb(self, objid):
+        res = []
+        word_id = objid
+        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
+        for word_id, word, root, class_id in self.fetchall():
+            res.append({"word": word, "class_id": class_id})
+        return res
+
+    def dump_object_cb(self, obj):
+        pass
+
+
+class WordShadow(common.db.Db, common.shadow.Shadow):
+    def __init__(self, reuse_db, lru_len=1000):
+        common.shadow.Shadow.__init__(self, lru_len=lru_len)
+        common.db.Db.__init__(self, reuse_db=reuse_db)
+
+    def get_object_cb(self, objid):
+        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (objid, ))
+        return self.fetchall()[0]
+
+    def dump_object_cb(self, obj):
+        pass
+
+
+class WordIdsShadow(common.db.Db, common.shadow.Shadow):
+    def __init__(self, reuse_db, lru_len=1000):
+        common.shadow.Shadow.__init__(self, lru_len=lru_len)
+        common.db.Db.__init__(self, reuse_db=reuse_db)
+
+    def get_object_cb(self, objid):
+        word = objid
+        ids = self.execute('SELECT word_ids FROM wordlist WHERE (wordlist.word=?);', (word,)).fetchall()
+        if len(ids) == 0:
+            return None
+        ids = eval(ids[0][0])
+        return ids
+
+    def dump_object_cb(self, obj):
+        pass
+
+
 class WorddbBuilder(base.Worddb):
     def __init__(self, dbfilename, rw=True):
         base.Worddb.__init__(self, dbfilename, rw=rw, no_classes=True)
         self.__create_tables()
         self.__load_classes()
+        self.__w_shadow = WordShadow(reuse_db=self)
+        self.__wids_shadow = WordIdsShadow(reuse_db=self)
+        self.__wf_shadow = WordFormsShadow(reuse_db=self)
         self.ft = Forms()
 
     def __load_classes(self):
@@ -204,6 +255,54 @@ class WorddbBuilder(base.Worddb):
 
         self.__build_wordlist_index()
 
+    def __get_word_forms(self, word_id):
+        return self.__wf_shadow.get_object(word_id)
+
+    def build_word_info(self, word):
+        present_ids = []
+
+        original_word = word
+
+        ids = self.__wids_shadow.get_object(word)
+        if ids is None:
+            return None
+        res = []
+        for i, in ids:
+            if i in present_ids:
+                continue
+            present_ids.append(i)
+
+            entry = {}
+            word_id, word, root, class_id = self.__w_shadow.get_object(i)
+            present_ids.append(word_id)
+            form = []
+            if root == -1:
+                # Word is primary
+                entry["primary"] = {"word": word, "class_id": class_id}
+                entry["forms"] = self.__get_word_forms(word_id)
+            else:
+                # Word is just form
+                word_id, word, root, class_id = self.__w_shadow.get_object(root)
+                if word_id in present_ids:
+                    continue
+                present_ids.append(word_id)
+                entry["primary"] = {"word": word, "class_id": class_id}
+                entry["forms"] = self.__get_word_forms(word_id)
+
+            if entry["primary"]["word"] == original_word:
+                class_id = entry["primary"]["class_id"]
+                form.append({"word": original_word, "class_id": class_id, "info": self.get_class_info(class_id)})
+            for f in entry["forms"]:
+                if f["word"] == original_word:
+                    class_id = f["class_id"]
+                    form.append({"word": original_word, "class_id": class_id, "info": self.get_class_info(class_id)})
+            entry["form"] = form
+            res.append(entry)
+        return res
+
+    def word_info_str(self, info):
+        return json.dumps(info, ensure_ascii=False)
+
     def add_words(self, words_iter, max_count=None):
         count = 0
         self.alphabet = [l for n, l in self.get_alphabet()]
@@ -233,13 +332,6 @@ class WorddbBuilder(base.Worddb):
                 break
             count += 1
         self.__build_word_index()
-
-    def __get_word_forms(self, word_id):
-        res = []
-        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
-        for word_id, word, root, class_id in self.cursor.fetchall():
-            res.append({"word": word, "class_id": class_id})
-        return res
 
     def build_optimized(self, max_count=None):
         odb = OptimizedDbBuilder(reuse_db=self, rw=True)
@@ -300,7 +392,7 @@ class OptimizedDbBuilder(common.db.Db):
             offset += res_len
 
             for word, uword_id in word_word_ids:
-                info = self.__dbbuild.get_word_info(word)
+                info = self.__dbbuild.build_word_info(word)
                 blob = self.__dbbuild.word_info_str(info)
                 self.__insert_blob(word, uword_id, blob)
             self.commit()

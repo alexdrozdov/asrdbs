@@ -2,7 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
+import json
 import common.db
+import common.shadow
 
 
 class Worddb(common.db.Db):
@@ -10,6 +12,7 @@ class Worddb(common.db.Db):
         common.db.Db.__init__(self, dbfilename=dbfilename, rw=rw)
         if not no_classes:
             self.__load_classes()
+        self.__wi_shadow = WordInfoShadow(reuse_db=self)
 
     def __load_classes(self):
         self.classes = WordClasses(reuse_db=self)
@@ -23,12 +26,8 @@ class Worddb(common.db.Db):
                 return False
         return True
 
-    def __get_word_forms(self, word_id):
-        res = []
-        self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.root=?);', (word_id,))
-        for word_id, word, root, class_id in self.fetchall():
-            res.append({"word": word, "class_id": class_id})
-        return res
+    def get_word_info(self, word):
+        return self.__wi_shadow.get(word)
 
     def get_wordlist_by_word(self, word):
         e = self.execute('SELECT uword_id, word, cnt FROM wordlist WHERE (wordlist.word=?);', (word, )).fetchall()
@@ -39,104 +38,6 @@ class Worddb(common.db.Db):
 
     def get_class_info(self, class_id):
         return self.classes.get_class_by_id(class_id)
-
-    def get_word_info(self, word):
-        present_ids = []
-
-        original_word = word
-
-        ids = self.execute('SELECT word_ids FROM wordlist WHERE (wordlist.word=?);', (word,)).fetchall()
-        res = []
-        if len(ids) == 0:
-            return None
-        ids = eval(ids[0][0])
-        for i, in ids:
-            if i in present_ids:
-                continue
-            present_ids.append(i)
-
-            entry = {}
-            self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (i, ))
-            word_id, word, root, class_id = self.fetchall()[0]
-            present_ids.append(word_id)
-            form = []
-            if root == -1:
-                # Word is primary
-                entry["primary"] = {"word": word, "class_id": class_id}
-                entry["forms"] = self.__get_word_forms(word_id)
-            else:
-                # Word is just form
-                self.execute('SELECT word_id, word, root, class_id FROM words WHERE (words.word_id=?);', (root,))
-                word_id, word, root, class_id = self.fetchall()[0]
-                if word_id in present_ids:
-                    continue
-                present_ids.append(word_id)
-                entry["primary"] = {"word": word, "class_id": class_id}
-                entry["forms"] = self.__get_word_forms(word_id)
-
-            if entry["primary"]["word"] == original_word:
-                class_id = entry["primary"]["class_id"]
-                form.append({"word": original_word, "class_id": class_id, "info": self.get_class_info(class_id)})
-            for f in entry["forms"]:
-                if f["word"] == original_word:
-                    class_id = f["class_id"]
-                    form.append({"word": original_word, "class_id": class_id, "info": self.get_class_info(class_id)})
-            entry["form"] = form
-            res.append(entry)
-        return res
-
-    def word_info_str(self, info):
-        res = "["
-        for wi in info:
-            res += self.__word_form_info_str(wi)
-            res += ', '
-        res += ']'
-        return res
-
-    def __word_form_info_str(self, info):
-        res = "form: ["
-        for f in info['form']:
-            res += '{'
-            for k, v in f.items():
-                if isinstance(v, unicode):
-                    res += k + ": "
-                    res += v
-                    res += ', '
-                elif isinstance(v, str):
-                    res += k + ": " + v + ', '
-                else:
-                    res += k + u": " + repr(v) + u", "
-            res += "} "
-        res += "]     "
-
-        res += "primary: {"
-        for k, v in info['primary'].items():
-            if isinstance(v, unicode):
-                res += k + ": "
-                res += v
-                res += ', '
-            elif isinstance(v, str):
-                res += k + ": " + v + ', '
-            else:
-                res += k + u": " + repr(v) + u", "
-        res += "}   "
-
-        res += "forms: ["
-        for f in info['forms']:
-            res += '{'
-            for k, v in f.items():
-                if isinstance(v, unicode):
-                    res += k + ": "
-                    res += v
-                    res += ', '
-                elif isinstance(v, str):
-                    res += k + ": " + v + ', '
-                else:
-                    res += k + u": " + repr(v) + u", "
-            res += '}'
-        res += "]"
-
-        return res
 
 
 class WordClasses(common.db.Db):
@@ -193,3 +94,17 @@ class WordlistEntry(object):
 
     def get_count(self):
         return self.__count
+
+
+class WordInfoShadow(common.db.Db, common.shadow.Shadow):
+    def __init__(self, reuse_db, lru_len=1000):
+        common.shadow.Shadow.__init__(self, lru_len=lru_len)
+        common.db.Db.__init__(self, reuse_db=reuse_db)
+
+    def get_object_cb(self, objid):
+        word = objid
+        jblob = self.execute('SELECT blob WHERE (word_blobs.word=?);', (word,)).fetchall()[0]
+        return json.loads(jblob)
+
+    def dump_object_cb(self, obj):
+        pass
