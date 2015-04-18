@@ -187,7 +187,7 @@ class WordTrackBuilder(object):
         self.conn = sql_connection
         self.cursor = sql_cursor
 
-    def build_word_track(self, word):
+    def build_word_track(self, word, blob):
         try:
             word = word[0]
             letter_list = list(word)
@@ -195,7 +195,7 @@ class WordTrackBuilder(object):
             for l in letter_list:
                 letter_id = self.get_letter_id(l)
                 current_node = self.get_letter_node(current_node, letter_id)
-            self.set_node_word(current_node, word)
+            self.set_node_word(current_node, word, blob)
             self.update_hardlink_version(word)
             self.conn.commit()
         except:
@@ -220,9 +220,7 @@ class WordTrackBuilder(object):
 
     def set_node_word(self, node_id, word):
         word_id = self.get_word_id(word)
-        sql_request = 'UPDATE nodes SET word_id={0} WHERE (nodes.node_id={1});'.format(word_id, node_id)
-        # print sql_request
-        self.cursor.execute(sql_request)
+        self.cursor.execute('UPDATE nodes SET word_id=?, info_blob=? WHERE (nodes.node_id=?);', (word_id, info_blob, node_id))
 
     def update_hardlink_version(self, word):
         sql_request = u'SELECT commit_id FROM words WHERE (words.word=\'{0}\');'.format(word)
@@ -234,22 +232,17 @@ class WordTrackBuilder(object):
     def get_letter_node(self, current_node, letter_id):
         # Сначала пытаемся найти существующую жесткую связь между текущим узлом и следующим узлом по указанной букве
         sql_request = 'SELECT to_node FROM hard_links WHERE (hard_links.from_node={0}) AND (hard_links.letter_id={1});'.format(current_node, letter_id)
-        # print sql_request
         self.cursor.execute(sql_request)
         sql_result = self.cursor.fetchall()
-        # print sql_result
         if len(sql_result) >= 1:
-            # print "node found for", letter_id
             # Узел нашелся - возвращаем его id-шник
             return sql_result[0][0]
         # Узла нет. Создаем узел
         sql_request = 'INSERT INTO nodes (letter_id) VALUES ({0});'.format(letter_id)
-        # print sql_request
         self.cursor.execute(sql_request)
         created_node_id = self.cursor.lastrowid
         # Создаем связь к вновь созданному узлу
         sql_request = 'INSERT INTO hard_links (from_node, to_node, letter_id) VALUES ({0}, {1}, {2});'.format(current_node, created_node_id, letter_id)
-        # print sql_request
         self.cursor.execute(sql_request)
         return created_node_id
 
@@ -384,12 +377,12 @@ class OptimizedDbBuilder(object):
 
 
 class GraphdbBuilder(base.Graphdb):
-    def __init__(self, dbfilename):
-        base.Graphdb.__init__(self, dbfilename, rw=True)
+    def __init__(self, dbfilename, rw=False):
+        base.Graphdb.__init__(self, dbfilename, rw=rw)
         self.__create_tables()
 
     def __create_tables(self):
-        commands = ['CREATE TABLE IF NOT EXISTS words (word_id INTEGER PRIMARY KEY, word TEXT, commit_id INTEGER, hardlink_version INTEGER, UNIQUE (word) );',
+        commands = ['CREATE TABLE IF NOT EXISTS words (word_id INTEGER PRIMARY KEY, word TEXT, commit_id INTEGER, hardlink_version INTEGER, info_blob TEXT, UNIQUE (word) );',
                     'CREATE TABLE IF NOT EXISTS alphabet (letter_id INTEGER PRIMARY KEY, letter TEXT, UNIQUE (letter));',
                     'CREATE TABLE IF NOT EXISTS nodes (node_id INTEGER PRIMARY KEY, letter_id INTEGER, word_id INTEGER, commit_id INTEGER);',
                     'CREATE TABLE IF NOT EXISTS hard_links (link_id INTEGER PRIMARY KEY, from_node INTEGER, to_node INTEGER, letter_id INTEGER);',
@@ -401,14 +394,17 @@ class GraphdbBuilder(base.Graphdb):
 
     def add_words(self, words_iter, max_count=None, chunk_len=10000, commit_string="Automatic commit name"):
         count = 0
+        print "Adding words..."
+        self.cursor.execute('PRAGMA synchronous=0;')
         while words_iter.has_data() and (max_count is None or count < max_count):
             self.cursor.execute('INSERT INTO commits (commit_time, comment)  VALUES (CURRENT_TIMESTAMP, "'+commit_string+'");')
             last_row_id = self.cursor.lastrowid
             words = words_iter.get(chunk_len)
-            words_tuple = [(w, last_row_id, 0) for w in words]
-            self.cursor.executemany('INSERT OR IGNORE INTO words (word, commit_id, hardlink_version) VALUES (?,?,?);', words_tuple)
+            words_tuple = [(w, last_row_id, 0, blob) for w, blob in words]
+            self.cursor.executemany('INSERT OR IGNORE INTO words (word, commit_id, hardlink_version, info_blob) VALUES (?,?,?,?);', words_tuple)
             self.conn.commit()
             count += len(words)
+            print "\t added", count, "words"
 
     def add_alphabet(self, alphabet):
         alphabet_tuple = [(a,) for a in alphabet]
@@ -416,23 +412,30 @@ class GraphdbBuilder(base.Graphdb):
         self.conn.commit()
 
     def generate_hardlinks(self, actual_hardlink_version=1, max_count=None):
+        print "Generating hardlinks..."
         self.cursor.execute('PRAGMA synchronous=0;')
         # Выбираем слова, для которых версия жестких ссылок меньше актуальной
         if None == max_count:
-            db_request = 'SELECT word FROM words WHERE (words.commit_id > words.hardlink_version);'
+            db_request = 'SELECT word, info_blob FROM words WHERE (words.commit_id > words.hardlink_version);'
         else:
-            db_request = 'SELECT word FROM words WHERE (words.commit_id > words.hardlink_version) LIMIT ' + str(max_count) + ';'
+            db_request = 'SELECT word, info_blob FROM words WHERE (words.commit_id > words.hardlink_version) LIMIT ' + str(max_count) + ';'
         self.cursor.execute(db_request)
-        words = self.cursor.fetchall()
+        words_blobs = self.cursor.fetchall()
         wtb = WordTrackBuilder(self.conn, self.cursor)
-        for w in words:
-            wtb.build_word_track(w)
+        count = 0
+        for w, blob in words_blobs:
+            wtb.build_word_track(w, blob)
+            count += 1
+            if count % 1000 == 0:
+                print "\tgenerated", count, "entries"
 
-    def generate_softlinks(self):
+    def generate_softlinks(self, max_count=None):
+        print "Generating hardlinks..."
         wsb = WordSoftlinkBuilder(self.conn, self.cursor)
         wsb.build_node_links()
 
     def generate_optimized(self, max_count=None):
+        print "Generating softlinks..."
         odb = OptimizedDbBuilder(self.conn, self.cursor)
         odb.build(max_count)
 

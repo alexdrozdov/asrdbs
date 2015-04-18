@@ -3,115 +3,33 @@
 
 import os
 import base
+import common.shadow
 
 
-class Graphdb(base.Graphdb):
-    def __init__(self, dbfilename):
+class Graphdb(base.Graphdb, common.shadow.Shadow):
+    def __init__(self, dbfilename, lru_len=1000):
         base.Graphdb.__init__(dbfilename, rw=False)
+        common.shadow.Shadow.__init__(self, lru_len=lru_len)
+        self.__entry_blob = NodeBlob(self, None)
 
+    def get_raw_node_blob(self, node_id):
+        return base.Graphdb.get_node_blob(self, node_id)
 
-class LruEntry(object):
-    def __init__(self, obj, left=None, right=None):
-        self.__obj = obj
-        self.__left = left
-        self.__right = right
-
-    def self_extract(self):
-        if self.__left is not None:
-            self.__left.__right = self.__right
-        if self.__right is not None:
-            self.__right.__left = self.__left
-        self.__left = None
-        self.__right = None
-
-    def self_insert_righter_than(self, left_entry):
-        self.__left = left_entry
-        if left_entry.__right is not None:
-            self.__right = left_entry.__right
-            self.__right.__left = self
-        left_entry.__right = self
-
-    def get_object(self):
-        return self.__obj
-
-
-class GraphdbShadow(object):
-    def __init_(self, dbfilename, lru_len=1000):
-        self.__worddb = Graphdb(dbfilename)
-        self.__lru_max_len = lru_len
-        self.__cache = {}
-        self.__lru_head = None
-        self.__lru_tail = None
-        self.__lru_len = 0
-        self.__obj2i_dict = {}
-        self.__entry_blob = NodeBlob(self.__worddb, None)
-
-    def __pop_tail(self):
-        if self.__lru_tail is None or self.__lru_len == 0:
-            return
-        rm = self.__lru_tail
-        self.__lru_tail = self.__lru_tail.__right
-        rm.self_extract()
-        if self.__lru_tail is None:
-            self.__lru_head = None
-        self.__lru_len -= 1
-        return rm
-
-    def __pop_head(self):
-        if self.__lru_head is None or self.__lru_len == 0:
-            return
-        rm = self.__lru_head
-        self.__lru_head = self.__lru_head.__head
-        rm.self_extract()
-        if self.__lru_head is None:
-            self.__lru_tail = None
-        self.__lru_len -= 1
-
-    def __del_from_cache(self, lru_entry):
-        _, node_id = self.__obj2i_dict.pop(lru_entry)
-        _, _ = self.__cache.popitem(node_id)
-
-    def __extract_lru(self, lru_entry):
-        self.__del_from_cache(lru_entry)
-        if self.__lru_tail == lru_entry:
-            self.__pop_tail()
-            return
-        if self.__lru_head == lru_entry:
-            self.__pop_head()
-            return
-        lru_entry.self_extract()
-        self.__lru_len -= 1
-
-    def __push_head(self, lru_entry):
-        if self.__lru_len >= self.__lru_max_len:
-            self.__del_from_cache(self.__pop_tail())
-        if self.__lru_head is None:
-            self.__lru_head = lru_entry
-            self.__lru_tail = lru_entry
-        else:
-            lru_entry.self_insert_righter_than(self.__lru_head)
-            self.__lru_head = lru_entry
-        self.__lru_len += 1
-
-    def get_alphabet(self):
-        return self.__worddb.get_alphabet()
+    def get_raw_entry_node_blob(self):
+        return base.Graphdb.get_entry_node_blob(self)
 
     def get_entry_node_blob(self):
         return self.__entry_blob
 
     def get_node_blob(self, node_id):
-        if self.__cache.has_key(node_id):
-            lru = self.__cache[node_id]
-            if lru != self.__lru_head:
-                self.__extract_lru(lru)
-                self.__push_head(lru)
-            return lru.get_object()
-        obj = self.__worddb.get_node_blob(node_id)
-        lru = LruEntry(obj)
-        self.__push_head(lru)
-        self.__cache[node_id] = lru
-        self.__obj2i_dict[lru] = node_id
-        return lru.get_object()
+        return self.get_object(node_id)
+
+    def get_object_cb(self, objid):
+        node_id = objid
+        return NodeBlob(self, node_id)
+
+    def dump_object_cb(self, obj):
+        pass
 
 
 class NodeBlob(object):
@@ -119,9 +37,9 @@ class NodeBlob(object):
         self.__worddb = worddb
         self.__node_id = node_id
         if self.__node_id is None:
-            self.__blob = self.__worddb.get_entry_node_blob()
+            self.__blob = self.__worddb.get_raw_entry_node_blob()
         else:
-            self.__blob = self.__worddb.get_node_blob(node_id)
+            self.__blob = self.__worddb.get_raw_node_blob(node_id)
         self.__load_alphabet()
 
     def __load_alphabet(self):
