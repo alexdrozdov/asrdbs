@@ -62,7 +62,8 @@ class LibrudbWordsAdapter(object):
 
     def __get_next_text(self):
         lt = self.__libdb_adapt.get(1)[0]
-        txt = lt.get_content()  # .decode('utf8')
+        txt = lt.get_content()
+        print "Processing", lt.get_path()
 
         unwanted_chars = '*+-()@#№%^&_{}[]"\'/\\<>~=,.:;!?\r\n'
         tt = {ord(c): ord(' ') for c in unwanted_chars}

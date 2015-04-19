@@ -413,7 +413,7 @@ class OptimizedDbBuilder(common.db.Db):
 
 class WorddbCounter(common.shadow.Shadow, common.db.Db):
     def __init__(self, reuse_db, rw=False):
-        common.shadow.Shadow.__init__(self, lru_len=10000)
+        common.shadow.Shadow.__init__(self, lru_len=1000000)
         common.db.Db.__init__(self, reuse_db=reuse_db, rw=rw)
         self.__worddb = reuse_db
 
@@ -426,16 +426,25 @@ class WorddbCounter(common.shadow.Shadow, common.db.Db):
     def add_words(self, words_iter, max_count=None):
         count = 0
         self.mksync()
+        fail_cnt = 0
 
         while words_iter.has_data() and (max_count is None or count < max_count):
-            word = words_iter.get()[0]
+            words = words_iter.get()
+            if len(words) < 1:
+                print "Failed to get next word", fail_cnt
+                fail_cnt += 1
+                if fail_cnt > 10:
+                    break
+                continue
+
+            word = words[0]
             wle = self.get_object(word, cache_none=False)
             if wle is None:
                 continue
             wle.incr()
             count += 1
             if count % 1000 == 0:
-                print "Inserted", count, "words"
+                print "Processed", count, "words"
         self.flush()
         self.commit()
 
