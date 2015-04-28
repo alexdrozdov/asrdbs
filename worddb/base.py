@@ -27,7 +27,7 @@ class Worddb(common.db.Db):
         return True
 
     def get_word_info(self, word):
-        return self.__wi_shadow.get(word)
+        return self.__wi_shadow.get_object(word)
 
     def get_wordlist_by_word(self, word):
         e = self.execute('SELECT uword_id, word, cnt FROM wordlist WHERE (wordlist.word=?);', (word, )).fetchall()
@@ -103,7 +103,7 @@ class WordInfoShadow(common.db.Db, common.shadow.Shadow):
 
     def get_object_cb(self, objid):
         word = objid
-        jblob = self.execute('SELECT blob WHERE (word_blobs.word=?);', (word,)).fetchall()[0]
+        jblob = self.execute('SELECT blob FROM word_blobs WHERE (word_blobs.word=?);', (word,)).fetchall()[0][0]
         return json.loads(jblob)
 
     def dump_object_cb(self, obj):
