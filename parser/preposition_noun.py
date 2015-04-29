@@ -45,8 +45,9 @@ class PrepositionNounMatcher(matcher.PosMatcher):
             return wf1, wf2
         return wf2, wf1
 
-    def match(self, wf1, wf2):
-        prep, noun = self.__preposition_noun(wf1, wf2)
+    def pos_order(self, wf1, wf2):
+        return self.__preposition_noun(wf1, wf2)
 
+    def match(self, prep, noun):
         rt_matcher = matcher.RuntimePosMatcher(self)
         return rt_matcher.match(prep, noun)

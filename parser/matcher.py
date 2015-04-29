@@ -43,9 +43,9 @@ class BasedOn(object):
             r['none'] = self.__none
         if len(self.__any):
             r['any'] = self.__any
-        if len(self.__spec):
+        if len(self.__special):
             r['spec'] = self.__special
-        r['res'] = PosMatchRes.to_str(self.__res)
+        r['res'] = repr(self.__res)
         res = {self.__term_name: r}
         return json.dumps(res)
 
@@ -111,6 +111,9 @@ class PosMatchRes(object):
     def based_on(self):
         return self.__based_on
 
+    def to_str(self):
+        return repr(self.__fixed_status)  # + " : " + self.__based_on.to_str()
+
 
 class PosMatchRule(object):
     def __init__(self, name, false_is_final=False, true_is_final=False, apply_if_all=[], apply_if_none=[], apply_if_any=[]):
@@ -156,10 +159,10 @@ class PosMatchRule(object):
             if not r_cmp.is_false():
                 any_found = True
 
-        if not any_found:
+        if len(self.__apply_if_any) and not any_found:
             return PosMatchRes(PosMatchRes.dependentFalse, based_on=based_on)
 
-        return self.apply_cb(matcher, wf1, wf2, based_on=based_on)
+        return self.apply_cb(matcher, wf1, wf2)  # , based_on=based_on)
 
 
 class PosMatcher(object):

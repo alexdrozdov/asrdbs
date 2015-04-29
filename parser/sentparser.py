@@ -17,7 +17,7 @@ class ConflictResolver(object):
         pass
 
     def add(self, wf):
-        pass
+        print "\t\tConfict detected"
 
 
 conflict_resolver = ConflictResolver()
@@ -28,6 +28,7 @@ class FormMatcher(matcher.PosMatcherSelector):
         matcher.PosMatcherSelector.__init__(self)
         self.add_matcher(noun_adj.NounAdjectiveMatcher())
         self.add_matcher(noun_noun.NounNounMatcher())
+        self.add_matcher(noun_noun.NounNounRMatcher())
         self.add_matcher(preposition_noun.PrepositionNounMatcher())
         self.add_matcher(verb_adverb.VerbAdverbMatcher())
         self.add_matcher(verb_noun.VerbNounMatcher())
@@ -38,6 +39,7 @@ class FormMatcher(matcher.PosMatcherSelector):
         matchers = self.get_matchers(wf1.get_pos(), wf2.get_pos())
         for m in matchers:
             res, master, slave = m.match(wf1, wf2)
+            print "\t\t\tApplying", m.get_pos_names(), res.to_str()
             if res.is_true():
                 master.link(slave, res)
                 if slave.get_master_count() > 1:
@@ -76,6 +78,20 @@ class WordFormInfo(object):
     def get_word(self):
         return self.form['word']
 
+    def format_info(self):
+        res = ""
+        if self.info.has_key('parts_of_speech'):
+            res += " pos: " + self.info['parts_of_speech']
+        if self.info.has_key('case'):
+            res += " case: " + self.info['case']
+        if self.info.has_key('gender'):
+            res += " gender: " + self.info['gender']
+        if self.info.has_key('count'):
+            res += " count: " + self.info['count']
+        if self.info.has_key('time'):
+            res += " time: " + self.info['time']
+        return res
+
     def spec_cmp(self, spec, ignore_missing=False):
         for k, v in spec.items():
             if self.info.has_key(k):
@@ -95,8 +111,9 @@ class WordForm(WordFormInfo):
         self.__slaves = []
 
     def link(self, slave, rule):
+        print "\t\t\tlinking"
         self.__slaves.append((slave, rule))
-        slave.__masters.append(self, rule)
+        slave.__masters.append((self, rule))
 
     def get_master_count(self):
         return len(self.__masters)
@@ -109,8 +126,9 @@ class WordForms(object):
 
     def match(self, other_wfs):
         for my_wf in self.__forms:
+            print "\tUsing", my_wf.get_word(), my_wf.format_info()
             for other_wf in other_wfs.__forms:
-                print "\tMatching with", other_wf.get_word()
+                print "\t\tMatching with", other_wf.get_word(), other_wf.format_info()
                 self.__fm.match(my_wf, other_wf)
 
 

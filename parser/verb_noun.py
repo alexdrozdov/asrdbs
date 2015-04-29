@@ -3,6 +3,7 @@
 
 
 import matcher
+import traceback
 
 
 class RuleTimeCase(matcher.PosMatchRule):
@@ -44,8 +45,8 @@ class RuleCase(matcher.PosMatchRule):
     def apply_cb(self, mt, verb, noun):
         try:
             if noun.get_case() == 'nominative':
-                return matcher.PosMatchRes(matcher.PosMatchRes.independentFalse)
-            return matcher.PosMatchRes(matcher.PosMatchRes.reliableTrue)
+                return matcher.PosMatchRes(matcher.PosMatchRes.reliableTrue)
+            return matcher.PosMatchRes(matcher.PosMatchRes.independentFalse)
         except:
             pass
         return matcher.PosMatchRes(matcher.PosMatchRes.possibleTrue)
