@@ -1,0 +1,106 @@
+# term - понятие
+# subclass - подмножество понятия. Все ассоциированное с понятием остается в пределах этого понятия. Все вышестоящее относится к понятию.
+#            Ассоциации между понятиями не пересекаются
+#
+# contains - составные части. ИСпользуются для поиска сверху вниз
+#
+# assocs - 
+#
+# alt - синоним.
+#
+#
+
+
+
+term:населенный пункт
+    subclass:город
+    subclass:деревня
+    subclass:поселок
+    subclass:хутор
+    
+    contains:жилище
+    contains:здание
+    contains:дорога
+    contains:население
+    contains:городские животные
+    contains:городская растительность
+
+term:жилище
+    subclass:дом
+    subclass:гостинница
+    subclass:квартира
+
+    contains:помещение
+    contains:предметы быта
+
+term:природные явления
+
+term:погода
+    assocs:погодные явления
+    assocs:температура
+
+term:географические понятия
+    contains:населенный пункт
+    contains:природная зона
+    contains:вид местности
+    contains:части света
+
+term:природная зона
+
+term:вид местности
+    subclass:лес
+    subclass:поле
+    subclass:водоем
+    subclass:гора
+    subclass:пустыня
+    subclass:парк
+
+term:водоем
+    subclass:море
+    subclass:океан
+    subclass:река
+    subclass:озеро
+    subclass:пруд
+    subclass:болото
+
+term:растительность
+    mark:дикая растительность
+    mark:городская растительность
+    subclass:дерево
+    subclass:трава
+    subclass:водоросль
+
+term:лес
+    contains:дикая растительность
+    contains:водоем
+
+term:еда
+    subclass:блюда
+    subclass:растительность
+    subclass:животное
+    subclass:пищевой продукт
+
+subclass:напитки
+
+term:живое существо
+    subclass:животное
+    subclass:человек
+
+term:человек
+    subclass:мужчина
+    sunclass:женщина
+    subclass:ребенок
+
+term:живая природа
+    subclass:живое существо
+    subclass:растительность
+
+term:животное
+    subclass:рыба
+    subclass:млекопитающее
+    subclass:птица
+    subclass:пресмыкающееся
+    
+term:здоровье
+
+
