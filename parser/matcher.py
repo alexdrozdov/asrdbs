@@ -5,49 +5,74 @@
 import json
 
 
-class BasedOn(object):
-    def __init__(self, term_name):
-        self.__term_name = term_name
-        self.__and = []
-        self.__none = []
-        self.__any = []
-        self.__special = []
+class MatchBool(object):
+    independentFalse = -3
+    dependentFalse = -2
+    defaultFalse = -1
+    invariantBool = 0
+    defaultTrue = 1
+    possibleTrue = 2
+    reliableTrue = 3
 
-        self.__current = None
-        self.__res = PosMatchRes.invariantBool
-
-    def term_start_and(self):
-        self.__current = self.__and
-
-    def term_start_none(self):
-        self.__current = self.__none
-
-    def term_start_any(self):
-        self.__current = self.__any
-
-    def term_start_special(self):
-        self.__current = self.__special
-
-    def term_finish(self):
-        self.__current = None
-
-    def add_term(self, term_str):
-        self.__current.append(term_str)
+    def __init__(self, b):
+        self.b = b
 
     def to_str(self):
-        res = {}
-        r = {}
-        if len(self.__and):
-            r['and'] = self.__and
-        if len(self.__none):
-            r['none'] = self.__none
-        if len(self.__any):
-            r['any'] = self.__any
-        if len(self.__special):
-            r['spec'] = self.__special
-        r['res'] = repr(self.__res)
-        res = {self.__term_name: r}
-        return json.dumps(res)
+        if self.b == MatchBool.independentFalse:
+            return "independentFalse"
+        if self.b == MatchBool.dependentFalse:
+            return "dependentFalse"
+        if self.b == MatchBool.defaultFalse:
+            return "defaultFalse"
+        if self.b == MatchBool.invariantBool:
+            return "invariantBool"
+        if self.b == MatchBool.defaultTrue:
+            return "defaultTrue"
+        if self.b == MatchBool.possibleTrue:
+            return "possibleTrue"
+        if self.b == MatchBool.reliableTrue:
+            return "reliableTrue"
+
+    def is_false(self):
+        return self.b < MatchBool.invariantBool
+
+    def is_true(self):
+        return self.b > MatchBool.invariantBool
+
+
+class independentFalse(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.independentFalse)
+
+
+class dependentFalse(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.dependentFalse)
+
+
+class defaultFalse(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.defaultFalse)
+
+
+class invariantBool(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.invariantBool)
+
+
+class defaultTrue(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.defaultTrue)
+
+
+class possibleTrue(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.possibleTrue)
+
+
+class reliableTrue(MatchBool):
+    def __init__(self):
+        MatchBool.__init__(self, MatchBool.reliableTrue)
 
 
 class PosMatcherSelector(object):
@@ -57,7 +82,8 @@ class PosMatcherSelector(object):
     def add_matcher(self, matcher):
         pos1_name, pos2_name = matcher.get_pos_names()
         self.__add_cmp(pos1_name, pos2_name, matcher)
-        self.__add_cmp(pos2_name, pos1_name, matcher)
+        if pos1_name != pos2_name:
+            self.__add_cmp(pos2_name, pos1_name, matcher)
 
     def __add_cmp(self, p1, p2, matcher):
         if self.match_dict.has_key(p1):
@@ -77,25 +103,17 @@ class PosMatcherSelector(object):
 
 
 class PosMatchRes(object):
-    independentFalse = -3
-    dependentFalse = -2
-    defaultFalse = -1
-    invariantBool = 0
-    defaultTrue = 1
-    possibleTrue = 2
-    reliableTrue = 3
-
-    def __init__(self, fixed_status, reliability=1.0, based_on=''):
+    def __init__(self, fixed_status, reliability=1.0, explain_str=None):
         self.__fixed_status = fixed_status
         self.__reliability = reliability
-        self.__based_on = based_on
+        self.__explain_str = explain_str if explain_str is not None else "{}"
         self.__dependent_reliability = None
 
     def is_false(self):
-        return self.__fixed_status < PosMatchRes.invariantBool
+        return self.__fixed_status.is_false()
 
     def is_true(self):
-        return self.__fixed_status > PosMatchRes.invariantBool
+        return self.__fixed_status.is_true()
 
     def get_private_reliability(self):
         return self.__reliability
@@ -108,11 +126,14 @@ class PosMatchRes(object):
     def __based_on_reliability(self, method):
         return 1.0
 
-    def based_on(self):
-        return self.__based_on
+    def explain_str(self):
+        return self.__explain_str
 
-    def to_str(self):
-        return repr(self.__fixed_status)  # + " : " + self.__based_on.to_str()
+    def set_explain_str(self, explain_str):
+        self.__explain_str = explain_str
+
+    def get_fixed_status(self):
+        return self.__fixed_status
 
 
 class PosMatchRule(object):
@@ -132,48 +153,67 @@ class PosMatchRule(object):
             return True
         if res.is_true() and self.__true_is_final:
             return True
-        return True
+        return False
 
     def apply(self, matcher, wf1, wf2):
-        based_on = BasedOn(self.__name)
+        based_on = {"rule": self.__name}
 
-        based_on.term_start_and()
-        for a in self.__apply_if_all:
-            r_cmp = matcher.get_apply_res(a, wf1, wf2)
-            based_on.add_term(r_cmp.explain_str())
-            if r_cmp.is_false():
-                return PosMatchRes(PosMatchRes.dependentFalse, based_on=based_on)
+        if len(self.__apply_if_all):
+            __and = []
+            for a in self.__apply_if_all:
+                r_cmp = matcher.get_apply_res(a, wf1, wf2)
+                __and.append(r_cmp.explain_str())
+                if r_cmp.is_false():
+                    based_on['all'] = __and
+                    based_on['res'] = dependentFalse().to_str()
+                    return PosMatchRes(dependentFalse(), explain_str=json.dumps(based_on))
+            based_on['all'] = __and
 
-        based_on.term_start_none()
-        for a in self.__apply_if_none:
-            r_cmp = matcher.get_apply_res(a, wf1, wf2)
-            based_on.add_term(r_cmp.explain_str())
-            if not r_cmp.is_false():
-                return PosMatchRes(PosMatchRes.dependentFalse, based_on=based_on)
+        if len(self.__apply_if_none):
+            __none = []
+            for a in self.__apply_if_none:
+                r_cmp = matcher.get_apply_res(a, wf1, wf2)
+                __none.append(r_cmp.explain_str())
+                if not r_cmp.is_false():
+                    based_on['none'] = __none
+                    based_on['res'] = dependentFalse().to_str()
+                    return PosMatchRes(dependentFalse(), explain_str=json.dumps(based_on))
+            based_on['none'] = __none
 
-        any_found = False
-        based_on.term_start_any()
-        for a in self.__apply_if_any:
-            r_cmp = matcher.get_apply_res(a, wf1, wf2)
-            based_on.add_term(r_cmp.explain_str())
-            if not r_cmp.is_false():
-                any_found = True
+        if len(self.__apply_if_none):
+            any_found = False
+            __any = []
+            for a in self.__apply_if_any:
+                r_cmp = matcher.get_apply_res(a, wf1, wf2)
+                __any.append(r_cmp.explain_str())
+                if not r_cmp.is_false():
+                    any_found = True
+                    break
 
-        if len(self.__apply_if_any) and not any_found:
-            return PosMatchRes(PosMatchRes.dependentFalse, based_on=based_on)
+            if not any_found:
+                based_on['any'] = __any
+                based_on['res'] = dependentFalse().to_str()
+                return PosMatchRes(dependentFalse(), explain_str=json.dumps(based_on))
 
-        return self.apply_cb(matcher, wf1, wf2)  # , based_on=based_on)
+        r = self.apply_cb(matcher, wf1, wf2)
+        based_on['res'] = r.get_fixed_status().to_str()
+        r.set_explain_str(json.dumps(based_on))
+        return r
 
 
 class PosMatcher(object):
     def __init__(self, pos1_name, pos2_name, default_res=None):
         self.__pos1_name = pos1_name
         self.__pos2_name = pos2_name
+        self.__name = self.__pos1_name + "_" + self.__pos2_name
         self.__rules = {}
         self.__default_res = default_res
 
     def get_pos_names(self):
         return (self.__pos1_name, self.__pos2_name)
+
+    def get_name(self):
+        return self.__name
 
     def add_rule(self, rule):
         self.__rules[rule.get_name()] = rule
