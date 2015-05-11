@@ -128,6 +128,9 @@ class WordForm(WordFormInfo):
     def get_position(self):
         return self.__pos
 
+    def get_slaves(self):
+        return self.__slaves
+
 
 class WordForms(object):
     def __init__(self, form_matcher, forms):
@@ -140,6 +143,9 @@ class WordForms(object):
             for other_wf in other_wfs.__forms:
                 print "\t\tMatching with", other_wf.get_word(), other_wf.format_info()
                 self.__fm.match(my_wf, other_wf)
+
+    def get_forms(self):
+        return self.__forms
 
 
 class WordFormFabric(object):
@@ -173,6 +179,8 @@ class SentenceParser(object):
                 wfs.match(e)
             entries.append(wfs)
             word_position += 1
+
+        return entries
 
     def validate_complete_attraction(self):
         for e in self.entries:

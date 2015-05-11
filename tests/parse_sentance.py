@@ -3,6 +3,7 @@
 
 
 import parser.sentparser
+import parser.graph
 import sys
 import codecs
 
@@ -17,8 +18,11 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 # sentence = [u'на', u'поезд']
 # sentence = [u'в', u'комнате']
 # sentence = [u'на', u'солнце']
-# sentence = [u'луна', u'светила', u'на', u'ночном', u'небе']
-sentence = [u'холод', u'зимы']
+sentence = [u'луна', u'светила', u'на', u'ночном', u'небе']
+# sentence = [u'холод', u'зимы']
 
 sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
-sp.parse(sentence)
+res = sp.parse(sentence)
+
+g = parser.graph.SentGraph(img_type='png')
+print g.generate(res, 'g.png')
