@@ -9,6 +9,7 @@ import noun_noun
 import preposition_noun
 import verb_adverb
 import verb_noun
+import verb_pronoun
 import verb_verb
 
 
@@ -17,7 +18,7 @@ class ConflictResolver(object):
         pass
 
     def add(self, wf):
-        print "\t\tConfict detected"
+        pass
 
 
 conflict_resolver = ConflictResolver()
@@ -33,17 +34,23 @@ class FormMatcher(matcher.PosMatcherSelector):
         self.add_matcher(verb_adverb.VerbAdverbMatcher())
         self.add_matcher(verb_noun.VerbNounMatcher())
         self.add_matcher(verb_noun.NounVerbMatcher())
+        self.add_matcher(verb_pronoun.VerbPronounMatcher())
+        self.add_matcher(verb_pronoun.PronounVerbMatcher())
         self.add_matcher(verb_verb.VerbVerbMatcher())
 
     def match(self, wf1, wf2):
         matchers = self.get_matchers(wf1.get_pos(), wf2.get_pos())
         for m in matchers:
             res, master, slave = m.match(wf1, wf2)
-            print "\t\t\tApplying", m.get_pos_names(), res.to_str()
+            s = '{0} {1} {2}'.format(type(m), m.get_pos_names(), res.explain_str())
             if res.is_true():
                 master.link(slave, res)
                 if slave.get_master_count() > 1:
                     conflict_resolver.add(slave)
+                    s = ' [CONFLICT]' + s
+                print "\t\t\tApplyed", s
+            else:
+                print "\t\t\tDismissed", s
 
 
 class AdverbAdjective(object):
@@ -105,18 +112,21 @@ class WordFormInfo(object):
 
 
 class WordForm(WordFormInfo):
-    def __init__(self, form, primary):
+    def __init__(self, form, primary, pos):
         WordFormInfo.__init__(self, form, primary)
         self.__masters = []
         self.__slaves = []
+        self.__pos = pos
 
     def link(self, slave, rule):
-        print "\t\t\tlinking"
         self.__slaves.append((slave, rule))
         slave.__masters.append((self, rule))
 
     def get_master_count(self):
         return len(self.__masters)
+
+    def get_position(self):
+        return self.__pos
 
 
 class WordForms(object):
@@ -145,7 +155,7 @@ class WordFormFabric(object):
             form = i['form']
             primary = i['primary']
             for f in form:
-                res.append(WordForm(f, primary))
+                res.append(WordForm(f, primary, position))
         return WordForms(self.__fm, res)
 
 
