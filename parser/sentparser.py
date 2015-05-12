@@ -85,18 +85,28 @@ class WordFormInfo(object):
     def get_word(self):
         return self.form['word']
 
-    def format_info(self):
+    def format_info(self, crlf=False):
         res = ""
         if self.info.has_key('parts_of_speech'):
             res += " pos: " + self.info['parts_of_speech']
+            if crlf:
+                res += "\r\n"
         if self.info.has_key('case'):
             res += " case: " + self.info['case']
+            if crlf:
+                res += "\r\n"
         if self.info.has_key('gender'):
             res += " gender: " + self.info['gender']
+            if crlf:
+                res += "\r\n"
         if self.info.has_key('count'):
             res += " count: " + self.info['count']
+            if crlf:
+                res += "\r\n"
         if self.info.has_key('time'):
             res += " time: " + self.info['time']
+            if crlf:
+                res += "\r\n"
         return res
 
     def spec_cmp(self, spec, ignore_missing=False):
@@ -133,8 +143,9 @@ class WordForm(WordFormInfo):
 
 
 class WordForms(object):
-    def __init__(self, form_matcher, forms):
+    def __init__(self, form_matcher, word, forms):
         self.__fm = form_matcher
+        self.__word = word
         self.__forms = forms
 
     def match(self, other_wfs):
@@ -146,6 +157,9 @@ class WordForms(object):
 
     def get_forms(self):
         return self.__forms
+
+    def get_word(self):
+        return self.__word
 
 
 class WordFormFabric(object):
@@ -162,7 +176,7 @@ class WordFormFabric(object):
             primary = i['primary']
             for f in form:
                 res.append(WordForm(f, primary, position))
-        return WordForms(self.__fm, res)
+        return WordForms(self.__fm, word, res)
 
 
 class SentenceParser(object):

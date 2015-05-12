@@ -20,6 +20,7 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 # sentence = [u'на', u'солнце']
 sentence = [u'луна', u'светила', u'на', u'ночном', u'небе']
 # sentence = [u'холод', u'зимы']
+# sentence = [u'падал', u'мокрый', u'снег']
 
 sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
 res = sp.parse(sentence)

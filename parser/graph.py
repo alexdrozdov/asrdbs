@@ -3,6 +3,7 @@
 
 
 import os
+import json
 
 
 class SentGraph(object):
@@ -25,6 +26,21 @@ class SentGraphGen(object):
         self.__obj2id = {}
         self.__last_id = 0
 
+    def __dict_to_istr(self, d, offset=0):
+        r = u''
+        if isinstance(d, unicode) or isinstance(d, str):
+            d = json.loads(d)
+        for k, v in d.items():
+            r += u'  ' * offset + k + ': '
+            if isinstance(v, list):
+                r += '['
+                for vv in v:
+                    r += self.__dict_to_istr(vv, offset=offset+1)
+                r += u'  ' * offset + ']\l'
+            else:
+                r += str(v) + "\l"
+        return r
+
     def __mkid(self, iid):
         return 'obj_{0}'.format(iid)
 
@@ -36,7 +52,7 @@ class SentGraphGen(object):
         return self.__obj2id[obj]
 
     def __gen_link_label(self, l):
-        s = u'\t{0} [label = "{1}"];\r\n'.format(self.__get_obj_id(l), l.explain_str().replace('"', "'"))
+        s = u'\t{0} [label = "{1}", shape="octagon", style="filled", fillcolor="orchid"];\r\n'.format(self.__get_obj_id(l), self.__dict_to_istr(l.explain_str()))
         return s
 
     def __gen_links(self, form):
@@ -47,11 +63,10 @@ class SentGraphGen(object):
 
     def __gen_subgraph(self, e):
         s = u'subgraph cluster_{0} {{\r\n'.format(self.__get_obj_id(e))
-        s += '\tnode [shape="box", style="filled", fillcolor="green", fontcolor="black", fontsize="9"];\r\n'
-        s += '\tlabel = "{0}";\r\n'.format(self.__get_obj_id(e))
+        s += u'\tnode [shape="box", style="filled", fillcolor="yellow", fontcolor="black"];\r\n'
+        s += u'\tlabel = "{0}";\r\n'.format(e.get_word())
         for f in e.get_forms():
-            w = f.get_word()
-            s += u'\t"{0}" [label="{1}"];\r\n'.format(self.__get_obj_id(f), w)
+            s += u'\t"{0}" [label="{1}"];\r\n'.format(self.__get_obj_id(f), f.format_info(crlf=True))
         s += u'}\r\n'
         return s
 
