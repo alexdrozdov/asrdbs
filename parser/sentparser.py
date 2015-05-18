@@ -13,6 +13,19 @@ import verb_pronoun
 import verb_verb
 
 
+class UniqEnum(object):
+    def __init__(self):
+        self.__uniq = 1
+
+    def get_uniq(self):
+        r = self.__uniq
+        self.__uniq *= 2
+        return r
+
+
+ue = UniqEnum()
+
+
 class ConflictResolver(object):
     def __init__(self):
         pass
@@ -48,9 +61,9 @@ class FormMatcher(matcher.PosMatcherSelector):
                 if slave.get_master_count() > 1:
                     conflict_resolver.add(slave)
                     s = ' [CONFLICT]' + s
-                print "\t\t\tApplyed", s
-            else:
-                print "\t\t\tDismissed", s
+                # print "\t\t\tApplyed", s
+            # else:
+                # print "\t\t\tDismissed", s
 
 
 class AdverbAdjective(object):
@@ -121,16 +134,31 @@ class WordFormInfo(object):
         return True
 
 
+class Link(object):
+    def __init__(self, rule):
+        self.__rule = rule
+        self.__uniq = ue.get_uniq()
+
+    def get_uniq(self):
+        return self.__uniq
+
+    def get_rule(self):
+        return self.__rule
+
+
 class WordForm(WordFormInfo):
-    def __init__(self, form, primary, pos):
+    def __init__(self, form, primary, pos, uniq):
         WordFormInfo.__init__(self, form, primary)
         self.__masters = []
         self.__slaves = []
         self.__pos = pos
+        self.__group = None
+        self.__uniq = uniq
 
     def link(self, slave, rule):
-        self.__slaves.append((slave, rule))
-        slave.__masters.append((self, rule))
+        l = Link(rule)
+        self.__slaves.append((slave, l))
+        slave.__masters.append((self, l))
 
     def get_master_count(self):
         return len(self.__masters)
@@ -141,18 +169,41 @@ class WordForm(WordFormInfo):
     def get_slaves(self):
         return self.__slaves
 
+    def set_group(self, group):
+        self.__group = group
+
+    def get_group(self):
+        return self.__group
+
+    def get_uniq(self):
+        return self.__uniq
+
+    def has_links(self):
+        return (len(self.__slaves) + len(self.__masters)) > 0
+
+    def get_links(self):
+        r = []
+        for l in self.__masters:
+            r.append(l)
+        for l in self.__slaves:
+            r.append(l)
+        return r
+
 
 class WordForms(object):
-    def __init__(self, form_matcher, word, forms):
+    def __init__(self, form_matcher, word, forms, uniq):
         self.__fm = form_matcher
         self.__word = word
         self.__forms = forms
+        self.__uniq = uniq
+        for f in self.__forms:
+            f.set_group(self)
 
     def match(self, other_wfs):
         for my_wf in self.__forms:
-            print "\tUsing", my_wf.get_word(), my_wf.format_info()
+            # print "\tUsing", my_wf.get_word(), my_wf.format_info()
             for other_wf in other_wfs.__forms:
-                print "\t\tMatching with", other_wf.get_word(), other_wf.format_info()
+                # print "\t\tMatching with", other_wf.get_word(), other_wf.format_info()
                 self.__fm.match(my_wf, other_wf)
 
     def get_forms(self):
@@ -161,11 +212,16 @@ class WordForms(object):
     def get_word(self):
         return self.__word
 
+    def get_uniq(self):
+        return self.__uniq
+
 
 class WordFormFabric(object):
     def __init__(self, worddb_file):
         self.__wdb = worddb.worddb.Worddb(worddb_file)
         self.__fm = FormMatcher()
+        self.__form_uniq = 1
+        self.__group_uniq = 1
 
     def create(self, word, position):
         res = []
@@ -175,8 +231,11 @@ class WordFormFabric(object):
             form = i['form']
             primary = i['primary']
             for f in form:
-                res.append(WordForm(f, primary, position))
-        return WordForms(self.__fm, word, res)
+                res.append(WordForm(f, primary, position, self.__form_uniq))
+                self.__form_uniq *= 2
+        wf = WordForms(self.__fm, word, res, self.__group_uniq)
+        self.__group_uniq *= 2
+        return wf
 
 
 class SentenceParser(object):
@@ -188,7 +247,7 @@ class SentenceParser(object):
         word_position = 0
         for w in sentence:
             wfs = self.__wff.create(w, word_position)
-            print "Processing", w
+            # print "Processing", w
             for e in entries:
                 wfs.match(e)
             entries.append(wfs)
