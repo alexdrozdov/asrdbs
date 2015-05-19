@@ -3,7 +3,17 @@
 
 
 class GraphSnake(object):
+
+    subject_bonus = 10
+    predicate_bonus = 10
+    subject_predicate_bonus = 20
+
     def __init__(self, snake=None, node=None):
+        self.__has_subject = False
+        self.__has_predicate = False
+        self.__has_subject_predicate = False
+        self.__score = 0
+
         if snake is not None:
             self.__init_from_snake(snake)
             return
@@ -70,6 +80,26 @@ class GraphSnake(object):
         g_list = [v for v in groups.values()]
         return g_list
 
+    def __find_subject_predicate(self):
+        subjects = []
+        predicates = []
+        for n in self.__nodes:
+            if n.is_subject():
+                self.__has_subject = True
+                subjects.append(n)
+            if n.is_predicate():
+                self.__has_predicate = True
+                predicates.append(n)
+
+        for s in subjects:
+            slaves = s.get_slaves()
+            for sl, _ in slaves:
+                if (sl.get_uniq() & self.__links_csum) == 0:
+                    continue
+                if sl in predicates:
+                    self.__has_subject_predicate = True
+                    return
+
     def __iter_glist_entries(self, snakes, g_list, level, prev_vals):
         for node, link in g_list[level]:
             pv = [nl for nl in prev_vals]
@@ -102,9 +132,37 @@ class GraphSnake(object):
     def print_entries(self):
         for n in self.__nodes:
             print n.get_word(),
-        print 'csum={0}, groups={1}, links={2}'.format(self.__checksum, self.__groups_csum, self.__links_csum)
+        print 'csum={0}, groups={1}, links={2}, score={3}'.format(self.__checksum, self.__groups_csum, self.__links_csum, self.__score)
+
+    def __eval_score(self):
+        if self.__has_subject:
+            self.__score += GraphSnake.subject_bonus
+        if self.__has_predicate:
+            self.__score += GraphSnake.predicate_bonus
+        if self.__has_subject_predicate:
+            self.__score += GraphSnake.subject_predicate_bonus
+
+    def get_score(self):
+        return self.__score
+
+    def find_subject_predicate(self):
+        self.__find_subject_predicate()
+        self.__eval_score()
+        # print self.__has_subject, self.__has_predicate, self.__has_subject_predicate
+
+    def has_link(self, link):
+        if link.get_uniq() & self.__links_csum:
+            return True
+        return False
+
+    def has_form(self, form):
+        if form.get_uniq() & self.__checksum:
+            return True
+        return False
 
     def __cmp__(self, other):
+        if self.__score != other.__score:
+            return -cmp(self.__score, other.__score)
         return -cmp(self.__groups_csum, other.__groups_csum)
 
     def __eq__(self, other):
@@ -160,16 +218,22 @@ class GraphSnakes(object):
                 break
         self.__snakes = snakes
 
+    def __find_subject_predicates(self):
+        for s in self.__snakes:
+            s.find_subject_predicate()
+
     def build(self, entries):
         self.__init_snake_lists(entries)
         self.__grow_snakes()
         self.__remove_duplicate_snakes()
         self.__sort_snakes()
         self.__remove_incomplete_snakes()
+        self.__find_subject_predicates()
+        self.__sort_snakes()
 
-        self.__snakes.sort(cmp=cmp)
-        for s in self.__snakes:
-            s.print_entries()
+        self.__snakes[0].print_entries()
+
+        return self.__snakes
 
     def add_snake(self, snake):
         # print "add_snake"

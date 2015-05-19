@@ -122,6 +122,12 @@ class WordFormInfo(object):
                 res += "\r\n"
         return res
 
+    def is_subject(self):
+        return self.info.has_key('parts_of_speech') and self.info.has_key('case') and self.info['parts_of_speech'] == 'noun' and self.info['case'] == 'nominative'
+
+    def is_predicate(self):
+        return self.info.has_key('parts_of_speech') and self.info['parts_of_speech'] == 'verb'
+
     def spec_cmp(self, spec, ignore_missing=False):
         for k, v in spec.items():
             if self.info.has_key(k):
