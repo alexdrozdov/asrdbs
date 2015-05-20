@@ -93,8 +93,8 @@ class GraphSnake(object):
 
         for s in subjects:
             slaves = s.get_slaves()
-            for sl, _ in slaves:
-                if (sl.get_uniq() & self.__links_csum) == 0:
+            for sl, l in slaves:
+                if (l.get_uniq() & self.__links_csum) == 0:
                     continue
                 if sl in predicates:
                     self.__has_subject_predicate = True
