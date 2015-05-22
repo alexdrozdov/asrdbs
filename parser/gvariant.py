@@ -54,31 +54,43 @@ class GraphSnake(object):
                     return True
         return False
 
-    def __grow_to(self, node, link):
+    def __grow_to(self, node, link, src_node):
         if self.__contains_nodes_group(node):
             return
-        self.__links.append((node, self.__head, link))
+        self.__links.append((node, src_node, link))
         self.__head.append(node)
         self.__nodes.append(node)
         self.__checksum += node.get_uniq()
         self.__groups_csum += node.get_group().get_uniq()
         self.__links_csum += link.get_uniq()
 
-    def __eval_target_groups(self):
+    def __eval_target_groups(self, head):
         groups = {}
-        for h in self.__head:
+        for h in head:
             if not h.has_links():
-                return
+                continue
             for node, link in h.get_links():
                 if self.__contains_nodes_group(node):
                     continue
                 g_uniq = node.get_group().get_uniq()
                 if groups.has_key(g_uniq):
-                    groups[g_uniq].append((node, link))
+                    groups[g_uniq].append((node, link, h))
                 else:
-                    groups[g_uniq] = [(node, link), ]
+                    groups[g_uniq] = [(node, link, h), ]
         g_list = [v for v in groups.values()]
         return g_list
+
+    def make_internal_links(self):
+        for n in self.__nodes:
+            if not n.has_links():
+                continue
+            for node, link in n.get_links():
+                if not self.has_form(node):
+                    continue
+                if self.has_link(link):
+                    continue
+                self.__links.append((node, n, link))
+                self.__links_csum += link.get_uniq()
 
     def __find_subject_predicate(self):
         subjects = []
@@ -101,14 +113,14 @@ class GraphSnake(object):
                     return
 
     def __iter_glist_entries(self, snakes, g_list, level, prev_vals):
-        for node, link in g_list[level]:
+        for node, link, src_node in g_list[level]:
             pv = [nl for nl in prev_vals]
-            pv.append((node, link))
+            pv.append((node, link, src_node))
             if level == len(g_list)-1:
                 snake = GraphSnake(snake=self)
                 snakes.add_snake(snake)
                 for p in pv:
-                    snake.__grow_to(p[0], p[1])
+                    snake.__grow_to(p[0], p[1], p[2])
                 continue
             self.__iter_glist_entries(snakes, g_list, level+1, pv)
 
@@ -116,7 +128,7 @@ class GraphSnake(object):
         if not len(self.__head):
             return
 
-        g_list = self.__eval_target_groups()
+        g_list = self.__eval_target_groups(self.__head)
         self.__head = []
         self.__iter_glist_entries(snakes, g_list, 0, [])
 
@@ -222,16 +234,22 @@ class GraphSnakes(object):
         for s in self.__snakes:
             s.find_subject_predicate()
 
+    def __make_lost_internal_links(self):
+        for s in self.__snakes:
+            s.make_internal_links()
+
     def build(self, entries):
         self.__init_snake_lists(entries)
         self.__grow_snakes()
+        self.__make_lost_internal_links()
         self.__remove_duplicate_snakes()
         self.__sort_snakes()
         self.__remove_incomplete_snakes()
         self.__find_subject_predicates()
         self.__sort_snakes()
 
-        self.__snakes[0].print_entries()
+        for s in self.__snakes:
+            s.print_entries()
 
         return self.__snakes
 
