@@ -14,6 +14,8 @@ class RuleCase(matcher.PosMatchRule):
         try:
             if wf1.get_case() == 'nominative' and wf2.get_case() == 'nominative':
                 return matcher.PosMatchRes(independentFalse())
+            if wf2.get_case() == 'accusative':
+                return matcher.PosMatchRes(independentFalse())
             if wf1.get_case() == 'nominative' and wf2.get_case() != 'nominative':
                 return matcher.PosMatchRes(possibleTrue())
             if wf1.get_case() != 'nominative' and wf2.get_case() == 'nominative':

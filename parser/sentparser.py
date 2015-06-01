@@ -26,6 +26,78 @@ class UniqEnum(object):
 ue = UniqEnum()
 
 
+class SentenceEntry(object):
+
+    word = 1
+    syntax = 2
+
+    def __init__(self, is_word=False, is_syntax=False):
+        if not is_word and not is_syntax:
+            raise ValueError("Undefined entry type")
+        if is_word and is_syntax:
+            raise ValueError("Undefined entry type")
+        if is_word:
+            self.__type = SentenceEntry.word
+            return
+        if is_syntax:
+            self.__type = SentenceEntry.syntax
+            return
+
+    def is_word(self):
+        return self.__type == SentenceEntry.word
+
+    def is_syntax(self):
+        return self.__type == SentenceEntry.syntax
+
+
+class SyntaxEntry(SentenceEntry):
+    def __init__(self, symbol, position, uniq):
+        SentenceEntry.__init__(self, is_syntax=True)
+        self.__symbol = symbol
+        self.__pos = position
+        self.__uniq = uniq
+        self.__group = None
+
+    def is_comma(self):
+        return self.__symbol == ','
+
+    def is_dot(self):
+        return self.__symbol == '.'
+
+    def is_question(self):
+        return self.__symbol == '?'
+
+    def get_pos(self):
+        return 'syntax'
+
+    def get_word(self):
+        return self.__symbol
+
+    def get_position(self):
+        return self.__pos
+
+    def get_uniq(self):
+        return self.__uniq
+
+    def set_group(self, group):
+        self.__group = group
+
+    def get_slaves(self):
+        return []
+
+    def get_group(self):
+        return self.__group
+
+    def get_masters(self):
+        return []
+
+    def format_info(self, crlf=True):
+        return self.__symbol
+
+    def has_links(self):
+        return False
+
+
 class ConflictResolver(object):
     def __init__(self):
         pass
@@ -79,6 +151,18 @@ class WordFormInfo(object):
         self.form = form
         self.primary = primary
         self.info = eval(self.form['info'])
+
+    def is_adjective(self):
+        return self.info['parts_of_speech'] == 'adjective'
+
+    def is_noun(self):
+        return self.info['parts_of_speech'] == 'noun'
+
+    def is_verb(self):
+        return self.info['parts_of_speech'] == 'verb'
+
+    def is_pronoun(self):
+        return self.info['parts_of_speech'] == 'pronoun'
 
     def get_pos(self):
         return self.info['parts_of_speech']
@@ -141,9 +225,14 @@ class WordFormInfo(object):
 
 
 class Link(object):
-    def __init__(self, rule):
+    def __init__(self, rule, master, slave, uniq=None):
         self.__rule = rule
-        self.__uniq = ue.get_uniq()
+        if uniq is None:
+            self.__uniq = ue.get_uniq()
+        else:
+            self.__uniq = uniq
+        self.__master = master
+        self.__slave = slave
 
     def get_uniq(self):
         return self.__uniq
@@ -151,10 +240,27 @@ class Link(object):
     def get_rule(self):
         return self.__rule
 
+    def get_master(self):
+        return self.__master
 
-class WordForm(WordFormInfo):
+    def get_slave(self):
+        return self.__slave
+
+    def set_ms(self, master, slave):
+        self.__master = master
+        self.__slave = slave
+
+    def clone_without_links(self):
+        return Link(self.__rule, None, None, uniq=self.get_uniq())
+
+    def unlink(self):
+        pass
+
+
+class WordForm(WordFormInfo, SentenceEntry):
     def __init__(self, form, primary, pos, uniq):
         WordFormInfo.__init__(self, form, primary)
+        SentenceEntry.__init__(self, is_word=True)
         self.__masters = []
         self.__slaves = []
         self.__pos = pos
@@ -162,7 +268,7 @@ class WordForm(WordFormInfo):
         self.__uniq = uniq
 
     def link(self, slave, rule):
-        l = Link(rule)
+        l = Link(rule, self, slave)
         self.__slaves.append((slave, l))
         slave.__masters.append((self, l))
 
@@ -175,6 +281,12 @@ class WordForm(WordFormInfo):
     def get_slaves(self):
         return self.__slaves
 
+    def get_masters(self):
+        return self.__masters
+
+    def get_master_forms(self):
+        return [m for m, l in self.__masters]
+
     def set_group(self, group):
         self.__group = group
 
@@ -183,6 +295,9 @@ class WordForm(WordFormInfo):
 
     def get_uniq(self):
         return self.__uniq
+
+    def clone_without_links(self):
+        return WordForm(self.form, self.primary, self.__pos, self.__uniq)
 
     def has_links(self):
         return (len(self.__slaves) + len(self.__masters)) > 0
@@ -194,6 +309,31 @@ class WordForm(WordFormInfo):
         for l in self.__slaves:
             r.append(l)
         return r
+
+    def add_slave(self, link, slave):
+        self.__slaves.append((slave, link))
+
+    def add_master(self, link, master):
+        self.__masters.append((master, link))
+
+    def remove_master(self, master):
+        masters = []
+        for m, l in self.__masters:
+            if master == m:
+                continue
+            masters.append((m, l))
+        self.__masters = masters
+
+    def remove_slave(self, slave):
+        slaves = []
+        for s, l in self.__slaves:
+            if slave == s:
+                continue
+            slaves.append((s, l))
+        self.__slaves = slaves
+
+    def get_link_count(self):
+        return len(self.__masters) + len(self.__slaves)
 
 
 class WordForms(object):
@@ -230,6 +370,18 @@ class WordFormFabric(object):
         self.__group_uniq = 1
 
     def create(self, word, position):
+        if word in '.,;-!?':
+            return self.__create_syntax_entry(word, position)
+        return self.__create_word_form(word, position)
+
+    def __create_syntax_entry(self, symbol, position):
+        se = SyntaxEntry(symbol, position, self.__form_uniq)
+        wf = WordForms(self.__fm, symbol, [se, ], self.__group_uniq)
+        self.__form_uniq *= 2
+        self.__group_uniq *= 2
+        return wf
+
+    def __create_word_form(self, word, position):
         res = []
         info = self.__wdb.get_word_info(word)
         self.variants = []

@@ -13,6 +13,7 @@ sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
 
 sentence = [u'падал', u'прошлогодний', u'снег', u'на', u'теплую', u'землю', u'поля']
+sentence = [u'падал', u'прошлогодний', u'снег', u'на', u'теплую', u'землю', u',', u'поля']
 # sentence = [u'падал', u'снег']
 # sentence = [u'прошлогодний', u'снег']
 # sentence = [u'она', u'летела']
@@ -37,3 +38,20 @@ for i in range(len(snakes)):
     snake = snakes[i]
     file_name = 'imgs/g-{0}.svg'.format(i+1)
     g.generate(res, file_name, snake)
+
+graphs = gv.export_graphs()
+
+srm = parser.gvariant.SequenceRuleMatcher()
+i = 0
+for gr in graphs:
+    gr.print_graph()
+    sqs = srm.match_graph(gr)
+    for sq in sqs:
+        sq.print_sequence()
+    print ''
+    gr.apply_sequences()
+
+    file_name = 'imgs/gr-{0}.svg'.format(i+1)
+    g.generate(res, file_name, gr)
+
+    i += 1
