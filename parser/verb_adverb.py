@@ -3,7 +3,7 @@
 
 
 import matcher
-from matcher import independentFalse, dependentFalse, defaultFalse, invariantBool, defaultTrue, possibleTrue, reliableTrue
+from matcher import defaultTrue, possibleTrue
 
 
 class RuleTimeCase(matcher.PosMatchRule):
@@ -11,12 +11,6 @@ class RuleTimeCase(matcher.PosMatchRule):
         matcher.PosMatchRule.__init__(self, 'verb-noun_inf-nom', false_is_final=True, true_is_final=True)
 
     def apply_cb(self, mt, verb, noun):
-        try:
-            if (verb.get_time() in ['infinite', 'past']) and noun.get_case() == 'nominative':
-                return matcher.PosMatchRes(independentFalse())
-            return matcher.PosMatchRes(reliableTrue())
-        except:
-            pass
         return matcher.PosMatchRes(possibleTrue())
 
 
@@ -30,8 +24,9 @@ class VerbAdverbMatcher(matcher.PosMatcher):
             return wl1, wl2
         return wl2, wl1
 
-    def match(self, wf1, wf2):
-        verb, adverb = self.__verb_adverb(wf1, wf2)
+    def pos_order(self, wf1, wf2):
+        return self.__verb_adverb(wf1, wf2)
 
+    def match(self, verb, adverb):
         rt_matcher = matcher.RuntimePosMatcher(self)
         return rt_matcher.match(verb, adverb)
