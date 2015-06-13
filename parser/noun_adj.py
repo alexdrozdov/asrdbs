@@ -12,8 +12,9 @@ class RuleGender(matcher.PosMatchRule):
 
     def __apply_cb(self, mt, noun, adj):
         try:
-            if noun.get_gender() != adj.get_gender():
-                return matcher.PosMatchRes(independentFalse())
+            if adj.get_count() != 'plural':
+                if noun.get_gender() != adj.get_gender():
+                    return matcher.PosMatchRes(independentFalse())
             return matcher.PosMatchRes(reliableTrue())
         except:
             pass

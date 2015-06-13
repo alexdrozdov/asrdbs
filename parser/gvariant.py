@@ -12,6 +12,9 @@ class SequenceRuleMatcher(object):
         self.add_rule(NounAdjSqRule())
         self.add_rule(LinkedNounSqRule())
         self.add_rule(SubjectPredicateSqRule())
+        self.add_rule(NounPronounSqRule())
+        self.add_rule(AdverbAdjectiveSqRule())
+        self.add_rule(VerbSplitterSqRule())
 
     def add_rule(self, rule):
         if self.__name2rule.has_key(rule.get_rule_name()):
@@ -64,13 +67,15 @@ class NounAdjSqRule(SequenceRule):
 
     def handle_form(self, sq, form):
         if sq is None:
-            if not form.is_adjective():
+            if form.is_syntax() or not form.is_adjective():
                 return False, []
             sq = NounAdjSequence(self.get_rule_name())
             sq.add_adjective(form)
             return True, [sq, ]
         if sq.is_complete():
             raise ValueError("Tried to process form while sequence is complete")
+        if form.is_syntax():
+            return True, []
         if form.is_adjective():
             if sq.adj_is_capable(form):
                 sq.add_adjective(form)
@@ -134,6 +139,9 @@ class LinkedNounSqRule(SequenceRule):
     def __finalize_sequence(self, sq):
         nouns = sq.get_nouns()
         prev_noun = nouns[0]
+        for master, link in prev_noun.get_masters():
+            if master in nouns:
+                sq.add_unwanted_link(link)
         for noun in nouns[1:]:
             for master, link in noun.get_masters():
                 if master != prev_noun:
@@ -143,13 +151,15 @@ class LinkedNounSqRule(SequenceRule):
 
     def handle_form(self, sq, form):
         if sq is None:
-            if not form.is_noun():
+            if form.is_syntax() or not form.is_noun():
                 return False, []
             sq = NounSequence(self.get_rule_name())
             sq.add_noun(form)
             return True, [sq, ]
         if sq.is_complete():
             raise ValueError("Tried to process form while sequence is complete")
+        if form.is_syntax():
+            return True, []
         if form.is_verb():
             if sq.noun_count() > 1 and self.__validate_linkage(sq):
                 self.__finalize_sequence(sq)
@@ -173,6 +183,145 @@ class LinkedNounSqRule(SequenceRule):
             return True, []
         sq.finalize(False)
         return False, []
+
+
+class NounPronounSqRule(SequenceRule):
+    def __init__(self):
+        SequenceRule.__init__(self, 'noun-pronoun_seq')
+
+    def __finalize_sequence(self, sq):
+        pronoun = sq.get_pronoun()
+        noun = sq.get_noun()
+        for master, link in pronoun.get_masters():
+            if master != noun:
+                sq.add_unwanted_link(link)
+        sq.finalize(True)
+
+    def handle_form(self, sq, form):
+        if sq is None:
+            if form.is_syntax():
+                return False, []
+            if not form.is_noun() and not form.is_pronoun():
+                return False, []
+            sq = NounPronounSequence(self.get_rule_name())
+            if not sq.is_capable(form):
+                return False, []
+
+            sq.add_form(form)
+            return True, [sq, ]
+        if sq.is_complete():
+            raise ValueError("Tried to process form while sequence is complete")
+        if form.is_syntax():
+            return True, []
+        if form.is_verb():
+            sq.finalize(False)
+            return False, []
+        if form.is_noun() or form.is_pronoun():
+            if sq.is_capable(form):
+                sq.add_form(form)
+                self.__finalize_sequence(sq)
+                return True, []
+
+            sq = NounPronounSequence(self.get_rule_name())
+            if sq.is_capable(form):
+                sq.add_form(form)
+                return True, [sq, ]
+            return False, []
+        return True, []
+
+    def sentence_end(self, sq):
+        return False, []
+
+
+class AdverbAdjectiveSqRule(SequenceRule):
+    def __init__(self):
+        SequenceRule.__init__(self, 'adverb-adj_seq')
+
+    def __finalize_sequence(self, sq):
+        adverb = sq.get_adverb()
+        adj = sq.get_adjective()
+        for master, link in adverb.get_masters():
+            if master != adj:
+                sq.add_unwanted_link(link)
+        sq.finalize(True)
+
+    def handle_form(self, sq, form):
+        if sq is None:
+            if form.is_syntax():
+                return False, []
+            if not form.is_adverb():
+                return False, []
+            sq = AdverbAdjSequence(self.get_rule_name())
+
+            sq.set_adverb(form)
+            return True, [sq, ]
+        if sq.is_complete():
+            raise ValueError("Tried to process form while sequence is complete")
+        if form.is_syntax():
+            sq.finalize(False)
+            return False, []
+        if form.is_adjective():
+            if sq.is_capable(form):
+                sq.set_adjective(form)
+                self.__finalize_sequence(sq)
+                return True, []
+            sq.finalize(False)
+            return False, []
+        if form.is_adverb():
+            sq.finalize(False)
+            sq = AdverbAdjSequence(self.get_rule_name())
+
+            sq.set_adverb(form)
+            return True, [sq, ]
+
+        sq.finalize(False)
+        return False, []
+
+    def sentence_end(self, sq):
+        return False, []
+
+
+class VerbSplitterSqRule(SequenceRule):
+    def __init__(self):
+        SequenceRule.__init__(self, 'verb-splitter_seq')
+
+    def handle_form(self, sq, form):
+        if sq is None:
+            if form.is_syntax():
+                return False, []
+            if form.is_verb():
+                return False, []
+            sq = VerbSplitterSequence(self.get_rule_name())
+            sq.add_form(form)
+            return True, [sq, ]
+        if sq.is_complete():
+            raise ValueError("Tried to process form while sequence is complete")
+        if form.is_syntax():
+            return True, []
+        if form.is_verb():
+            sq.add_verb(form)
+            return True, []
+        sq.add_form(form)
+        return True, []
+
+    def sentence_end(self, sq):
+        sq.close_current()
+        if sq.group_count() == 0:
+            return True, []
+        groups = sq.get_groups()
+        for g in groups:
+            for gg in groups:
+                if g == gg:
+                    continue
+                for form in g:
+                    for master, link in form.get_masters():
+                        if master in gg:
+                            sq.add_unwanted_link(link)
+                    for slave, link in form.get_slaves():
+                        if slave in gg:
+                            sq.add_unwanted_link(link)
+        sq.finalize(True)
+        return True, []
 
 
 class SubjectPredicateSqRule(SequenceRule):
@@ -202,6 +351,8 @@ class SubjectPredicateSqRule(SequenceRule):
         sq.finalize(True)
 
     def __form_is_subject(self, form):
+        if form.is_syntax():
+            return False
         if not form.is_noun() and not form.is_pronoun():
             return False
         if form.get_case() == 'nominative':
@@ -209,6 +360,8 @@ class SubjectPredicateSqRule(SequenceRule):
         return False
 
     def __form_is_predicate(self, form):
+        if form.is_syntax():
+            return False
         return form.is_verb()
 
     def handle_form(self, sq, form):
@@ -310,8 +463,12 @@ class NounAdjSequence(Sequence):
     def __check_capability(self, form):
         if self.__gender is None and self.__case is None and self.__count is None:
             return True
-        if self.__gender == form.get_gender() and self.__count == form.get_count() and self.__case == form.get_case():
-            return True
+        if self.__count == 'singilar' and form.get_count() == 'singilar':
+            if self.__gender == form.get_gender() and self.__count == form.get_count() and self.__case == form.get_case():
+                return True
+        else:
+            if self.__count == form.get_count() and self.__case == form.get_case():
+                return True
         return False
 
     def set_noun(self, noun):
@@ -323,8 +480,9 @@ class NounAdjSequence(Sequence):
         if not self.__check_capability(adj):
             raise ValueError("Adjective form is incompatible with previously set adjectives")
         if not self.has_adjectives():
-            self.__gender = adj.get_gender()
             self.__count = adj.get_count()
+            if self.__count == 'singilar':
+                self.__gender = adj.get_gender()
             self.__case = adj.get_case()
         self.__adjectives.append(adj)
 
@@ -390,6 +548,129 @@ class NounSequence(Sequence):
         for n in self.__nouns:
             print n.get_word(),
         print ""
+
+
+class NounPronounSequence(Sequence):
+    def __init__(self, rule_name):
+        Sequence.__init__(self, rule_name)
+        self.__noun = None
+        self.__pronoun = None
+
+    def is_capable(self, entry):
+        if entry.is_pronoun() and entry.get_case() == 'nominative':
+            return False
+        if self.__noun is None and self.__pronoun is None:
+            return True
+        if entry.is_noun():
+            if self.__noun is not None:
+                return False
+            if entry not in self.__pronoun.get_master_forms():
+                return False
+            return True
+        if entry.is_pronoun():
+            if self.__pronoun is not None:
+                return False
+            if self.__noun not in entry.get_master_forms():
+                return False
+            return True
+        return False
+
+    def add_form(self, form):
+        if form.is_noun():
+            self.add_noun(form)
+        elif form.is_pronoun():
+            self.add_pronoun(form)
+        else:
+            raise ValueError('Neither pronoun nor noun ' + form.get_pos())
+
+    def add_noun(self, noun):
+        self.__noun = noun
+
+    def add_pronoun(self, pronoun):
+        self.__pronoun = pronoun
+
+    def get_noun(self):
+        return self.__noun
+
+    def get_pronoun(self):
+        return self.__pronoun
+
+    def print_sequence(self):
+        print self.get_rule_name(),
+        print self.__noun.get_word(), self.__pronoun.get_word()
+
+
+class AdverbAdjSequence(Sequence):
+    def __init__(self, rule_name):
+        Sequence.__init__(self, rule_name)
+        self.__adverb = None
+        self.__adjective = None
+
+    def __check_capability(self, form):
+        if self.__gender is None and self.__case is None and self.__count is None:
+            return True
+        if self.__count == 'singilar':
+            if self.__gender == form.get_gender() and self.__count == form.get_count() and self.__case == form.get_case():
+                return True
+        else:
+            if self.__count == form.get_count() and self.__case == form.get_case():
+                return True
+        return False
+
+    def is_capable(self, adj):
+        return adj in self.__adverb.get_master_forms()
+
+    def set_adverb(self, adverb):
+        self.__adverb = adverb
+
+    def set_adjective(self, adjective):
+        self.__adjective = adjective
+
+    def get_adjective(self):
+        return self.__adjective
+
+    def get_adverb(self):
+        return self.__adverb
+
+    def print_sequence(self):
+        print self.get_rule_name(),
+        print self.get_adverb().get_word(), self.get_adjective().get_word()
+
+
+class VerbSplitterSequence(Sequence):
+    def __init__(self, rule_name):
+        Sequence.__init__(self, rule_name)
+        self.__groups = []
+        self.__current_group = None
+
+    def is_capable(self, noun):
+        return True
+
+    def add_form(self, form):
+        if self.__current_group is not None:
+            self.__current_group.append(form)
+        else:
+            self.__current_group = [form, ]
+
+    def add_verb(self, verb=None):
+        self.close_current()
+
+    def group_count(self):
+        l = len(self.__groups)
+        if self.__current_group is not None:
+            l += 1
+        return l
+
+    def close_current(self):
+        if self.__current_group is not None:
+            self.__groups.append(self.__current_group)
+        self.__current_group = None
+
+    def get_groups(self):
+        return self.__groups
+
+    def print_sequence(self):
+        pass
 
 
 class SubjectPredicateSequence(Sequence):
@@ -739,6 +1020,11 @@ class GraphSnake(object):
             fg.clone_link(link)
         return fg
 
+    def add_syntax_node(self, node):
+        self.__nodes.append(node)
+        self.__checksum += node.get_uniq()
+        self.__groups_csum += node.get_group().get_uniq()
+
     def __cmp__(self, other):
         if self.__score != other.__score:
             return -cmp(self.__score, other.__score)
@@ -764,6 +1050,11 @@ class GraphSnakes(object):
 
     def __init_snake_lists(self, entries):
         for e in entries:
+            forms = e.get_forms()
+            if not len(forms):
+                continue
+            if forms[0].is_syntax():
+                continue
             for f in e.get_forms():
                 snake = GraphSnake(node=f)
                 self.__snakes.append(snake)
@@ -805,6 +1096,19 @@ class GraphSnakes(object):
         for s in self.__snakes:
             s.make_internal_links()
 
+    def __add_syntax(self, entries):
+        syntax_nodes = []
+        for e in entries:
+            forms = e.get_forms()
+            if not len(forms):
+                continue
+            if not forms[0].is_syntax():
+                continue
+            syntax_nodes.append(forms[0])
+        for s in self.__snakes:
+            for n in syntax_nodes:
+                s.add_syntax_node(n)
+
     def build(self, entries):
         self.__init_snake_lists(entries)
         self.__grow_snakes()
@@ -814,6 +1118,7 @@ class GraphSnakes(object):
         self.__remove_incomplete_snakes()
         self.__find_subject_predicates()
         self.__sort_snakes()
+        self.__add_syntax(entries)
 
         for s in self.__snakes:
             s.print_entries()

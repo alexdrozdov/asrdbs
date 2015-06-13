@@ -2,15 +2,18 @@
 # -*- #coding: utf8 -*-
 
 
+import traceback
 import worddb.worddb
 import matcher
 import noun_adj
 import noun_noun
+import noun_pronoun
 import preposition_noun
 import verb_adverb
 import verb_noun
 import verb_pronoun
 import verb_verb
+import adj_adverb
 
 
 class UniqEnum(object):
@@ -57,6 +60,9 @@ class SyntaxEntry(SentenceEntry):
         self.__pos = position
         self.__uniq = uniq
         self.__group = None
+
+    def clone_without_links(self):
+        return SyntaxEntry(self.__symbol, self.__pos, self.__uniq)
 
     def is_comma(self):
         return self.__symbol == ','
@@ -115,6 +121,8 @@ class FormMatcher(matcher.PosMatcherSelector):
         self.add_matcher(noun_adj.NounAdjectiveMatcher())
         self.add_matcher(noun_noun.NounNounMatcher())
         self.add_matcher(noun_noun.NounNounRMatcher())
+        self.add_matcher(noun_pronoun.NounPronounMatcher())
+        self.add_matcher(noun_pronoun.PronounNounMatcher())
         self.add_matcher(preposition_noun.PrepositionNounMatcher())
         self.add_matcher(verb_adverb.VerbAdverbMatcher())
         self.add_matcher(verb_noun.VerbNounMatcher())
@@ -122,6 +130,7 @@ class FormMatcher(matcher.PosMatcherSelector):
         self.add_matcher(verb_pronoun.VerbPronounMatcher())
         self.add_matcher(verb_pronoun.PronounVerbMatcher())
         self.add_matcher(verb_verb.VerbVerbMatcher())
+        self.add_matcher(adj_adverb.AdjAdverbMatcher())
 
     def match(self, wf1, wf2):
         matchers = self.get_matchers(wf1.get_pos(), wf2.get_pos())
@@ -161,23 +170,34 @@ class WordFormInfo(object):
     def is_verb(self):
         return self.info['parts_of_speech'] == 'verb'
 
+    def is_adverb(self):
+        return self.info['parts_of_speech'] == 'adverb'
+
     def is_pronoun(self):
         return self.info['parts_of_speech'] == 'pronoun'
 
     def get_pos(self):
         return self.info['parts_of_speech']
 
+    def __get_info_param(self, name):
+        try:
+            return self.info[name]
+        except KeyError as e:
+            print u"Key ", name, u" not found in info for", self.info, self.get_word()
+            traceback.format_exc()
+            raise e
+
     def get_case(self):
-        return self.info['case']
+        return self.__get_info_param('case')
 
     def get_gender(self):
-        return self.info['gender']
+        return self.__get_info_param('gender')
 
     def get_count(self):
-        return self.info['count']
+        return self.__get_info_param('count')
 
     def get_time(self):
-        return self.info['time']
+        return self.__get_info_param('time')
 
     def get_word(self):
         return self.form['word']
@@ -287,6 +307,9 @@ class WordForm(WordFormInfo, SentenceEntry):
     def get_master_forms(self):
         return [m for m, l in self.__masters]
 
+    def get_slave_forms(self):
+        return [s for s, l in self.__slaves]
+
     def set_group(self, group):
         self.__group = group
 
@@ -381,14 +404,33 @@ class WordFormFabric(object):
         self.__group_uniq *= 2
         return wf
 
+    def __validate_info(self, info):
+        try:
+            info = eval(info['info'])
+            if info['parts_of_speech'] == 'noun' or info['parts_of_speech'] == 'pronoun' or info['parts_of_speech'] == 'adjective':
+                if info.has_key('case') and info.has_key('count'):  # and info.has_key('gender'):
+                    return True
+                print info.has_key('case'), info.has_key('count'), info.has_key('gender'), info
+                return False
+            return True
+        except:
+            print "Info validation failed for", info
+            print traceback.format_exc()
+            return False
+
     def __create_word_form(self, word, position):
         res = []
         info = self.__wdb.get_word_info(word)
+        if info is None:
+            print word
+            raise ValueError(u"No info avaible for " + word)
         self.variants = []
         for i in info:
             form = i['form']
             primary = i['primary']
             for f in form:
+                if not self.__validate_info(f):
+                    continue
                 res.append(WordForm(f, primary, position, self.__form_uniq))
                 self.__form_uniq *= 2
         wf = WordForms(self.__fm, word, res, self.__group_uniq)

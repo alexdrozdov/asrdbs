@@ -69,7 +69,7 @@ class SentGraphGen(object):
             elif subgraph.has_link(sl[1]):
                 style = "filled"
             else:
-                style = "invisible"
+                style = "invis"
             s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(self.__get_obj_id(form), self.__get_obj_id(sl[1]), self.__get_obj_id(sl[0]), style)
         return s
 
