@@ -8,13 +8,15 @@ import common.shadow
 import traceback
 import gc
 
+
 class Forms:
     terms = {
         "parts_of_speech": {
             "noun": u"сущ",
             "adjective": u"прл",
             "verb": u"гл",
-            "participal": [u"прч", u"дееп"],
+            "participal": u"прч",
+            "dparticipal": u"дееп",
             "union": [u"союз", u"межд", u"предик"],
             "particle": u"част",
             "numeral": u"числ",
@@ -59,6 +61,11 @@ class Forms:
             "past": u"прош",
             "present": u"наст",
             "future": u"буд"
+        },
+
+        "clause": {
+            "imperative": u"пов",
+            "indicative": u"изъяв"
         }
     }
 

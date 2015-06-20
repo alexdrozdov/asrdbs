@@ -34,6 +34,7 @@ sentence = [u'его', u'следы', u'нашлись', u'в', u'далекой
 # sentence = [u'в', u'весеннем', u'саде', u'у', u'моего', u'дома', u'цвели', u'ярко', u'красные', u'тюльпаны']
 # sentence = [u'на', u'береге', u'синего', u'моря', u'стояла', u'хижина', u'рыбака']
 sentence = [u'наши', u'дела', u'шли']
+sentence = [u'мы', u'поймали', u'его', u'в', u'парке']
 
 
 sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
@@ -55,6 +56,7 @@ graphs = gv.export_graphs()
 srm = parser.gvariant.SequenceRuleMatcher()
 i = 0
 for gr in graphs:
+    print u"#" + str(i+1)
     gr.print_graph()
     sqs = srm.match_graph(gr)
     for sq in sqs:
