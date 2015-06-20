@@ -122,7 +122,7 @@ class FormMatcher(matcher.PosMatcherSelector):
         self.add_matcher(noun_noun.NounNounMatcher())
         self.add_matcher(noun_noun.NounNounRMatcher())
         self.add_matcher(noun_pronoun.NounPronounMatcher())
-        self.add_matcher(noun_pronoun.PronounNounMatcher())
+        # self.add_matcher(noun_pronoun.PronounNounMatcher())
         self.add_matcher(preposition_noun.PrepositionNounMatcher())
         self.add_matcher(verb_adverb.VerbAdverbMatcher())
         self.add_matcher(verb_noun.VerbNounMatcher())
@@ -176,6 +176,9 @@ class WordFormInfo(object):
     def is_pronoun(self):
         return self.info['parts_of_speech'] == 'pronoun'
 
+    def is_preposition(self):
+        return self.info['parts_of_speech'] == 'preposition'
+
     def get_pos(self):
         return self.info['parts_of_speech']
 
@@ -201,6 +204,9 @@ class WordFormInfo(object):
 
     def get_word(self):
         return self.form['word']
+
+    def has_property(self, prop_name):
+        return self.info.has_key(prop_name)
 
     def format_info(self, crlf=False):
         res = ""

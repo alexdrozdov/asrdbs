@@ -3,7 +3,7 @@
 
 
 import matcher
-from matcher import independentFalse, dependentFalse, defaultFalse, invariantBool, defaultTrue, possibleTrue, reliableTrue
+from matcher import independentFalse, defaultFalse, possibleTrue, reliableTrue
 
 
 class RuleCase(matcher.PosMatchRule):
@@ -12,17 +12,9 @@ class RuleCase(matcher.PosMatchRule):
 
     def apply_cb(self, mt, wf1, wf2):
         try:
-            if wf1.get_case() == 'nominative' and wf2.get_case() == 'nominative':
+            if wf1.get_case() != wf2.get_case():
                 return matcher.PosMatchRes(independentFalse())
-            if wf2.get_case() == 'accusative':
-                return matcher.PosMatchRes(independentFalse())
-            if wf1.get_case() == 'nominative' and wf2.get_case() != 'nominative':
-                return matcher.PosMatchRes(possibleTrue())
-            if wf1.get_case() != 'nominative' and wf2.get_case() == 'nominative':
-                return matcher.PosMatchRes(independentFalse())
-                # if wf1.get_position() < wf2.get_position():
-                #     return self.check_restricts(wf1, wf2)
-                # return False
+            return matcher.PosMatchRes(reliableTrue())
         except:
             pass
         return matcher.PosMatchRes(possibleTrue())
@@ -62,4 +54,3 @@ class PronounNounMatcher(matcher.PosMatcher):
     def match(self, wf1, wf2):
         rt_matcher = matcher.RuntimePosMatcher(self)
         return rt_matcher.match(wf1, wf2)
-

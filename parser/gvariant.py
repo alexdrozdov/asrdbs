@@ -213,7 +213,7 @@ class NounPronounSqRule(SequenceRule):
             raise ValueError("Tried to process form while sequence is complete")
         if form.is_syntax():
             return True, []
-        if form.is_verb():
+        if form.is_verb() or form.is_preposition():
             sq.finalize(False)
             return False, []
         if form.is_noun() or form.is_pronoun():
@@ -367,6 +367,8 @@ class SubjectPredicateSqRule(SequenceRule):
     def handle_form(self, sq, form):
         if sq is None:
             if not self.__form_is_subject(form) and not self.__form_is_predicate(form):
+                return False, []
+            if self.__form_is_predicate(form) and not form.has_property('time'):
                 return False, []
             sq = SubjectPredicateSequence(self.get_rule_name())
             sq.add_form(form)
@@ -686,6 +688,8 @@ class SubjectPredicateSequence(Sequence):
         if form.get_pos() == 'noun':
             return True
         if form.get_pos() == 'verb':
+            if not form.has_property('time'):
+                return False
             if self.__time is None and self.__count is None:
                 return True
             if self.__time == form.get_time() and self.__count == form.get_count():
@@ -695,6 +699,8 @@ class SubjectPredicateSequence(Sequence):
     def is_skipable(self, form):
         if not form.is_verb():
             return True
+        if not form.has_property('time'):
+            return False
         if form.get_time() == 'infinitive':
             return True
         return False
@@ -711,6 +717,8 @@ class SubjectPredicateSequence(Sequence):
         self.__subjects.append(form)
 
     def add_predicate(self, form):
+        if not form.has_property('time'):
+            raise ValueError("Tried to add wrong verb")
         if self.__subject_is_first is None and len(self.__subjects) == 0 and len(self.__predicates) == 0:
             self.__subject_is_first = False
             self.__time = form.get_time()
