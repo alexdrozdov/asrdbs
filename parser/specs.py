@@ -4,16 +4,19 @@ class SequenceSpec(object):
     def __init__(self):
         pass
 
+    def get_spec(self):
+        return self.spec
+
 
 class RequiredSpecs(object):
     def IsNecessary(self):
-        pass
+        return True
 
     def IsOptional(self):
-        pass
+        return False
 
 
-class __pos_check(object):
+class c__pos_check(object):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
 
@@ -23,16 +26,16 @@ class __pos_check(object):
 
 class PosSpecs(object):
     def IsNoun(self):
-        return __pos_check(["noun", ])
+        return c__pos_check(["noun", ])
 
     def IsAdjective(self):
-        return __pos_check(["adjective", ])
+        return c__pos_check(["adjective", ])
 
     def IsAdverb(self):
-        return __pos_check(["adverb", ])
+        return c__pos_check(["adverb", ])
 
     def IsComma(self):
-        return __pos_check(["comma", ])
+        return c__pos_check(["comma", ])
 
 
 class __position_spec(object):
@@ -40,19 +43,22 @@ class __position_spec(object):
         pass
 
 
-def PositionSpecs(object):
-    def IsBefore(self):
+class PositionSpecs(object):
+    def IsBefore(self, id_name):
         pass
 
     def SequenceEnd(self):
         pass
 
-
-class LinkSpecs(object):
-    def IsSlave(self):
+    def IsBeforeIfExists(self, id_name):
         pass
 
-    def MastersExcept(self):
+
+class LinkSpecs(object):
+    def IsSlave(self, id_name):
+        pass
+
+    def MastersExcept(self, id_name):
         pass
 
 
@@ -64,54 +70,151 @@ class AdjNounSequenceSpec(SequenceSpec):
 
         self.spec = [
             {
-                "required": RequiredSpecs.IsNecessary(),
+                "required": RequiredSpecs().IsNecessary(),
                 "id": "adj",
-                "pos_type": [PosSpecs.IsAdjective(), ],
-                "position": [PositionSpecs.IsBefore("noun"), ],
-                "master-slave": [LinkSpecs.IsSlave("noun"), ],
-                "unwanted-links": [LinkSpecs.MastersExcept("noun"), ],
+                "pos_type": [PosSpecs().IsAdjective(), ],
+                "position": [PositionSpecs().IsBefore("noun"), ],
+                "master-slave": [LinkSpecs().IsSlave("noun"), ],
+                "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
                 "add-to-seq": True
             },
             {
                 "id": "adj+",
-                "required": RequiredSpecs.IsOptional(),
+                "required": RequiredSpecs().IsOptional(),
                 "repeatable": True,
                 "entries":
                 [
                     {
                         "id": "comma",
-                        "required": RequiredSpecs.IsNesessary(),
-                        "pos_type": [PosSpecs.IsComma(), ],
-                        "position": [PositionSpecs.IsBeforeIfExists("adv"), PositionSpecs.IsBefore('adj-seq')],
+                        "required": RequiredSpecs().IsNecessary(),
+                        "pos_type": [PosSpecs().IsComma(), ],
+                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
                         "add-to-seq": True
                     },
                     {
                         "id": "adv",
-                        "required": RequiredSpecs.IsOptional(),
-                        "pos_type": [PosSpecs.IsAdverb(), ],
-                        "position": [PositionSpecs.IsBefore("adj-seq"), ],
-                        "master-slave": [LinkSpecs.IsSlave("adj-seq"), ],
+                        "required": RequiredSpecs().IsOptional(),
+                        "pos_type": [PosSpecs().IsAdverb(), ],
+                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
+                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
                         "add-to-seq": False
                     },
                     {
                         "id": "adj-seq",
-                        "required": RequiredSpecs.IsNesessary(),
-                        "pos_type": [PosSpecs.IsAdjective(), ],
-                        "position": [PositionSpecs.IsBefore("noun"), ],
-                        "master-slave": [LinkSpecs.IsSlave("noun"), ],
-                        "unwanted-links": [LinkSpecs.MastersExcept("noun"), ],
+                        "required": RequiredSpecs().IsNecessary(),
+                        "pos_type": [PosSpecs().IsAdjective(), ],
+                        "position": [PositionSpecs().IsBefore("noun"), ],
+                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
+                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
                         "add-to-seq": True
                     },
                 ]
             },
             {
                 "id": "noun",
-                "required": RequiredSpecs.IsNecessary(),
-                "pos_type": [PosSpecs.IsNoun(), ],
-                "position": [PositionSpecs.SequenceEnd(), ],
+                "required": RequiredSpecs().IsNecessary(),
+                "pos_type": [PosSpecs().IsNoun(), ],
+                "position": [PositionSpecs().SequenceEnd(), ],
                 "add-to-seq": True
             }
         ]
+
+
+class SequenceSpecIter(object):
+    def __init__(self, l):
+        self.__l = l
+
+    def get_all_entries(self):
+        return self.__l
+
+    def get_after(self, entry):
+        try:
+            i = self.__l.index(entry)
+            return self.__l[i + 1]
+        except:
+            return None
+
+
+class IterableSequenceSpec(SequenceSpec):
+    def __init__(self, spec):
+        self.__last_uid = 1
+        self.__basic_spec = spec.get_spec()
+        self.__index_all_entries()
+        self.__index_layers()
+        self.__index_hierarchy()
+
+    def __get_uid(self):
+        r = self.__last_uid
+        self.__last_uid *= 2
+        return r
+
+    def __index_subentries(self, item):
+        for st in item["entries"]:
+            self.__set_state_uid(st)
+            self.__all_entries.append(st)
+            if st.has_key("entries"):
+                self.__index_subentries(st)
+
+    def __index_all_entries(self):
+        self.__all_entries = []
+        for st in self.__basic_spec:
+            self.__set_state_uid(st)
+            self.__all_entries.append(st)
+            if st.has_key("entries"):
+                self.__index_subentries(st)
+
+    def __index_layer(self, subspec, layer=0):
+        if len(self.__layers) <= layer:
+            self.__layers.append([])
+        l_list = self.__layers[layer]
+        for st in subspec:
+            l_list.append(st)
+            if st.has_key("entries"):
+                self.__index_layer(st["entries"], layer=layer+1)
+
+    def __index_layers(self):
+        self.__layers = []
+        self.__index_layer(self.__basic_spec)
+
+    def __set_state_uid(self, state):
+        if state.has_key("uid"):
+            return
+        state["uid"] = self.__get_uid()
+
+    def __index_item_entries(self, item):
+        l = []
+        for st in item["entries"]:
+            l.append(st)
+            if st.has_key("entries"):
+                self.__index_item_entries(st)
+        self.__hierarchy[item["uid"]] = l
+
+    def __index_hierarchy(self):
+        self.__hierarchy = {}
+
+        basic_list = []
+        for st in self.__basic_spec:
+            basic_list.append(st)
+            if st.has_key("entries"):
+                self.__index_item_entries(st)
+        self.__hierarchy[None] = basic_list
+
+    def get_level_count(self):
+        return len(self.__layers)
+
+    def get_state_iter(self):
+        return SequenceSpecIter(self.__all_entries)
+
+    def get_hierarchical_iter(self, base):
+        if base is None:
+            return SequenceSpecIter(self.__hierarchy[None])
+        return SequenceSpecIter(self.__hierarchy[base["uid"]])
+
+    def get_level_iter(self, level):
+        return SequenceSpecIter(self.__layers[level])
+
+    def get_child_iter(self, base):
+        return self.get_hierarchical_iter(base)
 
 
 class SpecCompiler(object):
@@ -119,6 +222,10 @@ class SpecCompiler(object):
         self.__states = []
         self.__name2state = {}
         self.__containers = []
+        self.__containers_qq = []
+
+    def gen_state_name(self, st):
+        return st["id"]
 
     def __add_state(self, state):
         self.__states.append(state)
@@ -127,34 +234,60 @@ class SpecCompiler(object):
             self.__containers.append(state)
 
     def __create_states(self, spec):
-        for st in spec.iter_all_entries():
+        spec_iter = spec.get_state_iter()
+        for st in spec_iter.get_all_entries():
             state_name = self.gen_state_name(st)
             state = SpecStateDef(state_name, st)
             self.__add_state(state)
+
+    def __create_downgrading_trs(self, spec):
+        deepest = spec.get_level_count()
+
+        if deepest < 2:
+            return
+
+        for level in range(deepest - 2, 0, -1):  # -2 = -1 -1 - Enumerated from zero and no need to build downgrading trs for deepest level
+            spec_iter = spec.get_level_iter(level)
+            for st in spec_iter.get_all_entries():
+                state = self.__name2state[self.gen_state_name(st)]
+                child_iter = spec.get_child_iter(st)
+                for c_st in child_iter.get_all_items():
+                    c_state = self.__name2state[self.gen_state_name(c_st)]
+                    if not c_state.is_container():
+                        state.add_trs_to_child(c_state)
+                    else:
+                        state.add_trs_to_child_child(c_state)
+                    if c_state.is_required():
+                        break
 
     def __create_single_level_trs(self, spec, base=None):
         spec_iter = spec.get_hierarchical_iter(base)
 
         for st in spec_iter.get_all_entries():
             state = self.__name2state[self.gen_state_name(st)]
+            st_next = st
             while True:
-                st_next = spec_iter.get_after(st)
+                st_next = spec_iter.get_after(st_next)
                 if st_next is None:
                     break
                 state_next = self.__name2state[self.gen_state_name(st_next)]
                 state.add_trs_to(state_next)
-                if st_next.is_required():
+                if state_next.is_required():
                     break  # No need to add anything further - we cant skip this state
             if state.is_repeated():
                 state.add_trs_to(state)
             if state.is_container():
-                self.add_container_to_process()
+                self.__add_container_to_process(state)
             if state.is_contained() and is_local_final:
                 parent = state.get_parent_state()
                 state.add_parent_trs(parent)
 
     def __create_upper_level_trs(self, spec):
         self.__create_single_level_trs(spec, base=None)
+
+    def __add_container_to_process(self, state):
+        if state not in self.__containers_qq:
+            self.__containers_qq.append(state)
 
     def __create_lower_level_trs(self, spec):
         self.__containers_qq = [c for c in self.__containers]
@@ -163,9 +296,6 @@ class SpecCompiler(object):
             self.__containers_qq.pop()
             st = container.get_spec()
             self.__create_single_level_trs(spec, st)
-
-    def __create_downgrading_trs(self, spec):
-        pass
 
     def __remove_containers(self):
         states = []
@@ -177,6 +307,7 @@ class SpecCompiler(object):
         self.__states = states
 
     def compile(self, spec):
+        spec = IterableSequenceSpec(spec)
         self.__create_states(spec)
         self.__create_downgrading_trs(spec)
         self.__create_upper_level_trs(spec)
@@ -185,10 +316,48 @@ class SpecCompiler(object):
 
 
 class SpecStateDef(object):
-    def __init__(self, name, spec_dict):
+    def __init__(self, name, spec_dict, parent=None):
         self.__name = name
         self.__transitions = []
         self.__spec_dict = spec_dict
+        self.__parent = parent
+        self.__is_container = spec_dict.has_key("entries")
+        self.__is_contained = False
+        if self.__parent:
+            self.__is_contained = True
+        self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
+        self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
+
+    def get_name(self):
+        return self.__name
+
+    def get_spec(self):
+        return self.__spec_dict
+
+    def is_container(self):
+        return self.__is_container
+
+    def is_contained(self):
+        return self.__is_contained
+
+    def is_required(self):
+        return self.__is_required
+
+    def is_repeated(self):
+        return self.__is_repeatable
+
+    def get_parent_state(self):
+        return self.__parent
+
+    def set_parent_state(self, parent):
+        self.__parent = parent
+        self.__is_contained = True
+
+    def add_trs_to(self, to):
+        pass
+
+    def unlink_all(self):
+        pass
 
 
 class SpecTrsDef(object):
@@ -206,3 +375,8 @@ class CompiledSpec(object):
         self.__src_spec = src_spec
         self.__states = []
         self.__name2state = {}
+
+
+anss = AdjNounSequenceSpec()
+sc = SpecCompiler()
+sc.compile(anss)
