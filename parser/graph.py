@@ -111,4 +111,91 @@ class SentGraphGen(object):
 
         s += u'}\r\n'
 
+        return
+
+
+class SpecGraph(object):
+    def __init__(self, img_type='png'):
+        self.__out_type = img_type
+
+    def generate(self, states, outfile):
+        gen = SpecGraphGen()
+        s = gen.generate(states)
+
+        tmp_file = outfile + '.tmp.graph'
+        with open(tmp_file, 'w') as f:
+            f.write(s.encode('utf8'))
+
+        os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
+
+
+class SpecGraphGen(object):
+    def __init__(self):
+        self.__obj2id = {}
+        self.__last_id = 0
+
+    def __dict_to_istr(self, d, offset=0):
+        r = u''
+        if isinstance(d, unicode) or isinstance(d, str):
+            d = json.loads(d)
+        for k, v in d.items():
+            r += u'  ' * offset + k + ': '
+            if isinstance(v, list):
+                r += '['
+                for vv in v:
+                    r += self.__dict_to_istr(vv, offset=offset+1)
+                r += u'  ' * offset + ']\l'
+            else:
+                r += str(v) + "\l"
+        return r
+
+    def __mkid(self, iid):
+        return 'obj_{0}'.format(iid)
+
+    def __add_obj(self, obj):
+        self.__obj2id[obj] = self.__mkid(self.__last_id)
+        self.__last_id += 1
+
+    def __get_obj_id(self, obj):
+        return self.__obj2id[obj]
+
+    def __gen_link_label(self, l, subgraph=None):
+        if subgraph is None:
+            style = "filled"
+        elif subgraph.has_link(l):
+            style = "filled"
+        else:
+            style = "invisible"
+        s = u'\t{0} [label = "{1}", shape="octagon", style="{2}", fillcolor="orchid"];\r\n'.format(self.__get_obj_id(l), self.__dict_to_istr(l.get_rule().explain_str()), style)
+        return s
+
+    def __gen_links(self, st):
+        s = u''
+        for trs in st.get_transitions():
+            style = "filled"
+            s += u'\t{0}->{1} [style="{2}"];\r\n'.format(self.__get_obj_id(st), self.__get_obj_id(trs), style)
+        return s
+
+    def __gen_state(self, st):
+        style = "filled"
+        return u'\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(st), st.get_name(), style)
+
+    def generate(self, states):
+        for s in states:
+            self.__add_obj(s)
+
+        s = u'digraph D {\r\n'
+        for st in states:
+            s += self.__gen_state(st)
+
+        for st in states:
+            s += self.__gen_links(st)
+
+        # for e in entries:
+        #     for f in e.get_forms():
+        #         for l in f.get_slaves():
+        #             s += self.__gen_link_label(l[1], subgraph)
+
+        s += u'}\r\n'
+
         return s
