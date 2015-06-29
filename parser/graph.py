@@ -178,7 +178,12 @@ class SpecGraphGen(object):
 
     def __gen_state(self, st):
         style = "filled"
-        return u'\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(st), st.get_name(), style)
+        color = "white"
+        if st.is_init():
+            color = "yellow"
+        elif st.is_fini():
+            color = "orchid"
+        return u'\t"{0}" [label="{1}", style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), st.get_name(), style, color)
 
     def generate(self, states):
         for s in states:

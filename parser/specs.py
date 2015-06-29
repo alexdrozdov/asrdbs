@@ -22,6 +22,17 @@ class SequenceSpec(object):
         return self.spec
 
 
+class FsmSpecs(object):
+    init = 1
+    fini = 2
+
+    def IsInit(self):
+        return FsmSpecs.init
+
+    def IsFini(self):
+        return FsmSpecs.fini
+
+
 class RequiredSpecs(object):
     def IsNecessary(self):
         return True
@@ -85,6 +96,12 @@ class AdjNounSequenceSpec(SequenceSpec):
         self.spec = [
             {
                 "required": RequiredSpecs().IsNecessary(),
+                "id": "init",
+                "fsm": FsmSpecs().IsInit(),
+                "add-to-seq": False
+            },
+            {
+                "required": RequiredSpecs().IsNecessary(),
                 "id": "adj",
                 "pos_type": [PosSpecs().IsAdjective(), ],
                 "position": [PositionSpecs().IsBefore("noun"), ],
@@ -125,12 +142,50 @@ class AdjNounSequenceSpec(SequenceSpec):
                 ]
             },
             {
+                "id": "adj++",
+                "required": RequiredSpecs().IsOptional(),
+                "repeatable": True,
+                "entries":
+                [
+                    {
+                        "id": "and",
+                        "required": RequiredSpecs().IsNecessary(),
+                        "pos_type": [PosSpecs().IsComma(), ],
+                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
+                        "add-to-seq": True
+                    },
+                    {
+                        "id": "adv++",
+                        "required": RequiredSpecs().IsOptional(),
+                        "pos_type": [PosSpecs().IsAdverb(), ],
+                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
+                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
+                        "add-to-seq": False
+                    },
+                    {
+                        "id": "adj-seq++",
+                        "required": RequiredSpecs().IsNecessary(),
+                        "pos_type": [PosSpecs().IsAdjective(), ],
+                        "position": [PositionSpecs().IsBefore("noun"), ],
+                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
+                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
+                        "add-to-seq": True
+                    },
+                ]
+            },
+            {
                 "id": "noun",
                 "required": RequiredSpecs().IsNecessary(),
                 "pos_type": [PosSpecs().IsNoun(), ],
                 "position": [PositionSpecs().SequenceEnd(), ],
                 "add-to-seq": True
-            }
+            },
+            {
+                "required": RequiredSpecs().IsNecessary(),
+                "id": "fini",
+                "fsm": FsmSpecs().IsFini(),
+                "add-to-seq": False
+            },
         ]
 
 
@@ -316,7 +371,7 @@ class SpecCompiler(object):
         self.__containers_qq = [c for c in self.__containers]
         while len(self.__containers_qq):
             container = self.__containers_qq[0]
-            self.__containers_qq.pop()
+            self.__containers_qq = self.__containers_qq[1:]
             st = container.get_spec()
             self.__create_single_level_trs(spec, st)
 
@@ -324,7 +379,7 @@ class SpecCompiler(object):
         self.__containers_qq = [c for c in self.__containers]
         while len(self.__containers_qq):
             container = self.__containers_qq[0]
-            self.__containers_qq.pop()
+            self.__containers_qq = self.__containers_qq[1:]
             st = container.get_spec()
             spec_iter = spec.get_hierarchical_iter(st)
 
@@ -389,6 +444,8 @@ class SpecStateDef(object):
         self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
         self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
         self.__is_local_final = False
+        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == FsmSpecs.init
+        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == FsmSpecs.fini
         self.__uid = ue.get_uniq()
 
     def get_name(self):
@@ -399,6 +456,12 @@ class SpecStateDef(object):
 
     def get_uid(self):
         return self.__uid
+
+    def is_init(self):
+        return self.__is_init
+
+    def is_fini(self):
+        return self.__is_fini
 
     def is_container(self):
         return self.__is_container
