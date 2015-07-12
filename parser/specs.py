@@ -581,6 +581,17 @@ class CompiledSpec(object):
         self.__name2state = {}
 
 
+class SpecMatcher(object):
+    def __init__(self, compiled_spec):
+        self.__compiled_spec = compiled_spec
+
+    def reset(self):
+        pass
+
+    def match(self, word_iter):
+        pass
+
+
 anss = AdjNounSequenceSpec()
 sc = SpecCompiler()
 res = sc.compile(anss)
