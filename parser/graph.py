@@ -111,7 +111,7 @@ class SentGraphGen(object):
 
         s += u'}\r\n'
 
-        return
+        return s
 
 
 class SpecGraph(object):
