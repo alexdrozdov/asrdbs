@@ -1,5 +1,11 @@
-# import graph
+#!/usr/bin/env python
+# -*- #coding: utf8 -*-
+
+
+import speccmn
+import specdefs.adj_noun
 import gvariant
+from speccmn import RtRule
 
 
 class UniqEnum(object):
@@ -13,304 +19,6 @@ class UniqEnum(object):
 
 
 ue = UniqEnum()
-
-
-class SequenceSpec(object):
-    def __init__(self, name):
-        self.__name = name
-
-    def get_spec(self):
-        return self.spec
-
-    def get_name(self):
-        return self.__name
-
-
-class FsmSpecs(object):
-    init = 1
-    fini = 2
-
-    def IsInit(self):
-        return FsmSpecs.init
-
-    def IsFini(self):
-        return FsmSpecs.fini
-
-
-class RequiredSpecs(object):
-    def IsNecessary(self):
-        return True
-
-    def IsOptional(self):
-        return False
-
-
-class c__pos_check(object):
-    def __init__(self, pos_names):
-        self.__pos_names = pos_names
-
-    def match(self, form):
-        return form.get_pos() in self.__pos_names
-
-
-class c__pos_syntax_check(object):
-    def __init__(self, syntax_name):
-        assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax'
-        if syntax_name == 'comma':
-            self.__syntax_check_cb = self.__comma_check_cb
-        if syntax_name == 'dot':
-            self.__syntax_check_cb = self.__dot_check_cb
-        if syntax_name == 'question':
-            self.__syntax_check_cb = self.__question_check_cb
-
-    def __comma_check_cb(self, form):
-        return form.is_comma()
-
-    def __dot_check_cb(self, form):
-        return form.is_dot()
-
-    def __question_check_cb(self, form):
-        return form.is_question()
-
-    def match(self, form):
-        return form.get_pos() == 'syntax' and self.__syntax_check_cb(form)
-
-
-class PosSpecs(object):
-    def IsNoun(self):
-        return c__pos_check(["noun", ])
-
-    def IsAdjective(self):
-        return c__pos_check(["adjective", ])
-
-    def IsAdverb(self):
-        return c__pos_check(["adverb", ])
-
-    def IsComma(self):
-        return c__pos_syntax_check("comma")
-
-
-class c__position_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
-
-    def new_copy(self):
-        return c__position_spec(self.__id_name)
-
-    def clone(self):
-        return c__position_spec(self.__id_name)
-
-    def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
-        return RtRule.res_matched if rtme.get_form().get_position() < other_rtme.get_form().get_position() else RtRule.res_failed
-
-
-class c__position_fini(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
-
-    def new_copy(self):
-        return c__position_spec(self.__id_name)
-
-    def clone(self):
-        return c__position_spec(self.__id_name)
-
-    def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
-        return rtme.get_form().get_position() == other_rtme.get_form().get_position()
-
-
-class PositionSpecs(object):
-    def IsBefore(self, id_name):
-        return c__position_spec(id_name)
-
-    def SequenceEnd(self, id_name='fini'):
-        return c__position_fini(id_name)
-
-    def IsBeforeIfExists(self, id_name):
-        return c__position_spec(id_name)
-
-
-class c__slave_master_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
-
-    def new_copy(self):
-        return c__slave_master_spec(self.__id_name)
-
-    def clone(self):
-        return c__slave_master_spec(self.__id_name)
-
-    def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
-        return RtRule.res_matched if other_rtme.get_form() in rtme.get_form().get_master_forms() else RtRule.res_failed
-
-
-class c__slave_master_unwanted_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
-
-    def new_copy(self):
-        return c__slave_master_spec(self.__id_name)
-
-    def clone(self):
-        return c__slave_master_spec(self.__id_name)
-
-    def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
-        slave = rtme.get_form()
-        master = other_rtme.get_form()
-        for m, l in slave.get_masters():
-            if m != master:
-                slave.add_unwanted_link(l)
-
-        return True
-
-
-class LinkSpecs(object):
-    def IsSlave(self, id_name):
-        return c__slave_master_spec(id_name)
-
-    def MastersExcept(self, id_name):
-        return c__slave_master_unwanted_spec(id_name)
-
-
-class SpecStateIniForm(object):
-    def __init__(self):
-        pass
-
-    def get_word(self):
-        return u'ini'
-
-    def get_pos(self):
-        return u'ini'
-
-
-class SpecStateFiniForm(object):
-    def __init__(self):
-        pass
-
-    def get_word(self):
-        return u'fini'
-
-    def get_pos(self):
-        return u'fini'
-
-
-class AdjNounSequenceSpec(SequenceSpec):
-    def __init__(self):
-        SequenceSpec.__init__(self, 'adj+-noun')
-        self.__compared_with = {}
-
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "adj",
-                "pos_type": [PosSpecs().IsAdjective(), ],
-                "position": [PositionSpecs().IsBefore("noun"), ],
-                "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
-                "add-to-seq": True
-            },
-            {
-                "id": "adj+",
-                "required": RequiredSpecs().IsOptional(),
-                "repeatable": True,
-                "entries":
-                [
-                    {
-                        "id": "comma",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
-                        "add-to-seq": True
-                    },
-                    {
-                        "id": "adv",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
-                        "add-to-seq": False
-                    },
-                    {
-                        "id": "adj-seq",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
-                        "add-to-seq": True
-                    },
-                ]
-            },
-            {
-                "id": "adj++",
-                "required": RequiredSpecs().IsOptional(),
-                "repeatable": True,
-                "entries":
-                [
-                    {
-                        "id": "and",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
-                        "add-to-seq": True
-                    },
-                    {
-                        "id": "adv++",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
-                        "add-to-seq": False
-                    },
-                    {
-                        "id": "adj-seq++",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
-                        "add-to-seq": True
-                    },
-                ]
-            },
-            {
-                "id": "noun",
-                "required": RequiredSpecs().IsNecessary(),
-                "pos_type": [PosSpecs().IsNoun(), ],
-                "add-to-seq": True
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
-            },
-        ]
 
 
 class SequenceSpecIter(object):
@@ -328,9 +36,9 @@ class SequenceSpecIter(object):
             return None
 
 
-class IterableSequenceSpec(SequenceSpec):
+class IterableSequenceSpec(speccmn.SequenceSpec):
     def __init__(self, spec):
-        SequenceSpec.__init__(self, spec.get_name())
+        speccmn.SequenceSpec.__init__(self, spec.get_name())
         self.__basic_spec = spec.get_spec()
         self.__index_all_entries()
         self.__index_layers()
@@ -581,8 +289,8 @@ class SpecStateDef(object):
         self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
         self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
         self.__is_local_final = False
-        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == FsmSpecs.init
-        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == FsmSpecs.fini
+        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.init
+        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.fini
         self.__uid = ue.get_uniq()
 
         self.__stateless_rules = []
@@ -833,7 +541,7 @@ class RtMatchSequence(gvariant.Sequence):
     def __handle_trs(self, to, form):
         prev = self.__entries[-1] if self.__entries else None
         if to.is_fini():
-            rtme = RtMatchEntry(self, SpecStateFiniForm(), to, prev=prev)
+            rtme = RtMatchEntry(self, speccmn.SpecStateFiniForm(), to, prev=prev)
             self.__entries.append(rtme)
 
             if not self.__handle_pending_rules(rtme):
@@ -920,7 +628,7 @@ class SpecMatcher(object):
 
     def __create_ini_rtentry(self):
         ini_spec = self.__compiled_spec.get_inis()[0]
-        self.__sequences = [RtMatchSequence(self, RtMatchEntry(None, SpecStateIniForm(), ini_spec, None))]
+        self.__sequences = [RtMatchSequence(self, RtMatchEntry(None, speccmn.SpecStateIniForm(), ini_spec, None))]
 
     def __handle_sequence_list(self, form):
         next_sequences = []
@@ -960,7 +668,7 @@ class SequenceSpecMatcher(object):
         self.__create_specs()
 
     def __create_specs(self):
-        self.add_spec(AdjNounSequenceSpec())
+        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
 
     def reset(self):
         for sp in self.__specs:
@@ -976,41 +684,11 @@ class SequenceSpecMatcher(object):
         forms = graph.get_forms()
         for sp in self.__specs:
             sp.match(forms)
-            sp.match([SpecStateFiniForm()])
+            sp.match([speccmn.SpecStateFiniForm()])
         return self.__matched_specs
 
     def add_matched(self, sq):
         self.__matched_specs.append(sq)
-
-
-class RtRule(object):
-    res_none = 0
-    res_failed = 1
-    res_matched = 2
-    res_continue = 3
-
-    def __init__(self, rule, is_static):
-        assert rule is not None, "Rule required"
-        self.__rule = rule
-        self.__is_static = is_static
-
-    def matched(self, form):
-        assert self.__is_static, "Tried to match non static rule"
-        return self.__rule.match(form)
-
-    def is_applicable(self, on, other):
-        assert not self.__is_static, "Tried to check aplicibility on static rule"
-        return self.__rule.is_applicable(on, other)
-
-    def apply_on(self, on, other):
-        assert not self.__is_static, "Tried to apply on static rule"
-        return self.__rule.apply_on(on, other)
-
-    def clone(self):
-        return RtRule(self.__rule.clone(), self.__is_static)
-
-    def new_copy(self):
-        return RtRule(self.__rule.new_copy(), self.__is_static)
 
 
 class RtMatchEntry(object):
