@@ -587,12 +587,12 @@ class RtMatchSequence(gvariant.Sequence):
         return self.__status != RtRule.res_none and self.__status != RtRule.res_continue
 
     def is_valid(self):
-        if self.__pending and self.__status != RtRule.res_none and self.__status != RtRule.res_continue:
-            for k, v in self.__pending_rules.items():
-                print k, k.get_int_rule(),
-                for e in v:
-                    print e.get_name(),
-        print ""
+        # if self.__pending and self.__status != RtRule.res_none and self.__status != RtRule.res_continue:
+        #     for k, v in self.__pending_rules.items():
+        #         print k, k.get_int_rule(),
+        #         for e in v:
+        #             print e.get_name(),
+        # print ""
         return self.__pending == 0
 
     def finalize(self, valid):
@@ -663,9 +663,9 @@ class SpecMatcher(object):
             self.__create_ini_rtentry()
             self.__handle_sequence_list(form)
 
-        print ">>>"
-        self.__print_sequences()
-        print "<<<"
+        # print ">>>"
+        # self.__print_sequences()
+        # print "<<<"
 
     def __print_sequences(self):
         for sq in self.__sequences:
@@ -725,6 +725,7 @@ class RtMatchEntry(object):
             prev.__next = self
 
         self.__matched = []
+        self.__pending_count = 0
         if not do_not_init_rules:
             self.__pending = self.__spec.get_rt_rules()
             self.__register_pending_rules()
@@ -738,8 +739,11 @@ class RtMatchEntry(object):
         return self.__owner
 
     def __register_pending_rules(self):
+        self.__pending_count = 0
         for r in self.__pending:
             assert r is not None
+            if not r.ignore_pending_state():
+                self.__pending_count += 1
             self.__owner.register_rule_handler(r, self)
 
     def clone(self, owner, prev=None):
@@ -762,11 +766,18 @@ class RtMatchEntry(object):
 
     def confirm_rule(self, rule):
         self.__pending.remove(rule)
+        if not rule.ignore_pending_state():
+            self.__pending_count -= 1
+
         if self.__owner.is_registered(rule, self):
             self.__owner.unregister_rule_handler(rule, self)
         self.__matched.append(rule)
 
-        if not self.__pending:
+        if not self.__pending_count:
+            if self.__pending:
+                for r in self.__pending:
+                    if self.__owner.is_registered(r, self):
+                        self.__owner.unregister_rule_handler(r, self)
             self.__status = RtRule.res_matched
             self.__owner.confirm_match_entry(self)
 
@@ -781,7 +792,7 @@ class RtMatchEntry(object):
         self.__prev = None
 
     def has_pending(self):
-        return len(self.__pending) > 0
+        return self.__pending_count > 0
 
     def __unregister_pending_rules(self):
         for r in self.__pending:

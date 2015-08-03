@@ -125,6 +125,12 @@ class c__position_spec(object):
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if rtme.get_form().get_position() < other_rtme.get_form().get_position() else RtRule.res_failed
 
+    def always_pending(self):
+        return False
+
+    def ignore_pending_state(self):
+        return False
+
 
 class c__position_fini(object):
     def __init__(self, id_name):
@@ -174,6 +180,12 @@ class c__slave_master_spec(object):
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if other_rtme.get_form() in rtme.get_form().get_master_forms() else RtRule.res_failed
 
+    def always_pending(self):
+        return False
+
+    def ignore_pending_state(self):
+        return False
+
 
 class c__slave_master_unwanted_spec(object):
     def __init__(self, id_name):
@@ -197,6 +209,12 @@ class c__slave_master_unwanted_spec(object):
             if m != master:
                 slave.add_unwanted_link(l)
 
+        return True
+
+    def always_pending(self):
+        return True
+
+    def ignore_pending_state(self):
         return True
 
 
@@ -264,3 +282,9 @@ class RtRule(object):
 
     def get_int_rule(self):
         return self.__rule
+
+    def always_pending(self):
+        return self.__rule.always_pending()
+
+    def ignore_pending_state(self):
+        return self.__rule.ignore_pending_state()
