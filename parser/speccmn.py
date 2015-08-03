@@ -32,6 +32,17 @@ class RequiredSpecs(object):
         return False
 
 
+class RepeatableSpecs(object):
+    def EqualOrMoreThan(self, count):
+        return (count, None)
+
+    def EqualTo(self, count):
+        return (count, count)
+
+    def Once(self):
+        return self.EqualTo(1)
+
+
 class c__pos_check(object):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
