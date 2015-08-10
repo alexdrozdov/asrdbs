@@ -13,92 +13,92 @@ class AdjNounSequenceSpec(SequenceSpec):
         self.spec = [
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "init",
+                "id": "$SPEC::init",
                 "fsm": FsmSpecs().IsInit(),
                 "add-to-seq": False
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "adj",
+                "id": "$THIS::adj",
                 "pos_type": [PosSpecs().IsAdjective(), ],
-                "position": [PositionSpecs().IsBefore("noun"), ],
-                "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
+                "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
+                "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
+                "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
                 "add-to-seq": True
             },
             {
-                "id": "adj+",
+                "id": "$THIS::adj+",
                 "required": RequiredSpecs().IsOptional(),
                 "repeatable": True,
                 "entries":
                 [
                     {
-                        "id": "comma",
+                        "id": "$THIS::comma",
                         "required": RequiredSpecs().IsOptional(),
                         "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
+                        "position": [PositionSpecs().IsBeforeIfExists("$THIS::adv"), PositionSpecs().IsBefore('$THIS::adj-seq')],
                         "add-to-seq": True
                     },
                     {
-                        "id": "adv",
+                        "id": "$THIS::adv",
                         "required": RequiredSpecs().IsOptional(),
                         "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
+                        "position": [PositionSpecs().IsBefore("$THIS::adj-seq"), ],
+                        "master-slave": [LinkSpecs().IsSlave("$THIS::adj-seq"), ],
                         "add-to-seq": False
                     },
                     {
-                        "id": "adj-seq",
+                        "id": "$THIS::adj-seq",
                         "required": RequiredSpecs().IsNecessary(),
                         "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
+                        "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
+                        "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
+                        "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
                         "add-to-seq": True
                     },
                 ]
             },
             {
-                "id": "adj++",
+                "id": "$THIS::adj++",
                 "required": RequiredSpecs().IsOptional(),
                 "repeatable": True,
                 "entries":
                 [
                     {
-                        "id": "and",
+                        "id": "$THIS::and",
                         "required": RequiredSpecs().IsNecessary(),
                         "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("adv"), PositionSpecs().IsBefore('adj-seq')],
+                        "position": [PositionSpecs().IsBeforeIfExists("$THIS::adv"), PositionSpecs().IsBefore('$THIS::adj-seq')],
                         "add-to-seq": True
                     },
                     {
-                        "id": "adv++",
+                        "id": "$THIS::adv++",
                         "required": RequiredSpecs().IsOptional(),
                         "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("adj-seq"), ],
+                        "position": [PositionSpecs().IsBefore("$THIS::adj-seq"), ],
+                        "master-slave": [LinkSpecs().IsSlave("$THIS::adj-seq"), ],
                         "add-to-seq": False
                     },
                     {
-                        "id": "adj-seq++",
+                        "id": "$THIS::adj-seq++",
                         "required": RequiredSpecs().IsNecessary(),
                         "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("noun"), ],
+                        "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
+                        "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
+                        "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
                         "add-to-seq": True
                     },
                 ]
             },
             {
-                "id": "noun",
+                "id": "$SPEC::noun",
                 "required": RequiredSpecs().IsNecessary(),
                 "pos_type": [PosSpecs().IsNoun(), ],
                 "add-to-seq": True
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "fini",
+                "id": "$SPEC::fini",
                 "fsm": FsmSpecs().IsFini(),
                 "add-to-seq": False
             },

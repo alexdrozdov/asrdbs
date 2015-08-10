@@ -43,6 +43,11 @@ class RepeatableSpecs(object):
         return self.EqualTo(1)
 
 
+class GroupSpecs(object):
+    def LastEntry(self, group_name):
+        pass
+
+
 class c__pos_check(object):
     def __init__(self, pos_names):
         self.__pos_names = pos_names

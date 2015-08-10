@@ -5,7 +5,7 @@
 from parser.speccmn import *
 
 
-class AdjNounSequenceSpec(SequenceSpec):
+class NounNounSequenceSpec(SequenceSpec):
     def __init__(self):
         SequenceSpec.__init__(self, 'noun-noun')
         self.__compared_with = {}
@@ -20,7 +20,7 @@ class AdjNounSequenceSpec(SequenceSpec):
             {
                 "id": "$THIS::noun",
                 "required": RequiredSpecs().IsNecessary(),
-                "repeatable": RepeatableSpecs.EqualOrMoreThan(2),
+                "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj-noun", ],
                 "incapsulate-simlink": "$THIS::adj-noun::noun",
                 "incapsulate-compile": True,

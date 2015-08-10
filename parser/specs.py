@@ -6,9 +6,10 @@ import speccmn
 import specdefs.adj_noun
 import specdefs.adv_adj
 import specdefs.subj_predicate
+import specdefs.noun_noun
 import gvariant
 from speccmn import RtRule
-# import graph
+import graph
 
 
 class UniqEnum(object):
@@ -115,7 +116,9 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         return SequenceSpecIter(self.__all_entries)
 
     def get_parent(self, item):
-        return self.__parents[item["uid"]]
+        if self.__parents.has_key(item["uid"]):
+            return self.__parents[item["uid"]]
+        return None
 
     def get_hierarchical_iter(self, base):
         if base is None:
@@ -137,8 +140,34 @@ class SpecCompiler(object):
         self.__containers_qq = []
         self.__inis = []
 
+    def __create_this_path(self, st):
+        path = ''
+        item = self.__spec.get_parent(st)
+        while item is not None:
+            path = '::' + item["id"] + path
+            item = self.__spec.get_parent(item)
+        path = '::' + self.__spec_name + path
+        if self.__parent_spec_name:
+            path = self.__parent_spec_name + path
+        return path
+
+    def __create_spec_path(self):
+        path = '::' + self.__spec_name
+        if self.__parent_spec_name:
+            path = self.__parent_spec_name + path
+        return path
+
     def gen_state_name(self, st):
-        return st["id"]
+        st_id = st["id"]
+        if '$THIS' in st_id:
+            this_path = self.__create_this_path(st)
+            st_id = st_id.replace('$THIS', this_path)
+        elif '$SPEC' in st_id:
+            spec_path = self.__create_spec_path()
+            st_id = st_id.replace('$SPEC', spec_path)
+        else:
+            print "Compile warning: $THIS is missing for", self.__spec_name, st['id']
+        return st_id
 
     def __add_state(self, state):
         self.__states.append(state)
@@ -258,10 +287,12 @@ class SpecCompiler(object):
         for state in self.__states:
             state.create_rules()
 
-    def compile(self, spec):
+    def compile(self, spec, parent_spec_name=''):
+        self.__parent_spec_name = parent_spec_name
         self.__spec_name = spec.get_name()
 
         spec = IterableSequenceSpec(spec)
+        self.__spec = spec
         self.__create_states(spec)
         self.__create_downgrading_trs(spec)
         self.__create_upper_level_trs(spec)
@@ -685,9 +716,10 @@ class SequenceSpecMatcher(object):
         self.__create_specs()
 
     def __create_specs(self):
-        # self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
+        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
         # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
-        self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
+        # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
+        # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec())
 
     def reset(self):
         for sp in self.__specs:
@@ -821,10 +853,10 @@ class RtMatchEntry(object):
         self.__owner.add_unwanted_link(l)
 
 
-# anss = specdefs.subj_predicate.SubjectPredicateSequenceSpec()
-# sc = SpecCompiler()
-# res = sc.compile(anss)
-#
-# g = graph.SpecGraph(img_type='svg')
-# file_name = 'imgs/sp-{0}.svg'.format(0)
-# g.generate(res.get_states(), file_name)
+anss = specdefs.adj_noun.AdjNounSequenceSpec()
+sc = SpecCompiler()
+res = sc.compile(anss)
+
+g = graph.SpecGraph(img_type='svg')
+file_name = 'imgs/sp-{0}.svg'.format(0)
+g.generate(res.get_states(), file_name)
