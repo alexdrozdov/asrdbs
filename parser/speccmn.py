@@ -55,6 +55,9 @@ class c__pos_check(object):
     def match(self, form):
         return form.get_pos() in self.__pos_names
 
+    def needs_name_resolve(self):
+        return False
+
 
 class c__pos_check_inv(object):
     def __init__(self, pos_names):
@@ -62,6 +65,9 @@ class c__pos_check_inv(object):
 
     def match(self, form):
         return form.get_pos() not in self.__pos_names
+
+    def needs_name_resolve(self):
+        return False
 
 
 class c__pos_syntax_check(object):
@@ -85,6 +91,9 @@ class c__pos_syntax_check(object):
 
     def match(self, form):
         return form.get_pos() == 'syntax' and self.__syntax_check_cb(form)
+
+    def needs_name_resolve(self):
+        return False
 
 
 class PosSpecs(object):
@@ -117,6 +126,9 @@ class c__case_check(object):
     def match(self, form):
         return form.get_case() in self.__cases
 
+    def needs_name_resolve(self):
+        return False
+
 
 class CaseSpecs(object):
     def IsCase(self, cases):
@@ -146,6 +158,12 @@ class c__position_spec(object):
 
     def ignore_pending_state(self):
         return False
+
+    def needs_name_resolve(self):
+        return '$' in self.__id_name
+
+    def resolve_name(self, compiler, state):
+        self.__id_name = compiler.resolve_name(state, self.__id_name)
 
 
 class c__position_fini(object):
@@ -202,6 +220,12 @@ class c__slave_master_spec(object):
     def ignore_pending_state(self):
         return False
 
+    def needs_name_resolve(self):
+        return '$' in self.__id_name
+
+    def resolve_name(self, compiler, state):
+        self.__id_name = compiler.resolve_name(state, self.__id_name)
+
 
 class c__slave_master_unwanted_spec(object):
     def __init__(self, id_name):
@@ -223,7 +247,7 @@ class c__slave_master_unwanted_spec(object):
         master = other_rtme.get_form()
         for m, l in slave.get_masters():
             if m != master:
-                slave.add_unwanted_link(l)
+                rtme.add_unwanted_link(l)
 
         return True
 
@@ -232,6 +256,12 @@ class c__slave_master_unwanted_spec(object):
 
     def ignore_pending_state(self):
         return True
+
+    def needs_name_resolve(self):
+        return '$' in self.__id_name
+
+    def resolve_name(self, compiler, state):
+        self.__id_name = compiler.resolve_name(state, self.__id_name)
 
 
 class LinkSpecs(object):
@@ -273,10 +303,13 @@ class RtRule(object):
     res_matched = 2
     res_continue = 3
 
-    def __init__(self, rule, is_static):
+    def __init__(self, rule, is_static, compiler=None, state=None):
         assert rule is not None, "Rule required"
         self.__rule = rule
         self.__is_static = is_static
+
+        if compiler is not None and state is not None and rule.needs_name_resolve():
+            self.__rule.resolve_name(compiler, state)
 
     def matched(self, form):
         assert self.__is_static, "Tried to match non static rule"

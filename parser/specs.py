@@ -151,6 +151,20 @@ class SpecCompiler(object):
             path = self.__parent_spec_name + path
         return path
 
+    def __create_parent_path(self, st):
+        path = ''
+        item = self.__spec.get_parent(st)
+        if item is not None:
+            if '$PARENT' in item['id']:
+                ppath = self.__create_parent_path(item)
+                path = item['id'].replace('$PARENT', ppath)
+                return path
+            path = item['id']
+        path = '::' + self.__spec_name + path
+        if self.__parent_spec_name:
+            path = self.__parent_spec_name + path
+        return path
+
     def __create_spec_path(self):
         path = '::' + self.__spec_name
         if self.__parent_spec_name:
@@ -162,11 +176,29 @@ class SpecCompiler(object):
         if '$THIS' in st_id:
             this_path = self.__create_this_path(st)
             st_id = st_id.replace('$THIS', this_path)
+        elif '$PARENT' in st_id:
+            parent_path = self.__create_parent_path(st)
+            st_id = st_id.replace('$PARENT', parent_path)
         elif '$SPEC' in st_id:
             spec_path = self.__create_spec_path()
             st_id = st_id.replace('$SPEC', spec_path)
         else:
             print "Compile warning: $THIS is missing for", self.__spec_name, st['id']
+        return st_id
+
+    def resolve_name(self, ref_state, name):
+        st_id = name
+        if '$THIS' in st_id:
+            this_path = self.__create_this_path(ref_state)
+            st_id = st_id.replace('$THIS', this_path)
+        elif '$PARENT' in st_id:
+            parent_path = self.__create_parent_path(ref_state)
+            st_id = st_id.replace('$PARENT', parent_path)
+        elif '$SPEC' in st_id:
+            spec_path = self.__create_spec_path()
+            st_id = st_id.replace('$SPEC', spec_path)
+        else:
+            print "Compile warning: $THIS is missing for", self.__spec_name, name
         return st_id
 
     def __add_state(self, state):
@@ -181,7 +213,7 @@ class SpecCompiler(object):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
             state_name = self.gen_state_name(st)
-            state = SpecStateDef(state_name, st)
+            state = SpecStateDef(self, state_name, st)
             if state.get_level() > 0:
                 parent_st = spec.get_parent(st)
                 parent_state_name = self.gen_state_name(parent_st)
@@ -308,7 +340,8 @@ class SpecCompiler(object):
 
 
 class SpecStateDef(object):
-    def __init__(self, name, spec_dict, parent=None):
+    def __init__(self, compiler, name, spec_dict, parent=None):
+        self.__compiler = compiler
         self.__name = name
         self.__transitions = []
         self.__neighbour_transitions = []
@@ -448,9 +481,9 @@ class SpecStateDef(object):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
-                        target_list.append(RtRule(rd, is_static))
+                        target_list.append(RtRule(rd, is_static, self.__compiler, self.__spec_dict))
                 else:
-                    target_list.append(RtRule(rule_def, is_static))
+                    target_list.append(RtRule(rule_def, is_static, self.__compiler, self.__spec_dict))
 
     def __create_stateless_rules(self):
         self.__create_rule_list(True, ['pos_type'], self.__stateless_rules)
@@ -641,6 +674,10 @@ class RtMatchSequence(gvariant.Sequence):
 
     def get_unwanted_links(self):
         return []
+
+    def add_unwanted_link(self, link):
+        if link not in self.__unwanted_links:
+            self.__unwanted_links.append(link)
 
 
 class SpecMatcher(object):

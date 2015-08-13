@@ -4,6 +4,6 @@ syntax: glob
 *.pyc
 *.pickle
 *.swp
-./data/
-./build/
+data/*
+build/*
 imgs/*
