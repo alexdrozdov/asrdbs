@@ -407,7 +407,7 @@ class SpecStateDef(object):
         self.__is_local_final = True
 
     def add_trs_to_self(self):
-        pass
+        self.add_trs_to_neighbour(self)
 
     def add_trs_to_neighbour(self, to):
         if to not in self.__neighbour_transitions:
@@ -753,10 +753,10 @@ class SequenceSpecMatcher(object):
         self.__create_specs()
 
     def __create_specs(self):
-        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
+        # self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
         # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
         # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
-        # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec())
+        self.add_spec(specdefs.noun_noun.NounNounSequenceSpec())
 
     def reset(self):
         for sp in self.__specs:
@@ -890,10 +890,18 @@ class RtMatchEntry(object):
         self.__owner.add_unwanted_link(l)
 
 
-anss = specdefs.adj_noun.AdjNounSequenceSpec()
+anss = specdefs.noun_noun.NounNounSequenceSpec()
 sc = SpecCompiler()
 res = sc.compile(anss)
 
 g = graph.SpecGraph(img_type='svg')
 file_name = 'imgs/sp-{0}.svg'.format(0)
+g.generate(res.get_states(), file_name)
+
+anss = specdefs.adj_noun.AdjNounSequenceSpec()
+sc = SpecCompiler()
+res = sc.compile(anss)
+
+g = graph.SpecGraph(img_type='svg')
+file_name = 'imgs/sp-{0}.svg'.format(1)
 g.generate(res.get_states(), file_name)

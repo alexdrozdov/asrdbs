@@ -13,23 +13,23 @@ class NounNounSequenceSpec(SequenceSpec):
         self.spec = [
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "init",
+                "id": "$SPEC::init",
                 "fsm": FsmSpecs().IsInit(),
                 "add-to-seq": False
             },
             {
-                "id": "$THIS::noun",
+                "id": "$SPEC::noun",
                 "required": RequiredSpecs().IsNecessary(),
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj-noun", ],
-                "incapsulate-simlink": "$THIS::adj-noun::noun",
+                "incapsulate-simlink": "$SPEC::adj-noun::noun",
                 "incapsulate-compile": True,
-                "master-slave": [LinkSpecs().IsSlave(GroupSpecs().LastEntry("seq-nouns")), ],
+                "master-slave": [LinkSpecs().IsSlave("seq-nouns"), ],  # GroupSpecs().LastEntry("seq-nouns")
                 "group": ["seq-nouns", ]
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "fini",
+                "id": "$SPEC::fini",
                 "fsm": FsmSpecs().IsFini(),
                 "add-to-seq": False
             },
