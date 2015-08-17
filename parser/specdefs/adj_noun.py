@@ -28,8 +28,7 @@ class AdjNounSequenceSpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::adj+",
-                "required": RequiredSpecs().IsOptional(),
-                "repeatable": True,
+                "repeatable": RepeatableSpecs().Any(),
                 "entries":
                 [
                     {
@@ -61,7 +60,7 @@ class AdjNounSequenceSpec(SequenceSpec):
             {
                 "id": "$PARENT::adj++",
                 "required": RequiredSpecs().IsOptional(),
-                "repeatable": True,
+                "repeatable": RepeatableSpecs().Any(),
                 "entries":
                 [
                     {

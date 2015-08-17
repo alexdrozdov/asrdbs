@@ -42,6 +42,9 @@ class RepeatableSpecs(object):
     def Once(self):
         return self.EqualTo(1)
 
+    def Any(self):
+        return self.EqualOrMoreThan(0)
+
 
 class GroupSpecs(object):
     def LastEntry(self, group_name):

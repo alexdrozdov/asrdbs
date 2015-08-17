@@ -19,7 +19,6 @@ class NounNounSequenceSpec(SequenceSpec):
             },
             {
                 "id": "$SPEC::noun",
-                "required": RequiredSpecs().IsNecessary(),
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj-noun", ],
                 "incapsulate-simlink": "$SPEC::adj-noun::noun",

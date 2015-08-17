@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import copy
 import speccmn
 import specdefs.adj_noun
 import specdefs.adv_adj
@@ -43,7 +44,8 @@ class SequenceSpecIter(object):
 class IterableSequenceSpec(speccmn.SequenceSpec):
     def __init__(self, spec):
         speccmn.SequenceSpec.__init__(self, spec.get_name())
-        self.__basic_spec = spec.get_spec()
+        spec = copy.deepcopy(spec)
+        self.__unroll_repeatable_entries(spec.get_spec())
         self.__index_all_entries()
         self.__index_layers()
         self.__index_hierarchy()
@@ -65,6 +67,64 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
             self.__all_entries.append(st)
             if st.has_key("entries"):
                 self.__index_subentries(st, level + 1)
+
+    def __create_entry_copy(self, entry, order, set_order=False, repeatable=False, required=False):
+        entry = copy.deepcopy(entry)
+        if set_order:
+            entry["id"] += "[{0}]".format(order)
+        entry["repeatable"] = repeatable
+        entry["required"] = required
+        if entry.has_key("entries"):
+            entries = []
+            for st in entry["entries"]:
+                sub_specs = self.__unroll_entry(st)
+                entries.extend(sub_specs)
+            entry["entries"] = entries
+        return entry
+
+    def __unroll_entry(self, entry):
+        if not entry.has_key("repeatable") or not isinstance(entry["repeatable"], tuple):
+            return [copy.deepcopy(entry), ]
+
+        min_count = entry["repeatable"][0]
+        max_count = entry["repeatable"][1]
+
+        res = []
+        if min_count > 1 or max_count > 1 or (min_count == 0 and max_count is None):
+            set_order = True
+        else:
+            set_order = False
+        i = 0
+        if min_count == max_count:
+            for i in range(min_count):
+                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=True, set_order=set_order))
+            return res
+
+        if min_count:
+            for i in range(min_count):
+                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=True, set_order=set_order))
+
+        if max_count:
+            for i in range(min_count, max_count):
+                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=False, set_order=set_order))
+        else:
+            if min_count == 0 and max_count is None:
+                order = '$INDEX({0})'.format(0)
+            else:
+                order = '$INDEX({0})'.format(i + 1)
+            res.append(self.__create_entry_copy(entry, order, repeatable=True, required=False, set_order=set_order))
+
+        return res
+
+    def __unroll_repeatable_entries(self, basic_spec):
+        new_spec = []
+        for st in basic_spec:
+            sub_specs = self.__unroll_entry(st)
+            new_spec.extend(sub_specs)
+        self.__basic_spec = new_spec
+        # print "__NEW_SPEC__"
+        # print new_spec
+        # print "//NEW_SPEC"
 
     def __index_layer(self, subspec, layer=0):
         if len(self.__layers) <= layer:
@@ -750,22 +810,31 @@ class SpecMatcher(object):
 class SequenceSpecMatcher(object):
     def __init__(self):
         self.__specs = []
+        self.__spec_by_name = {}
         self.__create_specs()
 
     def __create_specs(self):
-        # self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
+        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
         # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
         # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
         self.add_spec(specdefs.noun_noun.NounNounSequenceSpec())
+        self.build_specs()
+
+    def add_spec(self, base_spec_class):
+        assert base_spec_class.get_name() not in self.__spec_by_name
+        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None]
+
+    def build_specs(self):
+        for spec_name, spec_class_defs in self.__spec_by_name.items():
+            sc = SpecCompiler()
+            spec = sc.compile(spec_class_defs[0])
+            spec_matcher = SpecMatcher(self, spec, self.add_matched)
+            spec_class_defs[1] = spec_matcher
+            self.__specs.append(spec_matcher)
 
     def reset(self):
         for sp in self.__specs:
             sp.reset()
-
-    def add_spec(self, base_spec_class):
-        sc = SpecCompiler()
-        spec = sc.compile(base_spec_class)
-        self.__specs.append(SpecMatcher(self, spec, self.add_matched))
 
     def match_graph(self, graph):
         self.__matched_specs = []
