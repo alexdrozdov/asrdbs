@@ -11,6 +11,8 @@ import specdefs.noun_noun
 import gvariant
 from speccmn import RtRule
 import graph
+import common.output
+import common.history as h
 
 
 class UniqEnum(object):
@@ -588,9 +590,13 @@ class CompiledSpec(object):
 
 
 class RtMatchSequence(gvariant.Sequence):
-    def __init__(self, matcher, initial_entry=None):
+    def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
         self.__matcher = matcher
         self.__entries = []
+        h.register_object(self, is_clone_of=is_clone_of, label=str(self) + '-' + self.__matcher.get_name())
+        if graph_id is not None:
+            h.en(self) and h.log(self, u"Init for {0}".format(graph_id))
+
         if initial_entry is not None:
             self.__entries.append(initial_entry)
         self.__matched = 0
@@ -600,7 +606,7 @@ class RtMatchSequence(gvariant.Sequence):
         self.__unwanted_links = []
 
     def clone(self):
-        rtms = RtMatchSequence(self.__matcher)
+        rtms = RtMatchSequence(self.__matcher, is_clone_of=self)
         prev = None
         for e in self.__entries:
             prev = e.clone(rtms, prev=prev)
@@ -611,6 +617,7 @@ class RtMatchSequence(gvariant.Sequence):
 
     def dismiss(self, reason=None):
         self.__status = RtRule.res_failed
+        h.en(self) and h.log(self, u"Dismissed")
         self.__matcher.dismiss(self, reason)
 
     def confirm_match_entry(self, rtentry):
@@ -618,12 +625,19 @@ class RtMatchSequence(gvariant.Sequence):
         assert not not_confirmed
         self.__matched += 1
         self.__pending -= 1
+        h.en(self) and h.log(self, u"Confirmed entry {0}, pending={1}, matched={2}".format(rtentry, self.__pending, self.__matched))
 
     def handle_form(self, form):
+        h.en(self) and h.log(self, u"Processing {0} / {1}".format(form.get_word(), form.get_info()))
         head = self.__entries[-1]
         trs = head.find_transitions(form)
         if not trs:
+            h.en(self) and h.log(self, u"No carrier")
             return False, []
+
+        h.en(self) and h.log(self, u"Found {0} possible transitions".format(len(trs)))
+        if len(trs) > 1:
+            h.en(self) and h.log(self, u"Fork for trs from 1 to {0}".format(len(trs)))
         new_sq = []
         for t in trs[0:-1]:
             trms = self.clone()
@@ -634,7 +648,13 @@ class RtMatchSequence(gvariant.Sequence):
                 pass
 
         t = trs[-1]
+        h.en(self) and h.log(self, u"Handling")
         alive, fini = self.__handle_trs(t, form)
+        h.en(self) and h.log(self, u"Handled with alive={0}, fini={1}".format(alive, fini))
+        if not alive:
+            h.en(self) and h.log(self, "No carrier")
+        if fini:
+            h.en(self) and h.log(self, "Matched")
         return alive, new_sq
 
     def is_registered(self, rule, rtentry):
@@ -694,12 +714,18 @@ class RtMatchSequence(gvariant.Sequence):
             self.__status = RtRule.res_matched
 
     def __handle_pending_rules(self, rtentry):
+        h.en(self) and h.log(self, "Handling pending rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
         for rule, rtmes in self.__pending_rules.items():
+            h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule.get_int_rule(), len(rtmes), rule.get_int_rule().get_info()))
             for rtme in rtmes:
+                assert rtme.get_owner() == self
+                h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))
                 if not rule.is_applicable(rtme, rtentry):
+                    h.en(self) and h.log(self, 'Inapplicable')
                     continue
                 res = rule.apply_on(rtme, rtentry)
                 if res == RtRule.res_failed:
+                    h.en(self) and h.log(self, 'Mismatch')
                     return False
                 rtme.confirm_rule(rule)
         return True
@@ -711,12 +737,6 @@ class RtMatchSequence(gvariant.Sequence):
         return self.__status != RtRule.res_none and self.__status != RtRule.res_continue
 
     def is_valid(self):
-        # if self.__pending and self.__status != RtRule.res_none and self.__status != RtRule.res_continue:
-        #     for k, v in self.__pending_rules.items():
-        #         print k, k.get_int_rule(),
-        #         for e in v:
-        #             print e.get_name(),
-        # print ""
         return self.__pending == 0
 
     def finalize(self, valid):
@@ -752,11 +772,16 @@ class SpecMatcher(object):
         self.__sequences = []
         self.__rtentry2sequence = {}
         self.__is_running = False
+        self.__graph_id = None
 
     def is_waiting(self):
         return not self.__is_running
 
-    def match(self, forms):
+    def match(self, forms, graph_id):
+        assert self.__graph_id is None or graph_id is None or self.__graph_id == graph_id
+        if graph_id is not None:
+            self.__graph_id = graph_id
+
         self.__is_running = True
         for form in forms:
             self.__handle_sequences(form)
@@ -765,7 +790,7 @@ class SpecMatcher(object):
 
     def __create_ini_rtentry(self):
         ini_spec = self.__compiled_spec.get_inis()[0]
-        self.__sequences = [RtMatchSequence(self, RtMatchEntry(None, speccmn.SpecStateIniForm(), ini_spec, None))]
+        self.__sequences = [RtMatchSequence(self, initial_entry=RtMatchEntry(None, speccmn.SpecStateIniForm(), ini_spec, None), graph_id=self.__graph_id)]
 
     def __handle_sequence_list(self, form):
         next_sequences = []
@@ -806,12 +831,17 @@ class SpecMatcher(object):
     def get_name(self):
         return self.__name
 
+    def get_compiled_spec(self):
+        return self.__compiled_spec
+
 
 class SequenceSpecMatcher(object):
-    def __init__(self):
+    def __init__(self, export_svg=False):
         self.__specs = []
         self.__spec_by_name = {}
         self.__create_specs()
+        if export_svg:
+            self.__export_svg()
 
     def __create_specs(self):
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
@@ -832,16 +862,23 @@ class SequenceSpecMatcher(object):
             spec_class_defs[1] = spec_matcher
             self.__specs.append(spec_matcher)
 
+    def __export_svg(self):
+        for sp in self.__specs:
+            g = graph.SpecGraph(img_type='svg')
+            spec_name = sp.get_name()
+            file_name = common.output.output.get_output_file('specs', '{0}.svg'.format(spec_name))
+            g.generate(sp.get_compiled_spec().get_states(), file_name)
+
     def reset(self):
         for sp in self.__specs:
             sp.reset()
 
-    def match_graph(self, graph):
+    def match_graph(self, graph, graph_id=None):
         self.__matched_specs = []
         forms = graph.get_forms()
         for sp in self.__specs:
-            sp.match(forms)
-            sp.match([speccmn.SpecStateFiniForm()])
+            sp.match(forms, graph_id)
+            sp.match([speccmn.SpecStateFiniForm()], graph_id)
         return self.__matched_specs
 
     def add_matched(self, sq):
@@ -858,6 +895,9 @@ class RtMatchEntry(object):
         self.__status = RtRule.res_none
         self.__next = None
         self.__prev = prev
+        if self.__owner is not None:
+            h.register_subobject(self.__owner, self, label=self.__spec.get_name(), is_uniq=True)
+            h.log(self, u'Create RtMatchEntry')
 
         if prev is not None:
             prev.__next = self
@@ -903,6 +943,7 @@ class RtMatchEntry(object):
         return trs
 
     def confirm_rule(self, rule):
+        h.log(self, "Confirming rule {0}, len(self.__pending)={1}, self.__pending_count={2}".format(rule, len(self.__pending), self.__pending_count))
         self.__pending.remove(rule)
         if not rule.ignore_pending_state():
             self.__pending_count -= 1
@@ -911,6 +952,7 @@ class RtMatchEntry(object):
             self.__owner.unregister_rule_handler(rule, self)
         self.__matched.append(rule)
 
+        h.log(self, "Localy confirmed, len(self.__pending)={0}, self.__pending_count={1}".format(len(self.__pending), self.__pending_count))
         if not self.__pending_count:
             if self.__pending:
                 for r in self.__pending:
@@ -957,20 +999,3 @@ class RtMatchEntry(object):
 
     def add_unwanted_link(self, l):
         self.__owner.add_unwanted_link(l)
-
-
-anss = specdefs.noun_noun.NounNounSequenceSpec()
-sc = SpecCompiler()
-res = sc.compile(anss)
-
-g = graph.SpecGraph(img_type='svg')
-file_name = 'imgs/sp-{0}.svg'.format(0)
-g.generate(res.get_states(), file_name)
-
-anss = specdefs.adj_noun.AdjNounSequenceSpec()
-sc = SpecCompiler()
-res = sc.compile(anss)
-
-g = graph.SpecGraph(img_type='svg')
-file_name = 'imgs/sp-{0}.svg'.format(1)
-g.generate(res.get_states(), file_name)

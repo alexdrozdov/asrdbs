@@ -168,6 +168,9 @@ class c__position_spec(object):
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
 
+    def get_info(self):
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
+
 
 class c__position_fini(object):
     def __init__(self, id_name):
@@ -185,7 +188,7 @@ class c__position_fini(object):
         return False
 
     def apply_on(self, rtme, other_rtme):
-        return rtme.get_form().get_position() == other_rtme.get_form().get_position()
+        return RtRule.res_matched if rtme.get_form().get_position() == other_rtme.get_form().get_position() else RtRule.res_failed
 
 
 class PositionSpecs(object):
@@ -229,6 +232,9 @@ class c__slave_master_spec(object):
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
 
+    def get_info(self):
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
+
 
 class c__slave_master_unwanted_spec(object):
     def __init__(self, id_name):
@@ -252,7 +258,7 @@ class c__slave_master_unwanted_spec(object):
             if m != master:
                 rtme.add_unwanted_link(l)
 
-        return True
+        return RtRule.res_matched
 
     def always_pending(self):
         return True
@@ -265,6 +271,9 @@ class c__slave_master_unwanted_spec(object):
 
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
+
+    def get_info(self):
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
 
 
 class LinkSpecs(object):
@@ -294,6 +303,9 @@ class SpecStateFiniForm(object):
         pass
 
     def get_word(self):
+        return u'fini'
+
+    def get_info(self):
         return u'fini'
 
     def get_pos(self):

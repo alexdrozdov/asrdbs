@@ -8,7 +8,7 @@ import parser.gvariant
 import parser.specs
 import sys
 import codecs
-
+import common.output
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -47,31 +47,31 @@ sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
 res = sp.parse(sentence)
 
 g = parser.graph.SentGraph(img_type='svg')
-g.generate(res, 'imgs/g.svg')
+g.generate(res, common.output.output.get_output_file('imgs', 'g.svg'))
 
 gv = parser.gvariant.GraphSnakes()
 snakes = gv.build(res)
 
 for i in range(len(snakes)):
     snake = snakes[i]
-    file_name = 'imgs/g-{0}.svg'.format(i+1)
+    file_name = common.output.output.get_output_file('imgs', 'g-{0}.svg'.format(i + 1))
     g.generate(res, file_name, snake)
 
 graphs = gv.export_graphs()
 
 # srm = parser.gvariant.SequenceRuleMatcher()
-srm = parser.specs.SequenceSpecMatcher()
+srm = parser.specs.SequenceSpecMatcher(True)
 i = 0
 for gr in graphs:
     print u"#" + str(i+1)
     gr.print_graph()
-    sqs = srm.match_graph(gr)
+    sqs = srm.match_graph(gr, graph_id='gr-{0}'.format(i + 1))
     for sq in sqs:
         sq.print_sequence()
     print ''
     gr.apply_sequences()
 
-    file_name = 'imgs/gr-{0}.svg'.format(i+1)
+    file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i + 1))
     g.generate(res, file_name, gr)
 
     i += 1

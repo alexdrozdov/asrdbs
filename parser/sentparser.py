@@ -232,6 +232,28 @@ class WordFormInfo(object):
                 res += "\r\n"
         return res
 
+    def get_info(self, crlf=False):
+        res = ""
+        if self.info.has_key('parts_of_speech'):
+            res += " pos: " + self.info['parts_of_speech']
+            if crlf:
+                res += ","
+        if self.info.has_key('case'):
+            res += " case: " + self.info['case']
+            if crlf:
+                res += ","
+        if self.info.has_key('gender'):
+            res += " gender: " + self.info['gender']
+            if crlf:
+                res += ","
+        if self.info.has_key('count'):
+            res += " count: " + self.info['count']
+            if crlf:
+                res += ","
+        if self.info.has_key('time'):
+            res += " time: " + self.info['time']
+        return res
+
     def is_subject(self):
         return self.info.has_key('parts_of_speech') and self.info.has_key('case') and self.info['parts_of_speech'] == 'noun' and self.info['case'] == 'nominative'
 
