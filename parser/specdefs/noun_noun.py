@@ -20,7 +20,7 @@ class NounNounSequenceSpec(SequenceSpec):
             {
                 "id": "$SPEC::noun",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
-                "incapsulate": ["adj-noun", ],
+                "incapsulate": ["adj+-noun", ],
                 "incapsulate-simlink": "$SPEC::adj-noun::noun",
                 "incapsulate-compile": True,
                 "master-slave": [LinkSpecs().IsSlave("seq-nouns"), ],  # GroupSpecs().LastEntry("seq-nouns")

@@ -195,12 +195,16 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
 
 
 class SpecCompiler(object):
-    def __init__(self):
+    def __init__(self, owner=None, depth=0):
+        self.__owner = owner
+        self.__depth = depth
         self.__states = []
         self.__name2state = {}
         self.__containers = []
         self.__containers_qq = []
         self.__inis = []
+        self.__finis = []
+        self.__incapsulate_in = []
 
     def __create_this_path(self, st):
         path = ''
@@ -270,6 +274,10 @@ class SpecCompiler(object):
             self.__containers.append(state)
         if state.is_init():
             self.__inis.append(state)
+        if state.is_fini():
+            self.__finis.append(state)
+        if state.has_incapsulated_spec():
+            self.__incapsulate_in.append(state)
 
     def __create_states(self, spec):
         spec_iter = spec.get_state_iter()
@@ -280,6 +288,14 @@ class SpecCompiler(object):
                 parent_st = spec.get_parent(st)
                 parent_state_name = self.gen_state_name(parent_st)
                 state.set_parent_state(self.__name2state[parent_state_name])
+
+            if state.has_incapsulated_spec():
+                in_spec_name = state.get_incapsulated_spec_name()
+                in_spec = self.__owner.get_spec(in_spec_name)
+                compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1)
+                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=state.get_name())
+                state.set_incapsulated_spec(compiled_in_spec)
+
             self.__add_state(state)
 
     def __create_downgrading_trs(self, spec):
@@ -381,6 +397,26 @@ class SpecCompiler(object):
         for state in self.__states:
             state.create_rules()
 
+    def __incapsulate_states(self):
+        for state in self.__incapsulate_in:
+            compiled_in_spec = state.get_incapsulated_spec()
+            ini = compiled_in_spec.get_inis()
+            assert len(ini) == 1
+            fini = compiled_in_spec.get_finis()
+            assert len(fini) == 1
+            for in_state in compiled_in_spec.get_states():
+                if in_state.is_init() or in_state.is_fini():
+                    continue
+                self.__states.append(in_state)
+                self.__name2state[in_state.get_name()] = in_state
+            for trs in ini[0].get_transitions():
+                for r_trs in state.get_rtransitions():
+                    r_trs.replace_trs(state, trs)
+            for r_trs in fini[0].get_rtransitions():
+                for trs in state.get_transitions():
+                    r_trs.replace_trs(fini[0], trs)
+            self.__states.remove(state)
+
     def compile(self, spec, parent_spec_name=''):
         self.__parent_spec_name = parent_spec_name
         self.__spec_name = spec.get_name()
@@ -396,8 +432,9 @@ class SpecCompiler(object):
         self.__remove_containers()
         self.__merge_transitions()
         self.__create_state_rules()
+        self.__incapsulate_states()
 
-        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis)
+        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis)
         return cs
 
 
@@ -421,7 +458,9 @@ class SpecStateDef(object):
         self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.init
         self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.fini
         self.__uid = ue.get_uniq()
-
+        self.__incapsulate_spec_name = spec_dict['incapsulate'] if spec_dict.has_key('incapsulate') else None
+        assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
+        self.__incapsulate_spec = None
         self.__stateless_rules = []
         self.__rt_rules = []
 
@@ -505,6 +544,19 @@ class SpecStateDef(object):
         if t_from not in self.__rtransitions:
             self.__rtransitions.append(t_from)
 
+    def replace_trs(self, to_replace, to_replace_with):
+        if to_replace in self.__transitions:
+            self.__transitions.remove(to_replace)
+        if to_replace_with not in self.__transitions:
+            self.__transitions.append(to_replace_with)
+        if to_replace in self.__neighbour_transitions:
+            self.__neighbour_transitions.remove(to_replace)
+            self.__neighbour_transitions.append(to_replace_with)
+        if to_replace in self.__child_transitions:
+            self.__child_transitions.remove(to_replace)
+            self.__child_transitions.append(to_replace_with)
+        to_replace_with.__add_trs_from(self)
+
     def unlink_all(self):
         for to in self.__neighbour_transitions:
             to.unlink_from(self)
@@ -560,6 +612,9 @@ class SpecStateDef(object):
     def get_transitions(self):
         return self.__transitions
 
+    def get_rtransitions(self):
+        return self.__rtransitions
+
     def is_static_applicable(self, form):
         for r in self.__stateless_rules:
             if not r.matched(form):
@@ -569,14 +624,29 @@ class SpecStateDef(object):
     def get_rt_rules(self):
         return [rt.new_copy() for rt in self.__rt_rules]
 
+    def has_incapsulated_spec(self):
+        return self.__incapsulate_spec_name is not None
+
+    def get_incapsulated_spec_name(self):
+        assert self.__incapsulate_spec_name is not None
+        return self.__incapsulate_spec_name[0]
+
+    def set_incapsulated_spec(self, spec):
+        assert self.__incapsulate_spec is None
+        self.__incapsulate_spec = spec
+
+    def get_incapsulated_spec(self):
+        return self.__incapsulate_spec
+
 
 class CompiledSpec(object):
-    def __init__(self, src_spec, name, states, inis):
+    def __init__(self, src_spec, name, states, inis, finis):
         self.__src_spec = src_spec
         assert states, 'Spec without states'
         assert inis, 'Spec without init states'
         self.__states = states
         self.__inis = inis
+        self.__finis = finis
         self.__name = name
 
     def get_name(self):
@@ -587,6 +657,9 @@ class CompiledSpec(object):
 
     def get_inis(self):
         return self.__inis
+
+    def get_finis(self):
+        return self.__finis
 
 
 class RtMatchSequence(gvariant.Sequence):
@@ -854,9 +927,12 @@ class SequenceSpecMatcher(object):
         assert base_spec_class.get_name() not in self.__spec_by_name
         self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None]
 
+    def get_spec(self, base_spec_name):
+        return self.__spec_by_name[base_spec_name][0]
+
     def build_specs(self):
         for spec_name, spec_class_defs in self.__spec_by_name.items():
-            sc = SpecCompiler()
+            sc = SpecCompiler(self)
             spec = sc.compile(spec_class_defs[0])
             spec_matcher = SpecMatcher(self, spec, self.add_matched)
             spec_class_defs[1] = spec_matcher

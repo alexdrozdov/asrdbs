@@ -4,6 +4,7 @@
 
 import os
 import json
+import traceback
 
 
 class SentGraph(object):
@@ -63,14 +64,17 @@ class SentGraphGen(object):
 
     def __gen_links(self, form, subgraph=None):
         s = u''
-        for sl in form.get_slaves():
-            if subgraph is None:
-                style = "filled"
-            elif subgraph.has_link(sl[1]):
-                style = "filled"
-            else:
-                style = "invis"
-            s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(self.__get_obj_id(form), self.__get_obj_id(sl[1]), self.__get_obj_id(sl[0]), style)
+        try:
+            for sl in form.get_slaves():
+                if subgraph is None:
+                    style = "filled"
+                elif subgraph.has_link(sl[1]):
+                    style = "filled"
+                else:
+                    style = "invis"
+                s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(self.__get_obj_id(form), self.__get_obj_id(sl[1]), self.__get_obj_id(sl[0]), style)
+        except:
+            print traceback.format_exc()
         return s
 
     def __gen_subgraph(self, e, subgraph=None):
@@ -172,8 +176,12 @@ class SpecGraphGen(object):
     def __gen_links(self, st):
         s = u''
         for trs in st.get_transitions():
-            style = "filled"
-            s += u'\t{0}->{1} [style="{2}"];\r\n'.format(self.__get_obj_id(st), self.__get_obj_id(trs), style)
+            try:
+                style = "filled"
+                s += u'\t{0}->{1} [style="{2}"];\r\n'.format(self.__get_obj_id(st), self.__get_obj_id(trs), style)
+            except:
+                print 'state name: {0}, trs name: {1}'.format(st.get_name(), trs.get_name())
+                print traceback.format_exc()
         return s
 
     def __gen_state(self, st):
