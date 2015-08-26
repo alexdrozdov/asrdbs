@@ -21,9 +21,8 @@ class NounNounSequenceSpec(SequenceSpec):
                 "id": "$SPEC::noun",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj+-noun", ],
-                "incapsulate-simlink": "$SPEC::adj-noun::noun",
-                "incapsulate-compile": True,
-                "master-slave": [LinkSpecs().IsSlave("seq-nouns"), ],  # GroupSpecs().LastEntry("seq-nouns")
+                "incapsulate-binding": "$THIS::adj+-noun::noun",
+                "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX(0)-1]"), ],  # GroupSpecs().LastEntry("seq-nouns")
                 "group": ["seq-nouns", ]
             },
             {

@@ -205,17 +205,22 @@ class SpecCompiler(object):
         self.__inis = []
         self.__finis = []
         self.__incapsulate_in = []
+        self.__rule_bindins = {}
 
     def __create_this_path(self, st):
-        path = ''
-        item = self.__spec.get_parent(st)
-        while item is not None:
-            path = '::' + item["id"] + path
-            item = self.__spec.get_parent(item)
-        path = '::' + self.__spec_name + path
-        if self.__parent_spec_name:
-            path = self.__parent_spec_name + path
-        return path
+        st_id = st["id"]
+        if '$THIS' in st_id:
+            this_path = self.__create_this_path(st)
+            st_id = st_id.replace('$THIS', this_path)
+        elif '$PARENT' in st_id:
+            parent_path = self.__create_parent_path(st)
+            st_id = st_id.replace('$PARENT', parent_path)
+        elif '$SPEC' in st_id:
+            spec_path = self.__create_spec_path()
+            st_id = st_id.replace('$SPEC', spec_path)
+        else:
+            print "Compile warning: $-definition is missing for", self.__spec_name, st['id']
+        return st_id
 
     def __create_parent_path(self, st):
         path = ''
@@ -224,6 +229,10 @@ class SpecCompiler(object):
             if '$PARENT' in item['id']:
                 ppath = self.__create_parent_path(item)
                 path = item['id'].replace('$PARENT', ppath)
+                return path
+            if '$SPEC' in item['id']:
+                spath = self.__create_spec_path(item)
+                path = item['id'].replace('$SPEC', spath)
                 return path
             path = item['id']
         path = '::' + self.__spec_name + path
@@ -249,7 +258,7 @@ class SpecCompiler(object):
             spec_path = self.__create_spec_path()
             st_id = st_id.replace('$SPEC', spec_path)
         else:
-            print "Compile warning: $THIS is missing for", self.__spec_name, st['id']
+            print "Compile warning: $-definition is missing for", self.__spec_name, st['id']
         return st_id
 
     def resolve_name(self, ref_state, name):
@@ -264,7 +273,7 @@ class SpecCompiler(object):
             spec_path = self.__create_spec_path()
             st_id = st_id.replace('$SPEC', spec_path)
         else:
-            print "Compile warning: $THIS is missing for", self.__spec_name, name
+            print "Compile warning: $-definition is missing for", self.__spec_name, name
         return st_id
 
     def __add_state(self, state):
@@ -397,6 +406,15 @@ class SpecCompiler(object):
         for state in self.__states:
             state.create_rules()
 
+    def __resolve_rule_bindings(self, state):
+        new_binding = self.resolve_name(state.get_spec(), state.get_incapsulate_binding())
+        original_binding = state.get_name()
+        if not self.__rule_bindins.has_key(original_binding):
+            return
+        rule_list = self.__rule_bindins[original_binding]
+        for rule in rule_list:
+            rule.rewrite_binding(original_binding, new_binding)
+
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
             compiled_in_spec = state.get_incapsulated_spec()
@@ -415,7 +433,18 @@ class SpecCompiler(object):
             for r_trs in fini[0].get_rtransitions():
                 for trs in state.get_transitions():
                     r_trs.replace_trs(fini[0], trs)
+            if state.has_incapsulate_binding():
+                self.__resolve_rule_bindings(state)
             self.__states.remove(state)
+
+    def register_rule_binding(self, int_rule):
+        binding = int_rule.get_binding()
+        if binding in self.__rule_bindins:
+            binding_list = self.__rule_bindins[binding]
+            assert int_rule not in binding_list
+            binding_list.append(int_rule)
+        else:
+            self.__rule_bindins[binding] = [int_rule, ]
 
     def compile(self, spec, parent_spec_name=''):
         self.__parent_spec_name = parent_spec_name
@@ -461,6 +490,7 @@ class SpecStateDef(object):
         self.__incapsulate_spec_name = spec_dict['incapsulate'] if spec_dict.has_key('incapsulate') else None
         assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
         self.__incapsulate_spec = None
+        self.__incapsulate_binding = spec_dict['incapsulate-binding'] if spec_dict.has_key('incapsulate-binding') else None
         self.__stateless_rules = []
         self.__rt_rules = []
 
@@ -637,6 +667,12 @@ class SpecStateDef(object):
 
     def get_incapsulated_spec(self):
         return self.__incapsulate_spec
+
+    def has_incapsulate_binding(self):
+        return self.__incapsulate_binding is not None
+
+    def get_incapsulate_binding(self):
+        return self.__incapsulate_binding
 
 
 class CompiledSpec(object):
@@ -917,21 +953,24 @@ class SequenceSpecMatcher(object):
             self.__export_svg()
 
     def __create_specs(self):
-        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec())
+        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
         # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
         # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
-        self.add_spec(specdefs.noun_noun.NounNounSequenceSpec())
+        self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
         self.build_specs()
 
-    def add_spec(self, base_spec_class):
+    def add_spec(self, base_spec_class, independent_compile=False):
         assert base_spec_class.get_name() not in self.__spec_by_name
-        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None]
+        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None, independent_compile]
 
     def get_spec(self, base_spec_name):
         return self.__spec_by_name[base_spec_name][0]
 
     def build_specs(self):
         for spec_name, spec_class_defs in self.__spec_by_name.items():
+            independent_compile = spec_class_defs[2]
+            if not independent_compile:
+                continue
             sc = SpecCompiler(self)
             spec = sc.compile(spec_class_defs[0])
             spec_matcher = SpecMatcher(self, spec, self.add_matched)

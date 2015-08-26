@@ -168,6 +168,9 @@ class c__position_spec(object):
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
 
+    def get_binding(self):
+        return self.__id_name
+
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
 
@@ -186,6 +189,9 @@ class c__position_fini(object):
         if other_rtme.get_name() == self.__id_name:
             return True
         return False
+
+    def get_binding(self):
+        return self.__id_name
 
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if rtme.get_form().get_position() == other_rtme.get_form().get_position() else RtRule.res_failed
@@ -232,6 +238,9 @@ class c__slave_master_spec(object):
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
 
+    def get_binding(self):
+        return self.__id_name
+
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
 
@@ -271,6 +280,9 @@ class c__slave_master_unwanted_spec(object):
 
     def resolve_name(self, compiler, state):
         self.__id_name = compiler.resolve_name(state, self.__id_name)
+
+    def get_binding(self):
+        return self.__id_name
 
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
@@ -323,8 +335,11 @@ class RtRule(object):
         self.__rule = rule
         self.__is_static = is_static
 
-        if compiler is not None and state is not None and rule.needs_name_resolve():
-            self.__rule.resolve_name(compiler, state)
+        if compiler is not None and state is not None:
+            if rule.needs_name_resolve():
+                self.__rule.resolve_name(compiler, state)
+            if not is_static:
+                compiler.register_rule_binding(self.__rule)
 
     def matched(self, form):
         assert self.__is_static, "Tried to match non static rule"
