@@ -124,9 +124,6 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
             sub_specs = self.__unroll_entry(st)
             new_spec.extend(sub_specs)
         self.__basic_spec = new_spec
-        # print "__NEW_SPEC__"
-        # print new_spec
-        # print "//NEW_SPEC"
 
     def __index_layer(self, subspec, layer=0):
         if len(self.__layers) <= layer:
@@ -263,6 +260,9 @@ class SpecCompiler(object):
 
     def resolve_name(self, ref_state, name):
         st_id = name
+        if '$INCAPSULATED' in st_id:
+            assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
+            st_id = st_id.replace('$INCAPSULATED', ref_state['incapsulate'][0])
         if '$THIS' in st_id:
             this_path = self.__create_this_path(ref_state)
             st_id = st_id.replace('$THIS', this_path)
@@ -924,10 +924,6 @@ class SpecMatcher(object):
         if not self.__sequences and not ini_rtentry_created:
             self.__create_ini_rtentry()
             self.__handle_sequence_list(form)
-
-        # print ">>>"
-        # self.__print_sequences()
-        # print "<<<"
 
     def __print_sequences(self):
         for sq in self.__sequences:
