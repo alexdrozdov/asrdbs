@@ -2,6 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
+import re
+
 import copy
 import speccmn
 import specdefs.adj_noun
@@ -111,9 +113,9 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
                 res.append(self.__create_entry_copy(entry, i, repeatable=False, required=False, set_order=set_order))
         else:
             if min_count == 0 and max_count is None:
-                order = '$INDEX({0})'.format(0)
+                order = '$INDEX($LEVEL,$SELF)'
             else:
-                order = '$INDEX({0})'.format(i + 1)
+                order = '$INDEX($LEVEL,$SELF)'
             res.append(self.__create_entry_copy(entry, order, repeatable=True, required=False, set_order=set_order))
 
         return res
@@ -206,6 +208,8 @@ class SpecCompiler(object):
 
     def __create_this_path(self, st):
         st_id = st["id"]
+        if '$LEVEL' in st_id:
+            st_id = st_id.replace('$LEVEL', str(st['full-level']))
         if '$THIS' in st_id:
             this_path = self.__create_this_path(st)
             st_id = st_id.replace('$THIS', this_path)
@@ -223,15 +227,18 @@ class SpecCompiler(object):
         path = ''
         item = self.__spec.get_parent(st)
         if item is not None:
-            if '$PARENT' in item['id']:
+            st_id = item['id']
+            if '$LEVEL' in st_id:
+                st_id = st_id.replace('$LEVEL', str(st['full-level']))
+            if '$PARENT' in st_id:
                 ppath = self.__create_parent_path(item)
-                path = item['id'].replace('$PARENT', ppath)
+                path = st_id.replace('$PARENT', ppath)
                 return path
-            if '$SPEC' in item['id']:
+            if '$SPEC' in st_id:
                 spath = self.__create_spec_path(item)
-                path = item['id'].replace('$SPEC', spath)
+                path = st_id.replace('$SPEC', spath)
                 return path
-            path = item['id']
+            path = st_id
         path = '::' + self.__spec_name + path
         if self.__parent_spec_name:
             path = self.__parent_spec_name + path
@@ -245,6 +252,8 @@ class SpecCompiler(object):
 
     def gen_state_name(self, st):
         st_id = st["id"]
+        if '$LEVEL' in st_id:
+            st_id = st_id.replace('$LEVEL', str(st['full-level']))
         if '$THIS' in st_id:
             this_path = self.__create_this_path(st)
             st_id = st_id.replace('$THIS', this_path)
@@ -291,8 +300,10 @@ class SpecCompiler(object):
     def __create_states(self, spec):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
+            st['full-level'] = self.__parent_level + st['level']
             state_name = self.gen_state_name(st)
             state = SpecStateDef(self, state_name, st)
+            state.set_full_level(state.get_level() + self.__parent_level)
             if state.get_level() > 0:
                 parent_st = spec.get_parent(st)
                 parent_state_name = self.gen_state_name(parent_st)
@@ -302,7 +313,7 @@ class SpecCompiler(object):
                 in_spec_name = state.get_incapsulated_spec_name()
                 in_spec = self.__owner.get_spec(in_spec_name)
                 compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1)
-                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=state.get_name())
+                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=state.get_name(), parent_level=state.get_full_level() + 1)
                 state.set_incapsulated_spec(compiled_in_spec)
 
             self.__add_state(state)
@@ -446,8 +457,9 @@ class SpecCompiler(object):
         else:
             self.__rule_bindins[binding] = [int_rule, ]
 
-    def compile(self, spec, parent_spec_name=''):
+    def compile(self, spec, parent_spec_name='', parent_level=0):
         self.__parent_spec_name = parent_spec_name
+        self.__parent_level = parent_level
         self.__spec_name = spec.get_name()
 
         spec = IterableSequenceSpec(spec)
@@ -529,6 +541,12 @@ class SpecStateDef(object):
 
     def get_level(self):
         return self.__spec_dict["level"]
+
+    def get_full_level(self):
+        return self.__spec_dict["full-level"]
+
+    def set_full_level(self, full_level):
+        self.__spec_dict["full-level"] = full_level
 
     def set_parent_state(self, parent):
         self.__parent = parent
@@ -868,6 +886,9 @@ class RtMatchSequence(gvariant.Sequence):
         if link not in self.__unwanted_links:
             self.__unwanted_links.append(link)
 
+    def set_current_level(self, level):
+        pass
+
 
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec, matched_cb=None):
@@ -1007,7 +1028,10 @@ class RtMatchEntry(object):
         self.__next = None
         self.__prev = prev
         if self.__owner is not None:
-            h.register_subobject(self.__owner, self, label=self.__spec.get_name(), is_uniq=True)
+            self.__owner.set_current_level(self.__spec.get_level())
+            self.__name = self.__resolve_entry_name()
+
+            h.register_subobject(self.__owner, self, label=self.get_name(), is_uniq=True)
             h.log(self, u'Create RtMatchEntry')
 
         if prev is not None:
@@ -1021,8 +1045,29 @@ class RtMatchEntry(object):
         else:
             self.__pending = []
 
+    def __resolve_index(self, index):
+        return '0'
+
+    def __resolve_entry_name(self):
+        name = self.__spec.get_name()
+        if '$INDEX' not in name:
+            self.__name = name
+            return
+        c = re.compile('\$INDEX\(.*?\)')
+        new_name = ''
+        prev_end = 0
+        for m in c.finditer(name):
+            if prev_end < m.start():
+                new_name += name[prev_end:m.start()]
+            new_name += self.__resolve_index(name[m.start():m.end()])
+            prev_end = m.end()
+        if prev_end < len(name):
+            new_name += name[m.end():]
+        self.__name = new_name
+        print "resolved", name, new_name
+
     def get_name(self):
-        return self.__spec.get_name()
+        return self.__name
 
     def get_owner(self):
         return self.__owner

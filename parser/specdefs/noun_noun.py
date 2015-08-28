@@ -22,7 +22,7 @@ class NounNounSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj+-noun", ],
                 "incapsulate-binding": "$THIS::$INCAPSULATED::noun",
-                "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX(0)-1]"), ],
+                "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX($LEVEL,$POS-1)]"), ],
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
