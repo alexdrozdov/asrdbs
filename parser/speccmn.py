@@ -309,6 +309,9 @@ class SpecStateIniForm(object):
     def get_pos(self):
         return u'ini'
 
+    def get_uniq(self):
+        return -1
+
 
 class SpecStateFiniForm(object):
     def __init__(self):
@@ -322,6 +325,9 @@ class SpecStateFiniForm(object):
 
     def get_pos(self):
         return u'fini'
+
+    def get_uniq(self):
+        return -1
 
 
 class RtRule(object):

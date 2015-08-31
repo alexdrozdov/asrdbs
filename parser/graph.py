@@ -88,7 +88,14 @@ class SentGraphGen(object):
                 style = "filled"
             else:
                 style = "invisible"
-            s += u'\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(f), f.format_info(crlf=True), style)
+            info = f.format_info(crlf=True)
+            try:
+                if subgraph is not None and subgraph.has_form(f):
+                    subgraph_form = subgraph.get_form_by_uniq(f.get_uniq())
+                    info = subgraph_form.format_info(crlf=True) if subgraph_form is not None else info
+            except:
+                print traceback.format_exc()
+            s += u'\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(f), info, style)
         s += u'}\r\n'
         return s
 

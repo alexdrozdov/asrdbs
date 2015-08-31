@@ -113,9 +113,9 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
                 res.append(self.__create_entry_copy(entry, i, repeatable=False, required=False, set_order=set_order))
         else:
             if min_count == 0 and max_count is None:
-                order = '$INDEX($LEVEL,$SELF)'
+                order = '$INDEX($LEVEL)'
             else:
-                order = '$INDEX($LEVEL,$SELF)'
+                order = '$INDEX($LEVEL)'
             res.append(self.__create_entry_copy(entry, order, repeatable=True, required=False, set_order=set_order))
 
         return res
@@ -889,6 +889,9 @@ class RtMatchSequence(gvariant.Sequence):
     def set_current_level(self, level):
         pass
 
+    def get_entries(self):
+        return self.__entries
+
 
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec, matched_cb=None):
@@ -973,7 +976,7 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
         # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
         # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
-        self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
+        # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
         self.build_specs()
 
     def add_spec(self, base_spec_class, independent_compile=False):
@@ -1029,10 +1032,12 @@ class RtMatchEntry(object):
         self.__prev = prev
         if self.__owner is not None:
             self.__owner.set_current_level(self.__spec.get_level())
-            self.__name = self.__resolve_entry_name()
+            self.__resolve_entry_name()
 
             h.register_subobject(self.__owner, self, label=self.get_name(), is_uniq=True)
             h.log(self, u'Create RtMatchEntry')
+        else:
+            self.__resolve_entry_name()
 
         if prev is not None:
             prev.__next = self
@@ -1050,21 +1055,23 @@ class RtMatchEntry(object):
 
     def __resolve_entry_name(self):
         name = self.__spec.get_name()
-        if '$INDEX' not in name:
-            self.__name = name
-            return
-        c = re.compile('\$INDEX\(.*?\)')
-        new_name = ''
-        prev_end = 0
-        for m in c.finditer(name):
-            if prev_end < m.start():
-                new_name += name[prev_end:m.start()]
-            new_name += self.__resolve_index(name[m.start():m.end()])
-            prev_end = m.end()
-        if prev_end < len(name):
-            new_name += name[m.end():]
-        self.__name = new_name
-        print "resolved", name, new_name
+        # if '$INDEX' not in name:
+        #     self.__name = name
+        #     return
+        # assert self.__owner is not None
+        # c = re.compile('\$INDEX\(.*?\)')
+        # new_name = ''
+        # prev_end = 0
+        # for m in c.finditer(name):
+        #     if prev_end < m.start():
+        #         new_name += name[prev_end:m.start()]
+        #     new_name += self.__resolve_index(name[m.start():m.end()])
+        #     prev_end = m.end()
+        # if prev_end < len(name):
+        #     new_name += name[m.end():]
+        # self.__name = new_name
+        self.__name = name
+        # print "resolved", name, new_name
 
     def get_name(self):
         return self.__name

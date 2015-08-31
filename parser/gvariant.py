@@ -418,7 +418,6 @@ class FormGraph(object):
             if not applicable:
                 continue
             sqs.append(s)
-        self.__sequences = sqs
 
     def __remove_unwanted_links(self):
         ulinks = []
@@ -428,9 +427,20 @@ class FormGraph(object):
         for link in ulinks:
             self.__delete_link(link)
 
+    def __apply_matched_entry_names(self):
+        for s in self.__sequences:
+            for e in s.get_entries():
+                f = e.get_form()
+                if f.get_uniq() < 0:
+                    continue
+                assert self.__uniq2form.has_key(f.get_uniq())
+                form = self.__uniq2form[f.get_uniq()]
+                form.add_matched_info(e.get_name())
+
     def apply_sequences(self):
         self.__remove_exclusive_unlinks()
         self.__remove_unwanted_links()
+        self.__apply_matched_entry_names()
 
     def has_link(self, link):
         if link.get_uniq() & self.__links_csum:
@@ -441,6 +451,9 @@ class FormGraph(object):
         if form.get_uniq() & self.__forms_csum:
             return True
         return False
+
+    def get_form_by_uniq(self, uniq):
+        return self.__uniq2form[uniq]
 
 
 class GraphSnake(object):
@@ -612,6 +625,9 @@ class GraphSnake(object):
         if form.get_uniq() & self.__checksum:
             return True
         return False
+
+    def get_form_by_uniq(self, uniq):
+        return None
 
     def snake_to_graph(self):
         fg = FormGraph()

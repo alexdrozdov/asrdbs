@@ -230,7 +230,21 @@ class WordFormInfo(object):
             res += " time: " + self.info['time']
             if crlf:
                 res += "\r\n"
+        if self.info.has_key('matched-info'):
+            for mi in self.info['matched-info']:
+                res += " matched-info: " + mi
+                if crlf:
+                    res += "\r\n"
         return res
+
+    def add_matched_info(self, matched_info):
+        mi = self.info['matched-info'] if self.info.has_key('matched-info') else []
+        if matched_info not in mi:
+            mi.append(matched_info)
+        self.info['matched-info'] = mi
+
+    def get_matched_info(self):
+        return self.info['matched-info']
 
     def get_info(self, crlf=False):
         res = ""
@@ -314,6 +328,7 @@ class WordForm(WordFormInfo, SentenceEntry):
         self.__pos = pos
         self.__group = None
         self.__uniq = uniq
+        self.__match_info = None
 
     def link(self, slave, rule):
         l = Link(rule, self, slave)

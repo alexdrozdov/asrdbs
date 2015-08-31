@@ -69,6 +69,7 @@ for gr in graphs:
     for sq in sqs:
         sq.print_sequence()
     print ''
+    gr.set_sequences(sqs)
     gr.apply_sequences()
 
     file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i + 1))
