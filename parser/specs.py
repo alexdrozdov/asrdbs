@@ -4,6 +4,10 @@
 
 import copy
 import speccmn
+import specdefs.basic_adj
+import specdefs.basic_adv
+import specdefs.basic_noun
+import specdefs.comma_and_or
 import specdefs.adj_noun
 import specdefs.adv_adj
 import specdefs.subj_predicate
@@ -53,12 +57,20 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         self.__index_hierarchy()
 
     def __index_subentries(self, item, level):
-        for st in item["entries"]:
-            self.__set_state_uid(st)
-            self.__set_state_level(st, level)
-            self.__all_entries.append(st)
-            if st.has_key("entries"):
-                self.__index_subentries(st, level + 1)
+        if item.has_key("entries"):
+            for st in item["entries"]:
+                self.__set_state_uid(st)
+                self.__set_state_level(st, level)
+                self.__all_entries.append(st)
+                if st.has_key("entries") or st.has_key("uniq_items"):
+                    self.__index_subentries(st, level + 1)
+        if item.has_key("uniq_items"):
+            for st in item["uniq_items"]:
+                self.__set_state_uid(st)
+                self.__set_state_level(st, level)
+                self.__all_entries.append(st)
+                if st.has_key("entries") or st.has_key("uniq_items"):
+                    self.__index_subentries(st, level + 1)
 
     def __index_all_entries(self):
         self.__all_entries = []
@@ -67,7 +79,7 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
             self.__set_state_uid(st)
             self.__set_state_level(st, level)
             self.__all_entries.append(st)
-            if st.has_key("entries"):
+            if st.has_key("entries") or st.has_key("uniq_items"):
                 self.__index_subentries(st, level + 1)
 
     def __create_entry_copy(self, entry, order, set_order=False, repeatable=False, required=False):
@@ -82,6 +94,12 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
                 sub_specs = self.__unroll_entry(st)
                 entries.extend(sub_specs)
             entry["entries"] = entries
+        if entry.has_key("uniq_items"):
+            entries = []
+            for st in entry["uniq_items"]:
+                sub_specs = self.__unroll_entry(st)
+                entries.extend(sub_specs)
+            entry["uniq_items"] = entries
         return entry
 
     def __unroll_entry(self, entry):
@@ -133,6 +151,8 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
             l_list.append(st)
             if st.has_key("entries"):
                 self.__index_layer(st["entries"], layer=layer+1)
+            if st.has_key("uniq_items"):
+                self.__index_layer(st["uniq_items"], layer=layer+1)
 
     def __index_layers(self):
         self.__layers = []
@@ -153,6 +173,11 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         l = []
         if item.has_key("entries"):
             for st in item["entries"]:
+                l.append(st)
+                self.__add_child_to_parent(st, item)
+                self.__index_item_entries(st)
+        if item.has_key("uniq_items"):
+            for st in item["uniq_items"]:
                 l.append(st)
                 self.__add_child_to_parent(st, item)
                 self.__index_item_entries(st)
@@ -279,7 +304,7 @@ class SpecCompiler(object):
     def __add_state(self, state):
         self.__states.append(state)
         self.__name2state[state.get_name()] = state
-        if state.is_container():
+        if state.is_container() or state.is_uniq_container():
             self.__containers.append(state)
         if state.is_init():
             self.__inis.append(state)
@@ -320,10 +345,10 @@ class SpecCompiler(object):
                 child_iter = spec.get_child_iter(st)
                 for c_st in child_iter.get_all_entries():
                     c_state = self.__name2state[self.gen_state_name(c_st)]
-                    if c_state.is_container():
+                    if c_state.is_container() or c_state.is_uniq_container():
                         state.add_trs_to_child_child(c_state)
                     state.add_trs_to_child(c_state)
-                    if c_state.is_required():
+                    if c_state.is_required() and state.is_container():
                         break
 
     def __create_single_level_trs(self, spec, base=None):
@@ -338,13 +363,13 @@ class SpecCompiler(object):
                     break
                 state_next = self.__name2state[self.gen_state_name(st_next)]
                 state.add_trs_to_neighbour(state_next)
-                if state_next.is_container():
+                if state_next.is_container() or state_next.is_uniq_container():
                     state.add_trs_to_neighbours_childs(state_next)
                 if state_next.is_required():
                     break  # No need to add anything further - we cant skip this state
             if state.is_repeated():
                 state.add_trs_to_self()
-            if state.is_container():
+            if state.is_container() or state.is_uniq_container():
                 self.__add_container_to_process(state)
 
     def __create_upper_level_trs(self, spec):
@@ -355,7 +380,7 @@ class SpecCompiler(object):
             self.__containers_qq.append(state)
 
     def __create_lower_level_trs(self, spec):
-        self.__containers_qq = [c for c in self.__containers]
+        self.__containers_qq = [c for c in self.__containers if c.is_container()]
         while len(self.__containers_qq):
             container = self.__containers_qq[0]
             self.__containers_qq = self.__containers_qq[1:]
@@ -371,12 +396,18 @@ class SpecCompiler(object):
             spec_iter = spec.get_hierarchical_iter(st)
 
             sts = [i for i in spec_iter.get_all_entries()]
-            sts.reverse()
-            for s in sts:
-                state = self.__name2state[self.gen_state_name(s)]
-                state.set_local_final()
-                if state.is_required():
-                    break
+
+            if container.is_container():
+                sts.reverse()
+                for s in sts:
+                    state = self.__name2state[self.gen_state_name(s)]
+                    state.set_local_final()
+                    if state.is_required():
+                        break
+            else:
+                for s in sts:
+                    state = self.__name2state[self.gen_state_name(s)]
+                    state.set_local_final()
 
     def __create_upgrading_trs(self, spec):
         spec_iter = spec.get_state_iter()
@@ -392,7 +423,7 @@ class SpecCompiler(object):
     def __remove_containers(self):
         states = []
         for state in self.__states:
-            if state.is_container():
+            if state.is_container() or state.is_uniq_container():
                 state.unlink_all()
                 continue
             states.append(state)
@@ -478,6 +509,7 @@ class SpecStateDef(object):
         self.__spec_dict = spec_dict
         self.__parent = parent
         self.__is_container = spec_dict.has_key("entries")
+        self.__is_uniq_container = spec_dict.has_key("uniq_items")
         self.__is_contained = False
         if self.__parent:
             self.__is_contained = True
@@ -511,6 +543,9 @@ class SpecStateDef(object):
 
     def is_container(self):
         return self.__is_container
+
+    def is_uniq_container(self):
+        return self.__is_uniq_container
 
     def is_contained(self):
         return self.__is_contained
@@ -949,10 +984,14 @@ class SequenceSpecMatcher(object):
             self.__export_svg()
 
     def __create_specs(self):
+        self.add_spec(specdefs.basic_adj.BasicAdjSpec(), independent_compile=True)
+        self.add_spec(specdefs.basic_adv.BasicAdvSpec(), independent_compile=True)
+        self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=True)
+        self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=True)
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
-        # self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec())
+        self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=True)
         # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
-        self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
+        # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
         self.build_specs()
 
     def add_spec(self, base_spec_class, independent_compile=False):

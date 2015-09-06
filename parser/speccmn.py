@@ -36,6 +36,9 @@ class RepeatableSpecs(object):
     def EqualOrMoreThan(self, count):
         return (count, None)
 
+    def LessOrEqualThan(self, count):
+        return (0, count)
+
     def EqualTo(self, count):
         return (count, count)
 
@@ -120,6 +123,22 @@ class PosSpecs(object):
 
     def IsExcept(self, pos_names):
         return c__pos_check_inv(pos_names)
+
+
+class c__word_check(object):
+    def __init__(self, words):
+        self.__words = words
+
+    def match(self, form):
+        return form.get_word() in self.__words
+
+    def needs_name_resolve(self):
+        return False
+
+
+class WordSpecs(object):
+    def IsWord(self, words):
+        return c__word_check(words)
 
 
 class c__case_check(object):

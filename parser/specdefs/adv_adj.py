@@ -7,7 +7,7 @@ from parser.speccmn import *
 
 class AdvAdjSequenceSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'adj-adv')
+        SequenceSpec.__init__(self, 'adv-adj')
         self.__compared_with = {}
 
         self.spec = [
@@ -18,29 +18,44 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 "add-to-seq": False
             },
             {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "adv",
-                "pos_type": [PosSpecs().IsAdverb(), ],
-                "position": [PositionSpecs().IsBefore("adj"), ],
-                "master-slave": [LinkSpecs().IsSlave("adj"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("adj"), ],
-                "add-to-seq": True
+                "id": "$PARENT::adv",
+                "repeatable": RepeatableSpecs().Any(),
+                "entries":
+                [
+                    {
+                        "id": "$PARENT::adv",
+                        "repeatable": RepeatableSpecs().Any(),
+                        "entries":
+                        [
+                            {
+                                "id": "$PARENT::adv",
+                                "repeatable": RepeatableSpecs().Once(),
+                                "incapsulate": ["basic-adv", ],
+                                "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
+                                # "master-slave": [LinkSpecs().IsSlave("$SPEC::adj"), ],
+                            },
+                            {
+                                "id": "$PARENT::comma-and-or",
+                                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
+                                "incapsulate": ["comma-and-or", ],
+                                "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
+                            }
+                        ]
+                    },
+                    {
+                        "id": "$PARENT::adv",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "incapsulate": ["basic-adv", ],
+                        "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
+                        # "master-slave": [LinkSpecs().IsSlave("$SPEC::adj"), ],
+                    },
+                ]
             },
             {
-                "required": RequiredSpecs().IsOptional(),
-                "id": "adv+",
-                "pos_type": [PosSpecs().IsAdverb(), ],
-                "position": [PositionSpecs().IsBefore("adj"), ],
-                "master-slave": [LinkSpecs().IsSlave("adj"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("adj"), ],
-                "repeatable": True,
-                "add-to-seq": True
-            },
-            {
-                "id": "adj",
-                "required": RequiredSpecs().IsNecessary(),
-                "pos_type": [PosSpecs().IsAdjective(), ],
-                "add-to-seq": True
+                "id": "$PARENT::adj",
+                "repeatable": RepeatableSpecs().Once(),
+                "incapsulate": ["basic-adj", ],
+                "incapsulate-binding": "$THIS::$INCAPSULATED::adj",
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
