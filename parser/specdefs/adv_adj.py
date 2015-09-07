@@ -13,7 +13,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
         self.spec = [
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "init",
+                "id": "$SPEC::init",
                 "fsm": FsmSpecs().IsInit(),
                 "add-to-seq": False
             },
@@ -59,7 +59,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
-                "id": "fini",
+                "id": "$SPEC::fini",
                 "fsm": FsmSpecs().IsFini(),
                 "add-to-seq": False
             },
