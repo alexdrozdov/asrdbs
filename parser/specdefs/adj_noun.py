@@ -18,82 +18,21 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "add-to-seq": False
             },
             {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$PARENT::adj",
-                "pos_type": [PosSpecs().IsAdjective(), ],
-                "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
-                "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
-                "add-to-seq": True
-            },
-            {
-                "id": "$PARENT::adj+",
                 "repeatable": RepeatableSpecs().Any(),
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::comma",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("$PARENT::adv"), PositionSpecs().IsBefore('$PARENT::adj-seq')],
-                        "add-to-seq": True
-                    },
-                    {
-                        "id": "$PARENT::adv",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("$PARENT::adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("$PARENT::adj-seq"), ],
-                        "add-to-seq": False
-                    },
-                    {
-                        "id": "$PARENT::adj-seq",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
-                        "add-to-seq": True
-                    },
-                ]
-            },
-            {
-                "id": "$PARENT::adj++",
-                "required": RequiredSpecs().IsOptional(),
-                "repeatable": RepeatableSpecs().Any(),
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::and",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "position": [PositionSpecs().IsBeforeIfExists("$PARENT::adv"), PositionSpecs().IsBefore('$PARENT::adj-seq')],
-                        "add-to-seq": True
-                    },
-                    {
-                        "id": "$PARENT::adv++",
-                        "required": RequiredSpecs().IsOptional(),
-                        "pos_type": [PosSpecs().IsAdverb(), ],
-                        "position": [PositionSpecs().IsBefore("$PARENT::adj-seq"), ],
-                        "master-slave": [LinkSpecs().IsSlave("$PARENT::adj-seq"), ],
-                        "add-to-seq": False
-                    },
-                    {
-                        "id": "$PARENT::adj-seq++",
-                        "required": RequiredSpecs().IsNecessary(),
-                        "pos_type": [PosSpecs().IsAdjective(), ],
-                        "position": [PositionSpecs().IsBefore("$SPEC::noun"), ],
-                        "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("$SPEC::noun"), ],
-                        "add-to-seq": True
-                    },
-                ]
+                "id": "$PARENT:adj-pre",
+                "incapsulate": ["adv-adj", ]
             },
             {
                 "id": "$SPEC::noun",
                 "required": RequiredSpecs().IsNecessary(),
                 "pos_type": [PosSpecs().IsNoun(), ],
-                "add-to-seq": True
+                "add-to-seq": True,
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
+            },
+            {
+                "repeatable": RepeatableSpecs().Any(),
+                "id": "$PARENT:adj-post",
+                "incapsulate": ["adv-adj", ]
             },
             {
                 "required": RequiredSpecs().IsNecessary(),

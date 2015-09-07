@@ -49,6 +49,11 @@ class RepeatableSpecs(object):
         return self.EqualOrMoreThan(0)
 
 
+class AnchorSpecs(object):
+    def LocalSpecAnchor(self, name=None):
+        return True
+
+
 class GroupSpecs(object):
     def LastEntry(self, group_name):
         pass
