@@ -7,6 +7,8 @@ import speccmn
 import specdefs.basic_adj
 import specdefs.basic_adv
 import specdefs.basic_noun
+import specdefs.basic_subject
+import specdefs.subject_group
 import specdefs.comma_and_or
 import specdefs.adj_noun
 import specdefs.adv_adj
@@ -110,10 +112,10 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         max_count = entry["repeatable"][1]
 
         res = []
-        if min_count > 1 or max_count > 1 or (min_count == 0 and max_count is None):
-            set_order = True
-        else:
+        if min_count == max_count and min_count == 1:
             set_order = False
+        else:
+            set_order = True
         i = 0
         if min_count == max_count:
             for i in range(min_count):
@@ -665,7 +667,7 @@ class SpecStateDef(object):
                     target_list.append(RtRule(rule_def, is_static, self.__compiler, self.__spec_dict))
 
     def __create_stateless_rules(self):
-        self.__create_rule_list(True, ['pos_type'], self.__stateless_rules)
+        self.__create_rule_list(True, ['pos_type', 'case'], self.__stateless_rules)
 
     def __create_rt_rules(self):
         self.__create_rule_list(False, ['position', 'master-slave', 'unwanted-links'], self.__rt_rules)
@@ -984,13 +986,15 @@ class SequenceSpecMatcher(object):
             self.__export_svg()
 
     def __create_specs(self):
-        self.add_spec(specdefs.basic_adj.BasicAdjSpec(), independent_compile=True)
-        self.add_spec(specdefs.basic_adv.BasicAdvSpec(), independent_compile=True)
-        self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=True)
-        self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=True)
+        self.add_spec(specdefs.basic_adj.BasicAdjSpec(), independent_compile=False)
+        self.add_spec(specdefs.basic_adv.BasicAdvSpec(), independent_compile=False)
+        self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=False)
+        self.add_spec(specdefs.basic_subject.BasicSubjectSpec(), independent_compile=False)
+        self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=True)
+        self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=False)
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
         self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=True)
-        # self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec())
+        self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec(), independent_compile=True)
         # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
         self.build_specs()
 

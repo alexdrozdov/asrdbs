@@ -12,32 +12,31 @@ class AdjNounSequenceSpec(SequenceSpec):
 
         self.spec = [
             {
-                "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::init",
+                "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
             },
             {
-                "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT:adj-pre",
-                "incapsulate": ["adv-adj", ]
+                "repeatable": RepeatableSpecs().Any(),
+                "incapsulate": ["adv-adj", ],
+                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
             {
                 "id": "$SPEC::noun",
-                "required": RequiredSpecs().IsNecessary(),
+                "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsNoun(), ],
-                "add-to-seq": True,
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
-                "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT:adj-post",
-                "incapsulate": ["adv-adj", ]
+                "repeatable": RepeatableSpecs().Any(),
+                "incapsulate": ["adv-adj", ],
+                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
             {
-                "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::fini",
+                "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
             },
         ]

@@ -21,6 +21,7 @@ class BasicNounSpec(SequenceSpec):
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsNoun(), ],
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
                 "required": RequiredSpecs().IsNecessary(),

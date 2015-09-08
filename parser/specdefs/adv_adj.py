@@ -12,10 +12,9 @@ class AdvAdjSequenceSpec(SequenceSpec):
 
         self.spec = [
             {
-                "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::init",
+                "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
             },
             {
                 "id": "$PARENT::adv",
@@ -31,14 +30,12 @@ class AdvAdjSequenceSpec(SequenceSpec):
                                 "id": "$PARENT::adv",
                                 "repeatable": RepeatableSpecs().Once(),
                                 "incapsulate": ["basic-adv", ],
-                                "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
-                                # "master-slave": [LinkSpecs().IsSlave("$SPEC::adj"), ],
+                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                             },
                             {
                                 "id": "$PARENT::comma-and-or",
                                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                                 "incapsulate": ["comma-and-or", ],
-                                "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
                             }
                         ]
                     },
@@ -46,8 +43,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
                         "id": "$PARENT::adv",
                         "repeatable": RepeatableSpecs().Once(),
                         "incapsulate": ["basic-adv", ],
-                        "incapsulate-binding": "$THIS::$INCAPSULATED::adv",
-                        # "master-slave": [LinkSpecs().IsSlave("$SPEC::adj"), ],
+                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                     },
                 ]
             },
@@ -55,12 +51,11 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 "id": "$PARENT::adj",
                 "repeatable": RepeatableSpecs().Once(),
                 "incapsulate": ["basic-adj", ],
-                "incapsulate-binding": "$THIS::$INCAPSULATED::adj",
+                "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
             },
             {
-                "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::fini",
+                "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
             },
         ]

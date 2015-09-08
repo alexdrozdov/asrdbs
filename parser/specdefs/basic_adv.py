@@ -21,6 +21,7 @@ class BasicAdvSpec(SequenceSpec):
                 "id": "$PARENT::adv",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsAdverb(), ],
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
                 "required": RequiredSpecs().IsNecessary(),

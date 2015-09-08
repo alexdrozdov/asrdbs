@@ -5,9 +5,9 @@
 from parser.speccmn import *
 
 
-class BasicAdjSpec(SequenceSpec):
+class BasicSubjectSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'basic-adj')
+        SequenceSpec.__init__(self, 'basic-subject')
         self.__compared_with = {}
 
         self.spec = [
@@ -18,10 +18,10 @@ class BasicAdjSpec(SequenceSpec):
                 "add-to-seq": False
             },
             {
-                "id": "$PARENT::adj",
+                "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
-                "pos_type": [PosSpecs().IsAdjective(), ],
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "pos_type": [PosSpecs().IsNoun(), ],
+                "case": [CaseSpecs().IsCase(["nominative", ]), ],
             },
             {
                 "required": RequiredSpecs().IsNecessary(),

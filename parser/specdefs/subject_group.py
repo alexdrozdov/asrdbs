@@ -5,9 +5,9 @@
 from parser.speccmn import *
 
 
-class SubjectPredicateSequenceSpec(SequenceSpec):
+class SubjectGroupSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'subj-predicate')
+        SequenceSpec.__init__(self, 'subject-group')
         self.__compared_with = {}
 
         self.spec = [
@@ -18,19 +18,20 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
                 "add-to-seq": False
             },
             {
-                "repeatable": RepeatableSpecs().Any(),
-                "id": "$PARENT::subject-pre",
-                "incapsulate": ["subject-group", ],
-            },
-            {
+                "id": "$PARENT::sub",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(1),
-                "id": "$PARENT::predicate",
-                "pos_type": [PosSpecs().IsVerb(), ],
-            },
-            {
-                "repeatable": RepeatableSpecs().Any(),
-                "id": "$PARENT::subject-post",
-                "incapsulate": ["subject-group", ],
+                "entries": [
+                    {
+                        "id": "$PARENT::subject",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "incapsulate": ["basic-subject", ],
+                    },
+                    {
+                        "id": "$PARENT::spacer",
+                        "repeatable": RepeatableSpecs().Any(),
+                        "pos_type": [PosSpecs().IsExcept(["noun", "pronoun", "verb"]), ],
+                    }
+                ]
             },
             {
                 "required": RequiredSpecs().IsNecessary(),
