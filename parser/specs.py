@@ -15,7 +15,7 @@ import specdefs.adv_adj
 import specdefs.subj_predicate
 import specdefs.noun_noun
 import gvariant
-from speccmn import RtRule
+from speccmn import RtRule, RtMatchString
 import graph
 import common.output
 import common.history as h
@@ -471,7 +471,7 @@ class SpecCompiler(object):
             self.__states.remove(state)
 
     def register_rule_binding(self, int_rule):
-        binding = int_rule.get_binding()
+        binding = str(int_rule.get_binding())
         if binding in self.__rule_bindins:
             binding_list = self.__rule_bindins[binding]
             assert int_rule not in binding_list
@@ -662,9 +662,9 @@ class SpecStateDef(object):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
-                        target_list.append(RtRule(rd, is_static, self.__compiler, self.__spec_dict))
+                        target_list.append(rd.create(self.__compiler, self.__spec_dict))
                 else:
-                    target_list.append(RtRule(rule_def, is_static, self.__compiler, self.__spec_dict))
+                    target_list.append(rule_def.create(self.__compiler, self.__spec_dict))
 
     def __create_stateless_rules(self):
         self.__create_rule_list(True, ['pos_type', 'case'], self.__stateless_rules)
@@ -684,7 +684,7 @@ class SpecStateDef(object):
 
     def is_static_applicable(self, form):
         for r in self.__stateless_rules:
-            if not r.matched(form):
+            if not r.match(form):
                 return False
         return True
 

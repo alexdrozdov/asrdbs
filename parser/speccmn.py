@@ -59,31 +59,78 @@ class GroupSpecs(object):
         pass
 
 
-class c__pos_check(object):
+class RtRule(object):
+    res_none = 0
+    res_failed = 1
+    res_matched = 2
+    res_continue = 3
+
+    def match(self, form):
+        raise RuntimeError('unimplemented')
+
+    def new_copy(self):
+        raise RuntimeError('unimplemented')
+
+    def clone(self):
+        raise RuntimeError('unimplemented')
+
+    def is_applicable(self, rtme, other_rtme):
+        raise RuntimeError('unimplemented')
+
+    def apply_on(self, rtme, other_rtme):
+        raise RuntimeError('unimplemented')
+
+    def always_pending(self):
+        raise RuntimeError('unimplemented')
+
+    def ignore_pending_state(self):
+        raise RuntimeError('unimplemented')
+
+    def get_info(self):
+        raise RuntimeError('unimplemented')
+
+
+class RtDynamicRule(RtRule):
+    def match(self, form):
+        raise RuntimeError('not applicable')
+
+
+class RtStaticRule(RtRule):
+    def is_applicable(self, rtme, other_rtme):
+        raise RuntimeError('not applicable')
+
+    def apply_on(self, rtme, other_rtme):
+        raise RuntimeError('not applicable')
+
+    def always_pending(self):
+        raise RuntimeError('not applicable')
+
+    def ignore_pending_state(self):
+        raise RuntimeError('not applicable')
+
+    def get_info(self):
+        raise RuntimeError('unimplemented')
+
+
+class c__pos_check(RtStaticRule):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
 
     def match(self, form):
         return form.get_pos() in self.__pos_names
 
-    def needs_name_resolve(self):
-        return False
 
-
-class c__pos_check_inv(object):
+class c__pos_check_inv(RtStaticRule):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
 
     def match(self, form):
         return form.get_pos() not in self.__pos_names
 
-    def needs_name_resolve(self):
-        return False
 
-
-class c__pos_syntax_check(object):
+class c__pos_syntax_check(RtStaticRule):
     def __init__(self, syntax_name):
-        assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax'
+        assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax {0}'.format(syntax_name)
         if syntax_name == 'comma':
             self.__syntax_check_cb = self.__comma_check_cb
         if syntax_name == 'dot':
@@ -103,77 +150,70 @@ class c__pos_syntax_check(object):
     def match(self, form):
         return form.get_pos() == 'syntax' and self.__syntax_check_cb(form)
 
-    def needs_name_resolve(self):
-        return False
-
 
 class PosSpecs(object):
     def IsNoun(self):
-        return c__pos_check(["noun", ])
+        return RtRuleFactory(c__pos_check, ["noun", ])
 
     def IsAdjective(self):
-        return c__pos_check(["adjective", ])
+        return RtRuleFactory(c__pos_check, ["adjective", ])
 
     def IsAdverb(self):
-        return c__pos_check(["adverb", ])
+        return RtRuleFactory(c__pos_check, ["adverb", ])
 
     def IsVerb(self):
-        return c__pos_check(["verb", ])
+        return RtRuleFactory(c__pos_check, ["verb", ])
 
     def IsSuject(self):
-        return c__pos_check(["noun", "pronoun"])
+        return RtRuleFactory(c__pos_check, ["noun", "pronoun"])
 
     def IsComma(self):
-        return c__pos_syntax_check("comma")
+        return RtRuleFactory(c__pos_syntax_check, "comma")
 
     def IsExcept(self, pos_names):
-        return c__pos_check_inv(pos_names)
+        return RtRuleFactory(c__pos_check_inv, pos_names)
 
 
-class c__word_check(object):
+class c__word_check(RtStaticRule):
     def __init__(self, words):
         self.__words = words
 
     def match(self, form):
         return form.get_word() in self.__words
 
-    def needs_name_resolve(self):
-        return False
-
 
 class WordSpecs(object):
     def IsWord(self, words):
-        return c__word_check(words)
+        return RtRuleFactory(c__word_check, words)
 
 
-class c__case_check(object):
+class c__case_check(RtStaticRule):
     def __init__(self, cases):
         self.__cases = cases
 
     def match(self, form):
         return form.get_case() in self.__cases
 
-    def needs_name_resolve(self):
-        return False
-
 
 class CaseSpecs(object):
     def IsCase(self, cases):
-        return c__case_check(cases)
+        return RtRuleFactory(c__case_check, cases)
 
 
-class c__position_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
+class c__position_spec(RtDynamicRule):
+    def __init__(self, anchor=None):
+        self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
-        return c__position_spec(self.__id_name)
+        return c__position_spec(self.__anchor)
 
     def clone(self):
-        return c__position_spec(self.__id_name)
+        return c__position_spec(self.__anchor)
 
     def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
             return True
         return False
 
@@ -186,64 +226,56 @@ class c__position_spec(object):
     def ignore_pending_state(self):
         return False
 
-    def needs_name_resolve(self):
-        return '$' in self.__id_name
-
-    def resolve_name(self, compiler, state):
-        self.__id_name = compiler.resolve_name(state, self.__id_name)
-
-    def get_binding(self):
-        return self.__id_name
-
     def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
 
 
-class c__position_fini(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
+class c__position_fini(RtDynamicRule):
+    def __init__(self, anchor=None):
+        self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
-        return c__position_spec(self.__id_name)
+        return c__position_spec(self.__anchor)
 
     def clone(self):
-        return c__position_spec(self.__id_name)
+        return c__position_spec(self.__anchor)
 
     def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
             return True
         return False
-
-    def get_binding(self):
-        return self.__id_name
 
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if rtme.get_form().get_position() == other_rtme.get_form().get_position() else RtRule.res_failed
 
 
 class PositionSpecs(object):
-    def IsBefore(self, id_name):
-        return c__position_spec(id_name)
+    def IsBefore(self, anchor):
+        return RtRuleFactory(c__position_spec, anchor=anchor)
 
-    def SequenceEnd(self, id_name='fini'):
-        return c__position_fini(id_name)
+    def SequenceEnd(self, anchor='fini'):
+        return RtRuleFactory(c__position_fini, anchor=anchor)
 
-    def IsBeforeIfExists(self, id_name):
-        return c__position_spec(id_name)
+    def IsBeforeIfExists(self, anchor):
+        return RtRuleFactory(c__position_spec, anchor=anchor)
 
 
-class c__slave_master_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
+class c__slave_master_spec(RtDynamicRule):
+    def __init__(self, anchor=None):
+        self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
-        return c__slave_master_spec(self.__id_name)
+        return c__slave_master_spec(self.__anchor)
 
     def clone(self):
-        return c__slave_master_spec(self.__id_name)
+        return c__slave_master_spec(self.__anchor)
 
     def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
             return True
         return False
 
@@ -256,31 +288,24 @@ class c__slave_master_spec(object):
     def ignore_pending_state(self):
         return False
 
-    def needs_name_resolve(self):
-        return '$' in self.__id_name
-
-    def resolve_name(self, compiler, state):
-        self.__id_name = compiler.resolve_name(state, self.__id_name)
-
-    def get_binding(self):
-        return self.__id_name
-
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
 
 
-class c__slave_master_unwanted_spec(object):
-    def __init__(self, id_name):
-        self.__id_name = id_name
+class c__slave_master_unwanted_spec(RtDynamicRule):
+    def __init__(self, anchor):
+        self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
-        return c__slave_master_unwanted_spec(self.__id_name)
+        return c__slave_master_unwanted_spec(self.__anchor)
 
     def clone(self):
-        return c__slave_master_unwanted_spec(self.__id_name)
+        return c__slave_master_unwanted_spec(self.__anchor)
 
     def is_applicable(self, rtme, other_rtme):
-        if other_rtme.get_name() == self.__id_name:
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
             return True
         return False
 
@@ -299,28 +324,19 @@ class c__slave_master_unwanted_spec(object):
     def ignore_pending_state(self):
         return True
 
-    def needs_name_resolve(self):
-        return '$' in self.__id_name
-
-    def resolve_name(self, compiler, state):
-        self.__id_name = compiler.resolve_name(state, self.__id_name)
-
-    def get_binding(self):
-        return self.__id_name
-
     def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
 
 
 class LinkSpecs(object):
-    def IsSlave(self, id_name):
-        return c__slave_master_spec(id_name)
+    def IsSlave(self, anchor):
+        return RtRuleFactory(c__slave_master_spec, anchor=anchor)
 
-    def MastersExcept(self, id_name):
-        return c__slave_master_unwanted_spec(id_name)
+    def MastersExcept(self, anchor):
+        return RtRuleFactory(c__slave_master_unwanted_spec, anchor=anchor)
 
     def AllMasters(self):
-        return c__slave_master_unwanted_spec("__all_masters")
+        return RtRuleFactory(c__slave_master_unwanted_spec, ("__all_masters", ))
 
 
 class SpecStateIniForm(object):
@@ -348,46 +364,65 @@ class SpecStateFiniForm(object):
         return u'fini'
 
 
-class RtRule(object):
-    res_none = 0
-    res_failed = 1
-    res_matched = 2
-    res_continue = 3
+class RtMatchString(object):
+    def __init__(self, string):
+        assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
 
-    def __init__(self, rule, is_static, compiler=None, state=None):
-        assert rule is not None, "Rule required"
-        self.__rule = rule
-        self.__is_static = is_static
+        if isinstance(string, RtMatchString):
+            self.__init_from_rtmatchstring(string)
+        else:
+            self.__init_from_string(string)
 
-        if compiler is not None and state is not None:
-            if rule.needs_name_resolve():
-                self.__rule.resolve_name(compiler, state)
-            if not is_static:
-                compiler.register_rule_binding(self.__rule)
+    def __init_from_string(self, string):
+        self.update(string)
 
-    def matched(self, form):
-        assert self.__is_static, "Tried to match non static rule"
-        return self.__rule.match(form)
+    def __init_from_rtmatchstring(self, rtmstr):
+        self.__raw_string = rtmstr.__raw_string
+        self.__string = rtmstr.__string
+        self.__need_resolve = rtmstr.__need_resolve
+        self.__need_reindex = rtmstr.__need_reindex
 
-    def is_applicable(self, on, other):
-        assert not self.__is_static, "Tried to check aplicibility on static rule"
-        return self.__rule.is_applicable(on, other)
+    def update(self, string):
+        self.__raw_string = string
+        self.__need_resolve = '$' in self.__raw_string
+        self.__need_reindex = '{' in self.__raw_string
+        self.__string = self.__raw_string if not self.__need_resolve and not self.__need_reindex else None
 
-    def apply_on(self, on, other):
-        assert not self.__is_static, "Tried to apply on static rule"
-        return self.__rule.apply_on(on, other)
+    def need_resolve(self):
+        return self.__need_resolve
 
-    def clone(self):
-        return RtRule(self.__rule.clone(), self.__is_static)
+    def need_reindex(self):
+        return self.__need_reindex
 
-    def new_copy(self):
-        return RtRule(self.__rule.new_copy(), self.__is_static)
+    def __cmp__(self, other):
+        assert not self.__need_resolve and not self.__need_reindex and not other.__need_resolve and not other.__need_reindex
+        return cmp(self.__string, other.__string)
 
-    def get_int_rule(self):
-        return self.__rule
+    def __eq__(self, other):
+        assert not self.__need_resolve and not self.__need_reindex and not other.__need_resolve and not other.__need_reindex, (self.__raw_string, self.__string, other.__raw_string, other.__string)
+        return self.__string == other.__string
 
-    def always_pending(self):
-        return self.__rule.always_pending()
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-    def ignore_pending_state(self):
-        return self.__rule.ignore_pending_state()
+    def __repr__(self):
+        return self.__string if not self.__need_resolve and not self.__need_reindex else self.__raw_string
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+
+class RtRuleFactory(object):
+    def __init__(self, classname, *args, **kwargs):
+        self.__classname = classname
+        self.__args = args
+        self.__kwargs = {k: w if '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+
+    def create(self, compiler, state):
+        kwargs = {}
+        for k, w in self.__kwargs.items():
+            if isinstance(w, RtMatchString) and w.need_resolve():
+                w = RtMatchString(w)
+                w.update(compiler.resolve_name(state, str(w)))
+            kwargs[k] = w
+        return self.__classname(*self.__args, **kwargs)
