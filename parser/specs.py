@@ -130,10 +130,7 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
             for i in range(min_count, max_count):
                 res.append(self.__create_entry_copy(entry, i, repeatable=False, required=False, set_order=set_order))
         else:
-            if min_count == 0 and max_count is None:
-                order = '$INDEX({0})'.format(0)
-            else:
-                order = '$INDEX({0})'.format(i + 1)
+            order = '{$GLEVEL}'
             res.append(self.__create_entry_copy(entry, order, repeatable=True, required=False, set_order=set_order))
 
         return res
@@ -231,37 +228,14 @@ class SpecCompiler(object):
         self.__incapsulate_in = []
         self.__rule_bindins = {}
 
-    def __create_this_path(self, st):
-        st_id = st["id"]
-        if '$THIS' in st_id:
-            this_path = self.__create_this_path(st)
-            st_id = st_id.replace('$THIS', this_path)
-        elif '$PARENT' in st_id:
-            parent_path = self.__create_parent_path(st)
-            st_id = st_id.replace('$PARENT', parent_path)
-        elif '$SPEC' in st_id:
-            spec_path = self.__create_spec_path()
-            st_id = st_id.replace('$SPEC', spec_path)
-        else:
-            print "Compile warning: $-definition is missing for", self.__spec_name, st['id']
-        return st_id
-
     def __create_parent_path(self, st):
-        path = ''
-        item = self.__spec.get_parent(st)
-        if item is not None:
-            if '$PARENT' in item['id']:
-                ppath = self.__create_parent_path(item)
-                path = item['id'].replace('$PARENT', ppath)
-                return path
-            if '$SPEC' in item['id']:
-                spath = self.__create_spec_path(item)
-                path = item['id'].replace('$SPEC', spath)
-                return path
-            path = item['id']
-        path = '::' + self.__spec_name + path
-        if self.__parent_spec_name:
-            path = self.__parent_spec_name + path
+        parent = self.__spec.get_parent(st)
+        if parent is not None:
+            return self.gen_state_name(parent)
+        else:
+            path = '::' + self.__spec_name
+            if self.__parent_spec_name:
+                path = self.__parent_spec_name + path
         return path
 
     def __create_spec_path(self):
@@ -271,37 +245,31 @@ class SpecCompiler(object):
         return path
 
     def gen_state_name(self, st):
-        st_id = st["id"]
-        if '$THIS' in st_id:
-            this_path = self.__create_this_path(st)
-            st_id = st_id.replace('$THIS', this_path)
-        elif '$PARENT' in st_id:
-            parent_path = self.__create_parent_path(st)
-            st_id = st_id.replace('$PARENT', parent_path)
-        elif '$SPEC' in st_id:
-            spec_path = self.__create_spec_path()
-            st_id = st_id.replace('$SPEC', spec_path)
-        else:
-            print "Compile warning: $-definition is missing for", self.__spec_name, st['id']
-        return st_id
+        return self.resolve_name(st, st['id'])
 
     def resolve_name(self, ref_state, name):
-        st_id = name
-        if '$INCAPSULATED' in st_id:
+        if '$LEVEL' in name:
+            name = name.replace('$LEVEL', '0')
+        if '$GLEVEL' in name:
+            name = name.replace('$GLEVEL', '0')
+        if '$INCAPSULATED' in name:
             assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
-            st_id = st_id.replace('$INCAPSULATED', ref_state['incapsulate'][0])
-        if '$THIS' in st_id:
-            this_path = self.__create_this_path(ref_state)
-            st_id = st_id.replace('$THIS', this_path)
-        elif '$PARENT' in st_id:
+            name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
+        if '$THIS' in name:
+            assert '$THIS' not in ref_state['id'], 'Recursive name with $THIS spec'
+            this_path = self.gen_state_name(ref_state)
+            name = name.replace('$THIS', this_path)
+        if '$PARENT' in name:
+            assert name.find('$PARENT') == 0, '$PARENT must be first'
             parent_path = self.__create_parent_path(ref_state)
-            st_id = st_id.replace('$PARENT', parent_path)
-        elif '$SPEC' in st_id:
+            name = name.replace('$PARENT', parent_path)
+        elif '$SPEC' in name:
+            assert name.find('$SPEC') == 0, '$SPEC must be first'
             spec_path = self.__create_spec_path()
-            st_id = st_id.replace('$SPEC', spec_path)
-        else:
+            name = name.replace('$SPEC', spec_path)
+        elif name.find('::') != 0:
             print "Compile warning: $-definition is missing for", self.__spec_name, name
-        return st_id
+        return name
 
     def __add_state(self, state):
         self.__states.append(state)
