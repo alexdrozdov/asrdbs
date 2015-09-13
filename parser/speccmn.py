@@ -399,6 +399,7 @@ class RtMatchString(object):
         return cmp(self.__string, other.__string)
 
     def __eq__(self, other):
+        assert isinstance(other, RtMatchString)
         assert not self.__need_resolve and not self.__need_reindex and not other.__need_resolve and not other.__need_reindex, (self.__raw_string, self.__string, other.__raw_string, other.__string)
         return self.__string == other.__string
 

@@ -305,7 +305,7 @@ class SpecCompiler(object):
 
     def __add_state(self, state):
         self.__states.append(state)
-        self.__name2state[state.get_name()] = state
+        self.__name2state[str(state.get_name())] = state
         if state.is_container() or state.is_uniq_container():
             self.__containers.append(state)
         if state.is_init():
@@ -322,14 +322,14 @@ class SpecCompiler(object):
             state = SpecStateDef(self, state_name, st)
             if state.get_level() > 0:
                 parent_st = spec.get_parent(st)
-                parent_state_name = self.gen_state_name(parent_st)
+                parent_state_name = str(self.gen_state_name(parent_st))
                 state.set_parent_state(self.__name2state[parent_state_name])
 
             if state.has_incapsulated_spec():
                 in_spec_name = state.get_incapsulated_spec_name()
                 in_spec = self.__owner.get_spec(in_spec_name)
                 compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1)
-                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=state.get_name())
+                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
                 state.set_incapsulated_spec(compiled_in_spec)
 
             self.__add_state(state)
@@ -343,10 +343,10 @@ class SpecCompiler(object):
         for level in range(deepest - 2, -1, -1):  # -2 = -1 -1 - Enumerated from zero and no need to build downgrading trs for deepest level
             spec_iter = spec.get_level_iter(level)
             for st in spec_iter.get_all_entries():
-                state = self.__name2state[self.gen_state_name(st)]
+                state = self.__name2state[str(self.gen_state_name(st))]
                 child_iter = spec.get_child_iter(st)
                 for c_st in child_iter.get_all_entries():
-                    c_state = self.__name2state[self.gen_state_name(c_st)]
+                    c_state = self.__name2state[str(self.gen_state_name(c_st))]
                     if c_state.is_container() or c_state.is_uniq_container():
                         state.add_trs_to_child_child(c_state)
                     state.add_trs_to_child(c_state)
@@ -357,13 +357,13 @@ class SpecCompiler(object):
         spec_iter = spec.get_hierarchical_iter(base)
 
         for st in spec_iter.get_all_entries():
-            state = self.__name2state[self.gen_state_name(st)]
+            state = self.__name2state[str(self.gen_state_name(st))]
             st_next = st
             while True:
                 st_next = spec_iter.get_after(st_next)
                 if st_next is None:
                     break
-                state_next = self.__name2state[self.gen_state_name(st_next)]
+                state_next = self.__name2state[str(self.gen_state_name(st_next))]
                 state.add_trs_to_neighbour(state_next)
                 if state_next.is_container() or state_next.is_uniq_container():
                     state.add_trs_to_neighbours_childs(state_next)
@@ -402,19 +402,19 @@ class SpecCompiler(object):
             if container.is_container():
                 sts.reverse()
                 for s in sts:
-                    state = self.__name2state[self.gen_state_name(s)]
+                    state = self.__name2state[str(self.gen_state_name(s))]
                     state.set_local_final()
                     if state.is_required():
                         break
             else:
                 for s in sts:
-                    state = self.__name2state[self.gen_state_name(s)]
+                    state = self.__name2state[str(self.gen_state_name(s))]
                     state.set_local_final()
 
     def __create_upgrading_trs(self, spec):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
-            state = self.__name2state[self.gen_state_name(st)]
+            state = self.__name2state[str(self.gen_state_name(st))]
             if state.is_contained() and state.is_local_final():
                 parent = state.get_parent_state()
                 state.add_parent_trs(parent)
@@ -459,7 +459,7 @@ class SpecCompiler(object):
                 if in_state.is_init() or in_state.is_fini():
                     continue
                 self.__states.append(in_state)
-                self.__name2state[in_state.get_name()] = in_state
+                self.__name2state[str(in_state.get_name())] = in_state
             for trs in ini[0].get_transitions():
                 for r_trs in state.get_rtransitions():
                     r_trs.replace_trs(state, trs)
@@ -503,7 +503,9 @@ class SpecCompiler(object):
 class SpecStateDef(object):
     def __init__(self, compiler, name, spec_dict, parent=None):
         self.__compiler = compiler
-        self.__name = name
+        self.__name = RtMatchString(name)
+        if self.__name.need_resolve():
+            self.__name.update(compiler.resolve_name(spec_dict, str(self.__name)))
         self.__transitions = []
         self.__neighbour_transitions = []
         self.__child_transitions = []
