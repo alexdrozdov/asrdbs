@@ -228,6 +228,7 @@ class SpecCompiler(object):
         self.__finis = []
         self.__incapsulate_in = []
         self.__rule_bindins = {}
+        self.__local_spec_anchor = None
 
     def __create_parent_path(self, st):
         parent = self.__spec.get_parent(st)
@@ -253,6 +254,9 @@ class SpecCompiler(object):
             name = name.replace('$LEVEL', str(ref_state['level']))
         if '$GLEVEL' in name:
             name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
+        if '$LOCAL_SPEC_ANCHOR' in name:
+            assert self.__local_spec_anchor is not None
+            name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchor.get_name()))
         if '$INCAPSULATED' in name:
             assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
             name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
@@ -300,6 +304,10 @@ class SpecCompiler(object):
                 compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1, level=state.get_glevel() + 1)
                 compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
                 state.set_incapsulated_spec(compiled_in_spec)
+
+            if state.is_anchor():
+                assert self.__local_spec_anchor is None
+                self.__local_spec_anchor = state
 
             self.__add_state(state)
 
@@ -503,6 +511,7 @@ class SpecStateDef(object):
         self.__rt_rules = []
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
+        self.__is_local_anchor = spec_dict.has_key('anchor')
 
     def get_name(self):
         return self.__name
@@ -542,6 +551,9 @@ class SpecStateDef(object):
 
     def is_repeated(self):
         return self.__is_repeatable
+
+    def is_anchor(self):
+        return self.__is_local_anchor
 
     def get_parent_state(self):
         return self.__parent

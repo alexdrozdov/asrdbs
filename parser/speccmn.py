@@ -50,8 +50,12 @@ class RepeatableSpecs(object):
 
 
 class AnchorSpecs(object):
+    no_anchor = 0
+    local_spec_anchor = 1
+    global_anchor = 2
+
     def LocalSpecAnchor(self, name=None):
-        return True
+        return (True, AnchorSpecs.local_spec_anchor, name)
 
 
 class GroupSpecs(object):
