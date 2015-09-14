@@ -112,7 +112,7 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         max_count = entry["repeatable"][1]
 
         res = []
-        if min_count == max_count and min_count == 1:
+        if (min_count == max_count and min_count == 1) or (min_count == 0 and max_count == 1):
             set_order = False
         else:
             set_order = True
@@ -216,9 +216,10 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
 
 
 class SpecCompiler(object):
-    def __init__(self, owner=None, depth=0):
+    def __init__(self, owner=None, depth=0, level=0):
         self.__owner = owner
         self.__depth = depth
+        self.__level = level
         self.__states = []
         self.__name2state = {}
         self.__containers = []
@@ -249,9 +250,9 @@ class SpecCompiler(object):
 
     def resolve_name(self, ref_state, name):
         if '$LEVEL' in name:
-            name = name.replace('$LEVEL', '0')
+            name = name.replace('$LEVEL', str(ref_state['level']))
         if '$GLEVEL' in name:
-            name = name.replace('$GLEVEL', '0')
+            name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
         if '$INCAPSULATED' in name:
             assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
             name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
@@ -296,7 +297,7 @@ class SpecCompiler(object):
             if state.has_incapsulated_spec():
                 in_spec_name = state.get_incapsulated_spec_name()
                 in_spec = self.__owner.get_spec(in_spec_name)
-                compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1)
+                compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1, level=state.get_glevel() + 1)
                 compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
                 state.set_incapsulated_spec(compiled_in_spec)
 
@@ -467,6 +468,9 @@ class SpecCompiler(object):
         cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis)
         return cs
 
+    def get_level(self):
+        return self.__level
+
 
 class SpecStateDef(object):
     def __init__(self, compiler, name, spec_dict, parent=None):
@@ -497,12 +501,20 @@ class SpecStateDef(object):
         self.__incapsulate_binding = spec_dict['incapsulate-binding'] if spec_dict.has_key('incapsulate-binding') else None
         self.__stateless_rules = []
         self.__rt_rules = []
+        self.__level = spec_dict['level']
+        self.__glevel = compiler.get_level() + self.__level
 
     def get_name(self):
         return self.__name
 
     def get_spec(self):
         return self.__spec_dict
+
+    def get_level(self):
+        return self.__level
+
+    def get_glevel(self):
+        return self.__glevel
 
     def get_uid(self):
         return self.__uid
@@ -533,9 +545,6 @@ class SpecStateDef(object):
 
     def get_parent_state(self):
         return self.__parent
-
-    def get_level(self):
-        return self.__spec_dict["level"]
 
     def set_parent_state(self, parent):
         self.__parent = parent

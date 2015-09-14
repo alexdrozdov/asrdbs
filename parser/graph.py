@@ -178,7 +178,9 @@ class SpecGraphGen(object):
         for trs in st.get_transitions():
             try:
                 style = "filled"
-                s += u'\t{0}->{1} [style="{2}"];\r\n'.format(self.__get_obj_id(st), self.__get_obj_id(trs), style)
+                n_from = self.__get_obj_id(st)
+                n_to = self.__get_obj_id(trs)
+                s += u'\t{0}->{1} [style="{2}"];\r\n'.format(n_from, n_to, style)
             except:
                 print 'state name: {0}, trs name: {1}'.format(st.get_name(), trs.get_name())
                 print traceback.format_exc()
