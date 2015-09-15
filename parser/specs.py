@@ -422,7 +422,8 @@ class SpecCompiler(object):
 
     def __create_state_rules(self):
         for state in self.__states:
-            state.create_rules()
+            if state.has_noncreated_rules():
+                state.create_rules()
 
     def __resolve_rule_bindings(self, state):
         new_binding = self.resolve_name(state.get_spec(), state.get_incapsulate_binding())
@@ -432,6 +433,16 @@ class SpecCompiler(object):
         rule_list = self.__rule_bindins[original_binding]
         for rule in rule_list:
             rule.rewrite_binding(original_binding, new_binding)
+
+    def __incapsulate_rules(self):
+        for state in self.__incapsulate_in:
+            if not state.has_rt_rules():
+                continue
+            in_spec = state.get_incapsulated_spec()
+            in_spec_anchor = in_spec.get_local_spec_anchor()
+            assert in_spec_anchor is not None
+            rules_to_incapsulate = state.get_rt_rules_list()
+            in_spec_anchor.extend_rules(rules_to_incapsulate)
 
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
@@ -499,6 +510,7 @@ class SpecCompiler(object):
         self.__create_upgrading_trs(spec)
         self.__remove_containers()
         self.__merge_transitions()
+        self.__incapsulate_rules()
         self.__incapsulate_states()
         self.__create_state_rules()
 
@@ -682,9 +694,12 @@ class SpecStateDef(object):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
+                        if rd.created():
+                            continue
                         target_list.append(rd.create(self.__compiler, self.__spec_dict))
                 else:
-                    target_list.append(rule_def.create(self.__compiler, self.__spec_dict))
+                    if not rule_def.created():
+                        target_list.append(rule_def.create(self.__compiler, self.__spec_dict))
 
     def __create_stateless_rules(self):
         self.__create_rule_list(True, ['pos_type', 'case'], self.__stateless_rules)
@@ -695,6 +710,19 @@ class SpecStateDef(object):
     def create_rules(self):
         self.__create_stateless_rules()
         self.__create_rt_rules()
+
+    def has_noncreated_rules(self):
+        for r in ['position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
+            if self.__spec_dict.has_key(r):
+                rule_def = self.__spec_dict[r]
+                if isinstance(rule_def, list):
+                    for rd in rule_def:
+                        if not rd.created():
+                            return True
+                else:
+                    if not rule_def.created():
+                        return True
+        return False
 
     def get_transitions(self):
         return self.__transitions
@@ -708,11 +736,31 @@ class SpecStateDef(object):
                 return False
         return True
 
+    def extend_rules(self, rules):
+        for r, rule_def in rules.items():
+            if not isinstance(rule_def, list):
+                rule_def = [rule_def, ]
+            rule_def = [r for r in rule_def]
+            if not self.__spec_dict.has_key(r):
+                self.__spec_dict[r] = rule_def
+            else:
+                if isinstance(self.__spec_dict[r], list):
+                    self.__spec_dict[r].extend(rule_def)
+                else:
+                    rule_def.extend(self.__spec_dict[r])
+                    self.__spec_dict[r] = rule_def
+
     def get_rt_rules(self):
         return [rt.new_copy() for rt in self.__rt_rules]
 
     def has_incapsulated_spec(self):
         return self.__incapsulate_spec_name is not None
+
+    def has_rt_rules(self):
+        return len(set(['position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+
+    def get_rt_rules_list(self):
+        return {r: self.__spec_dict[r] for r in ['position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def get_incapsulated_spec_name(self):
         assert self.__incapsulate_spec_name is not None
@@ -763,7 +811,7 @@ class RtMatchSequence(gvariant.Sequence):
     def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
         self.__matcher = matcher
         self.__entries = []
-        h.register_object(self, is_clone_of=is_clone_of, label=str(self) + '-' + self.__matcher.get_name())
+        h.en() and h.register_object(self, is_clone_of=is_clone_of, label=str(self) + '-' + self.__matcher.get_name())
         if graph_id is not None:
             h.en(self) and h.log(self, u"Init for {0}".format(graph_id))
 
@@ -1074,8 +1122,8 @@ class RtMatchEntry(object):
         self.__next = None
         self.__prev = prev
         if self.__owner is not None:
-            h.register_subobject(self.__owner, self, label=self.__spec.get_name(), is_uniq=True)
-            h.log(self, u'Create RtMatchEntry')
+            h.en() and h.register_subobject(self.__owner, self, label=self.__spec.get_name(), is_uniq=True)
+            h.en() and h.log(self, u'Create RtMatchEntry')
 
         if prev is not None:
             prev.__next = self
@@ -1121,7 +1169,7 @@ class RtMatchEntry(object):
         return trs
 
     def confirm_rule(self, rule):
-        h.log(self, "Confirming rule {0}, len(self.__pending)={1}, self.__pending_count={2}".format(rule, len(self.__pending), self.__pending_count))
+        h.en() and h.log(self, "Confirming rule {0}, len(self.__pending)={1}, self.__pending_count={2}".format(rule, len(self.__pending), self.__pending_count))
         self.__pending.remove(rule)
         if not rule.ignore_pending_state():
             self.__pending_count -= 1
@@ -1130,7 +1178,7 @@ class RtMatchEntry(object):
             self.__owner.unregister_rule_handler(rule, self)
         self.__matched.append(rule)
 
-        h.log(self, "Localy confirmed, len(self.__pending)={0}, self.__pending_count={1}".format(len(self.__pending), self.__pending_count))
+        h.en() and h.log(self, "Localy confirmed, len(self.__pending)={0}, self.__pending_count={1}".format(len(self.__pending), self.__pending_count))
         if not self.__pending_count:
             if self.__pending:
                 for r in self.__pending:

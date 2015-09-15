@@ -468,8 +468,10 @@ class RtRuleFactory(object):
         self.__classname = classname
         self.__args = args
         self.__kwargs = {k: w if '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+        self.__created = False
 
     def create(self, compiler, state):
+        self.__created = True
         kwargs = {}
         for k, w in self.__kwargs.items():
             if isinstance(w, RtMatchString) and w.need_resolve():
@@ -482,3 +484,6 @@ class RtRuleFactory(object):
                 if compiler.binding_needs_resolve(b):
                     b.update(compiler.resolve_binding(b))
         return r
+
+    def created(self):
+        return self.__created
