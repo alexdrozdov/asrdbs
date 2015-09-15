@@ -93,10 +93,22 @@ class RtRule(object):
     def get_info(self):
         raise RuntimeError('unimplemented')
 
+    def has_bindings(self):
+        raise RuntimeError('unimplemented')
+
+    def get_bindings(self):
+        raise RuntimeError('unimplemented')
+
 
 class RtDynamicRule(RtRule):
     def match(self, form):
         raise RuntimeError('not applicable')
+
+    def has_bindings(self):
+        raise RuntimeError('unimplemented')
+
+    def get_bindings(self):
+        raise RuntimeError('unimplemented')
 
 
 class RtStaticRule(RtRule):
@@ -114,6 +126,12 @@ class RtStaticRule(RtRule):
 
     def get_info(self):
         raise RuntimeError('unimplemented')
+
+    def has_bindings(self):
+        return False
+
+    def get_bindings(self):
+        return []
 
 
 class c__pos_check(RtStaticRule):
@@ -233,6 +251,12 @@ class c__position_spec(RtDynamicRule):
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
 
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
 
 class c__position_fini(RtDynamicRule):
     def __init__(self, anchor=None):
@@ -253,6 +277,12 @@ class c__position_fini(RtDynamicRule):
 
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if rtme.get_form().get_position() == other_rtme.get_form().get_position() else RtRule.res_failed
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
 
 
 class PositionSpecs(object):
@@ -295,6 +325,12 @@ class c__slave_master_spec(RtDynamicRule):
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
 
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
 
 class c__slave_master_unwanted_spec(RtDynamicRule):
     def __init__(self, anchor):
@@ -330,6 +366,12 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
 
     def get_info(self):
         return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
 
 
 class LinkSpecs(object):
@@ -378,7 +420,10 @@ class RtMatchString(object):
             self.__init_from_string(string)
 
     def __init_from_string(self, string):
-        self.update(string)
+        self.__raw_string = string
+        self.__need_resolve = '$' in self.__raw_string
+        self.__need_reindex = '{' in self.__raw_string
+        self.__string = self.__raw_string if not self.__need_resolve and not self.__need_reindex else None
 
     def __init_from_rtmatchstring(self, rtmstr):
         self.__raw_string = rtmstr.__raw_string
@@ -387,10 +432,11 @@ class RtMatchString(object):
         self.__need_reindex = rtmstr.__need_reindex
 
     def update(self, string):
-        self.__raw_string = string
-        self.__need_resolve = '$' in self.__raw_string
-        self.__need_reindex = '{' in self.__raw_string
-        self.__string = self.__raw_string if not self.__need_resolve and not self.__need_reindex else None
+        assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
+        if isinstance(string, RtMatchString):
+            self.__init_from_rtmatchstring(string)
+        else:
+            self.__init_from_string(string)
 
     def need_resolve(self):
         return self.__need_resolve
@@ -430,4 +476,9 @@ class RtRuleFactory(object):
                 w = RtMatchString(w)
                 w.update(compiler.resolve_name(state, str(w)))
             kwargs[k] = w
-        return self.__classname(*self.__args, **kwargs)
+        r = self.__classname(*self.__args, **kwargs)
+        if r.has_bindings():
+            for b in r.get_bindings():
+                if compiler.binding_needs_resolve(b):
+                    b.update(compiler.resolve_binding(b))
+        return r

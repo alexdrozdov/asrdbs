@@ -307,7 +307,15 @@ class SpecCompiler(object):
 
             if state.is_anchor():
                 assert self.__local_spec_anchor is None
-                self.__local_spec_anchor = state
+                if state.is_container():
+                    raise RuntimeError('container anchors are not implemented')
+                if state.is_uniq_container():
+                    raise RuntimeError('uniq container anchors are not implemented')
+                if state.has_incapsulated_spec():
+                    in_spec = state.get_incapsulated_spec()
+                    self.__local_spec_anchor = in_spec.get_local_spec_anchor()
+                else:
+                    self.__local_spec_anchor = state
 
             self.__add_state(state)
 
@@ -443,18 +451,39 @@ class SpecCompiler(object):
             for r_trs in fini[0].get_rtransitions():
                 for trs in state.get_transitions():
                     r_trs.replace_trs(fini[0], trs)
-            if state.has_incapsulate_binding():
-                self.__resolve_rule_bindings(state)
             self.__states.remove(state)
 
-    def register_rule_binding(self, int_rule):
-        binding = str(int_rule.get_binding())
-        if binding in self.__rule_bindins:
-            binding_list = self.__rule_bindins[binding]
-            assert int_rule not in binding_list
-            binding_list.append(int_rule)
-        else:
-            self.__rule_bindins[binding] = [int_rule, ]
+    def register_rule_binding(self, rule, binding):
+        return
+
+    def binding_needs_resolve(self, binding):
+        assert isinstance(binding, RtMatchString)
+        if self.__name2state.has_key(str(binding)):
+            state = self.__name2state[str(binding)]
+            if not state.is_container() and not state.is_uniq_container() and not state.has_incapsulated_spec():
+                return False
+            return True
+        print str(binding)
+        print self.__name2state.keys()
+        raise RuntimeError('state name matching not implemented')
+
+    def resolve_binding(self, binding):
+        assert isinstance(binding, RtMatchString)
+        if self.__name2state.has_key(str(binding)):
+            state = self.__name2state[str(binding)]
+            if state.is_container():
+                raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for containers')
+                return
+            if state.is_uniq_container():
+                raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for uniq containers')
+                return
+            if state.has_incapsulated_spec():
+                in_spec = state.get_incapsulated_spec()
+                in_spec_anchor = in_spec.get_local_spec_anchor()
+                assert in_spec_anchor is not None
+                print 'resolved', str(binding), 'to', str(in_spec_anchor.get_name())
+                return in_spec_anchor.get_name()
+        raise RuntimeError('state name matching not implemented')
 
     def compile(self, spec, parent_spec_name=''):
         self.__parent_spec_name = parent_spec_name
@@ -470,10 +499,10 @@ class SpecCompiler(object):
         self.__create_upgrading_trs(spec)
         self.__remove_containers()
         self.__merge_transitions()
-        self.__create_state_rules()
         self.__incapsulate_states()
+        self.__create_state_rules()
 
-        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis)
+        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchor)
         return cs
 
     def get_level(self):
@@ -704,13 +733,14 @@ class SpecStateDef(object):
 
 
 class CompiledSpec(object):
-    def __init__(self, src_spec, name, states, inis, finis):
+    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchor):
         self.__src_spec = src_spec
         assert states, 'Spec without states'
         assert inis, 'Spec without init states'
         self.__states = states
         self.__inis = inis
         self.__finis = finis
+        self.__local_spec_anchor = local_spec_anchor
         self.__name = name
 
     def get_name(self):
@@ -724,6 +754,9 @@ class CompiledSpec(object):
 
     def get_finis(self):
         return self.__finis
+
+    def get_local_spec_anchor(self):
+        return self.__local_spec_anchor
 
 
 class RtMatchSequence(gvariant.Sequence):
