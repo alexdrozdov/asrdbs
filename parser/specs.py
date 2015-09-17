@@ -740,7 +740,9 @@ class SpecStateDef(object):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [r for r in rule_def]
+            rule_def = [rr for rr in rule_def]
+            for rr in rule_def:
+                assert not rr.created()
             if not self.__spec_dict.has_key(r):
                 self.__spec_dict[r] = rule_def
             else:
@@ -934,7 +936,7 @@ class RtMatchSequence(gvariant.Sequence):
     def __handle_pending_rules(self, rtentry):
         h.en(self) and h.log(self, "Handling pending rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
         for rule, rtmes in self.__pending_rules.items():
-            h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule.get_int_rule(), len(rtmes), rule.get_int_rule().get_info()))
+            h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule, len(rtmes), rule.get_info()))
             for rtme in rtmes:
                 assert rtme.get_owner() == self
                 h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))

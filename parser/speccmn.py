@@ -323,7 +323,7 @@ class c__slave_master_spec(RtDynamicRule):
         return False
 
     def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__id_name, self.always_pending(), self.ignore_pending_state())
+        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
 
     def has_bindings(self):
         return True
@@ -471,6 +471,7 @@ class RtRuleFactory(object):
         self.__created = False
 
     def create(self, compiler, state):
+        assert not self.__created
         self.__created = True
         kwargs = {}
         for k, w in self.__kwargs.items():
