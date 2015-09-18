@@ -188,9 +188,9 @@ class SpecGraphGen(object):
 
     def __gen_state(self, st):
         label = '<TABLE>'
-        label += '<TR><TD>{0}</TD></TR>'.format(st.get_name())
+        label += '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(st.get_name())
         for r in st.get_rules_ro():
-            label += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format('red' if r.is_static() else 'blue', r.get_info(wrap=True))
+            label += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format('darkolivegreen1' if r.is_static() else 'burlywood1', r.get_info(wrap=True))
         label += '</TABLE>'
 
         style = "filled"
