@@ -90,13 +90,16 @@ class RtRule(object):
     def ignore_pending_state(self):
         raise RuntimeError('unimplemented')
 
-    def get_info(self):
+    def get_info(self, wrap=False):
         raise RuntimeError('unimplemented')
 
     def has_bindings(self):
         raise RuntimeError('unimplemented')
 
     def get_bindings(self):
+        raise RuntimeError('unimplemented')
+
+    def is_static(self):
         raise RuntimeError('unimplemented')
 
 
@@ -109,6 +112,9 @@ class RtDynamicRule(RtRule):
 
     def get_bindings(self):
         raise RuntimeError('unimplemented')
+
+    def is_static(self):
+        return False
 
 
 class RtStaticRule(RtRule):
@@ -124,14 +130,14 @@ class RtStaticRule(RtRule):
     def ignore_pending_state(self):
         raise RuntimeError('not applicable')
 
-    def get_info(self):
-        raise RuntimeError('unimplemented')
-
     def has_bindings(self):
         return False
 
     def get_bindings(self):
         return []
+
+    def is_static(self):
+        return True
 
 
 class c__pos_check(RtStaticRule):
@@ -141,6 +147,9 @@ class c__pos_check(RtStaticRule):
     def match(self, form):
         return form.get_pos() in self.__pos_names
 
+    def get_info(self, wrap=False):
+        return u'pos: {0}'.format(self.__pos_names[0])
+
 
 class c__pos_check_inv(RtStaticRule):
     def __init__(self, pos_names):
@@ -149,10 +158,14 @@ class c__pos_check_inv(RtStaticRule):
     def match(self, form):
         return form.get_pos() not in self.__pos_names
 
+    def get_info(self, wrap=False):
+        return u'not pos: {0}'.format(self.__pos_names[0])
+
 
 class c__pos_syntax_check(RtStaticRule):
     def __init__(self, syntax_name):
         assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax {0}'.format(syntax_name)
+        self.__syntax = syntax_name
         if syntax_name == 'comma':
             self.__syntax_check_cb = self.__comma_check_cb
         if syntax_name == 'dot':
@@ -171,6 +184,9 @@ class c__pos_syntax_check(RtStaticRule):
 
     def match(self, form):
         return form.get_pos() == 'syntax' and self.__syntax_check_cb(form)
+
+    def get_info(self, wrap=False):
+        return u'syntax: {0}'.format(self.__syntax)
 
 
 class PosSpecs(object):
@@ -203,6 +219,9 @@ class c__word_check(RtStaticRule):
     def match(self, form):
         return form.get_word() in self.__words
 
+    def get_info(self, wrap=False):
+        return u'word: {0}'.format(self.__words)
+
 
 class WordSpecs(object):
     def IsWord(self, words):
@@ -215,6 +234,9 @@ class c__case_check(RtStaticRule):
 
     def match(self, form):
         return form.get_case() in self.__cases
+
+    def get_info(self, wrap=False):
+        return u'case: {0}'.format(self.__cases[0])
 
 
 class CaseSpecs(object):
@@ -248,8 +270,12 @@ class c__position_spec(RtDynamicRule):
     def ignore_pending_state(self):
         return False
 
-    def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
+    def get_info(self, wrap=False):
+        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
 
     def has_bindings(self):
         return True
@@ -322,8 +348,12 @@ class c__slave_master_spec(RtDynamicRule):
     def ignore_pending_state(self):
         return False
 
-    def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
+    def get_info(self, wrap=False):
+        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
 
     def has_bindings(self):
         return True
@@ -364,8 +394,12 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
     def ignore_pending_state(self):
         return True
 
-    def get_info(self):
-        return 'id_name: {0}, always_pending: {1}, ignore_pend_state: {2}'.format(self.__anchor, self.always_pending(), self.ignore_pending_state())
+    def get_info(self, wrap=False):
+        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
 
     def has_bindings(self):
         return True

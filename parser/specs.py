@@ -423,7 +423,7 @@ class SpecCompiler(object):
     def __create_state_rules(self):
         for state in self.__states:
             if state.has_noncreated_rules():
-                state.create_rules()
+                state.create_rules(self)
 
     def __resolve_rule_bindings(self, state):
         new_binding = self.resolve_name(state.get_spec(), state.get_incapsulate_binding())
@@ -492,7 +492,6 @@ class SpecCompiler(object):
                 in_spec = state.get_incapsulated_spec()
                 in_spec_anchor = in_spec.get_local_spec_anchor()
                 assert in_spec_anchor is not None
-                print 'resolved', str(binding), 'to', str(in_spec_anchor.get_name())
                 return in_spec_anchor.get_name()
         raise RuntimeError('state name matching not implemented')
 
@@ -523,7 +522,6 @@ class SpecCompiler(object):
 
 class SpecStateDef(object):
     def __init__(self, compiler, name, spec_dict, parent=None):
-        self.__compiler = compiler
         self.__name = RtMatchString(name)
         if self.__name.need_resolve():
             self.__name.update(compiler.resolve_name(spec_dict, str(self.__name)))
@@ -688,7 +686,7 @@ class SpecStateDef(object):
             if to not in self.__transitions:
                 self.__transitions.append(to)
 
-    def __create_rule_list(self, is_static, rule_list, target_list):
+    def __create_rule_list(self, compiler, is_static, rule_list, target_list):
         for r in rule_list:
             if self.__spec_dict.has_key(r):
                 rule_def = self.__spec_dict[r]
@@ -696,20 +694,20 @@ class SpecStateDef(object):
                     for rd in rule_def:
                         if rd.created():
                             continue
-                        target_list.append(rd.create(self.__compiler, self.__spec_dict))
+                        target_list.append(rd.create(compiler, self.__spec_dict))
                 else:
                     if not rule_def.created():
-                        target_list.append(rule_def.create(self.__compiler, self.__spec_dict))
+                        target_list.append(rule_def.create(compiler, self.__spec_dict))
 
-    def __create_stateless_rules(self):
-        self.__create_rule_list(True, ['pos_type', 'case'], self.__stateless_rules)
+    def __create_stateless_rules(self, comiler):
+        self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
 
-    def __create_rt_rules(self):
-        self.__create_rule_list(False, ['position', 'master-slave', 'unwanted-links'], self.__rt_rules)
+    def __create_rt_rules(self, compiler):
+        self.__create_rule_list(compiler, False, ['position', 'master-slave', 'unwanted-links'], self.__rt_rules)
 
-    def create_rules(self):
-        self.__create_stateless_rules()
-        self.__create_rt_rules()
+    def create_rules(self, compiler):
+        self.__create_stateless_rules(compiler)
+        self.__create_rt_rules(compiler)
 
     def has_noncreated_rules(self):
         for r in ['position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
@@ -754,6 +752,12 @@ class SpecStateDef(object):
 
     def get_rt_rules(self):
         return [rt.new_copy() for rt in self.__rt_rules]
+
+    def get_rules_ro(self):
+        rules = [rt for rt in self.__rt_rules]
+        for r in self.__stateless_rules:
+            rules.append(r)
+        return rules
 
     def has_incapsulated_spec(self):
         return self.__incapsulate_spec_name is not None
@@ -1132,17 +1136,26 @@ class RtMatchEntry(object):
 
         self.__matched = []
         self.__pending_count = 0
+        self.__create_name(self.__spec.get_name())
         if not do_not_init_rules:
-            self.__pending = self.__spec.get_rt_rules()
+            self.__init_pending_rules()
             self.__register_pending_rules()
         else:
             self.__pending = []
 
     def get_name(self):
-        return self.__spec.get_name()
+        return self.__name
 
     def get_owner(self):
         return self.__owner
+
+    def __init_pending_rules(self):
+        self.__pending = []
+        for rt in self.__spec.get_rt_rules():
+            for b in rt.get_bindings():
+                if b.need_reindex():
+                    self.__reindex_name(b)
+            self.__pending.append(rt)
 
     def __register_pending_rules(self):
         self.__pending_count = 0
@@ -1151,6 +1164,14 @@ class RtMatchEntry(object):
             if not r.ignore_pending_state():
                 self.__pending_count += 1
             self.__owner.register_rule_handler(r, self)
+
+    def __create_name(self, name):
+        self.__name = RtMatchString(name)
+        if self.__name.need_reindex():
+            self.__reindex_name(self.__name)
+
+    def __reindex_name(self, name):
+        return name.update(str(name).format(*(0, 0, 0, 0, 0)))
 
     def clone(self, owner, prev=None):
         rtme = RtMatchEntry(owner, self.__form, self.__spec, prev, do_not_init_rules=True)

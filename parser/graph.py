@@ -187,17 +187,25 @@ class SpecGraphGen(object):
         return s
 
     def __gen_state(self, st):
+        label = '<TABLE>'
+        label += '<TR><TD>{0}</TD></TR>'.format(st.get_name())
+        for r in st.get_rules_ro():
+            label += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format('red' if r.is_static() else 'blue', r.get_info(wrap=True))
+        label += '</TABLE>'
+
         style = "filled"
         color = "white"
         if st.is_init():
             color = "yellow"
         elif st.is_fini():
             color = "orchid"
-        return u'\t"{0}" [label="{1}", style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), st.get_name(), style, color)
+        return u'\t"{0}" [label=< {1} >, style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), label, style, color)
 
     def generate(self, states):
         for s in states:
             self.__add_obj(s)
+            for r in s.get_rules_ro():
+                self.__add_obj(r)
 
         s = u'digraph D {\r\n'
         for st in states:
@@ -205,11 +213,6 @@ class SpecGraphGen(object):
 
         for st in states:
             s += self.__gen_links(st)
-
-        # for e in entries:
-        #     for f in e.get_forms():
-        #         for l in f.get_slaves():
-        #             s += self.__gen_link_label(l[1], subgraph)
 
         s += u'}\r\n'
 
