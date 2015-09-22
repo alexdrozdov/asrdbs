@@ -457,11 +457,18 @@ class SpecCompiler(object):
                 self.__states.append(in_state)
                 self.__name2state[str(in_state.get_name())] = in_state
             for trs in ini[0].get_transitions():
+                to = trs.get_to()
                 for r_trs in state.get_rtransitions():
-                    r_trs.replace_trs(state, trs)
+                    t_from = r_trs.get_from()
+                    t_from.add_trs_to(to)
             for r_trs in fini[0].get_rtransitions():
+                t_from = r_trs.get_from()
                 for trs in state.get_transitions():
-                    r_trs.replace_trs(fini[0], trs)
+                    to = trs.get_to()
+                    t_from.add_trs_to(to)
+            ini[0].unlink_all()
+            fini[0].unlink_all()
+            state.unlink_all()
             self.__states.remove(state)
 
     def register_rule_binding(self, rule, binding):
@@ -520,6 +527,24 @@ class SpecCompiler(object):
         return self.__level
 
 
+class TrsDef(object):
+    def __init__(self, compiler, st_from, st_to):
+        assert compiler is None
+        self.__from = st_from
+        self.__to = st_to
+
+    def get_to(self):
+        return self.__to
+
+    def get_from(self):
+        return self.__from
+
+    def unlink(self, must_exists=True):
+        self.__from.remove_trs(self, must_exists=must_exists)
+        if self.__to is not self.__from:
+            self.__to.remove_trs(self, must_exists=must_exists)
+
+
 class SpecStateDef(object):
     def __init__(self, compiler, name, spec_dict, parent=None):
         self.__name = RtMatchString(name)
@@ -551,6 +576,7 @@ class SpecStateDef(object):
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
         self.__is_local_anchor = spec_dict.has_key('anchor')
+        self.__transitions_merged = False
 
     def get_name(self):
         return self.__name
@@ -604,87 +630,90 @@ class SpecStateDef(object):
     def set_local_final(self):
         self.__is_local_final = True
 
+    def add_trs_to(self, to):
+        if to not in [t.get_to() for t in self.__transitions]:
+            trs = TrsDef(None, self, to)
+            self.__transitions.append(trs)
+            to.__add_trs_from(trs)
+
     def add_trs_to_self(self):
         self.add_trs_to_neighbour(self)
 
     def add_trs_to_neighbour(self, to):
-        if to not in self.__neighbour_transitions:
-            self.__neighbour_transitions.append(to)
-        to.__add_trs_from(self)
+        if to not in [neighbour_trs.get_to() for neighbour_trs in self.__neighbour_transitions]:
+            trs = TrsDef(None, self, to)
+            self.__neighbour_transitions.append(trs)
+            to.__add_trs_from(trs)
 
     def add_trs_to_child(self, to):
-        if to not in self.__child_transitions:
-            self.__child_transitions.append(to)
-        to.__add_trs_from(self)
+        if to not in [child_trs.get_to() for child_trs in self.__child_transitions]:
+            trs = TrsDef(None, self, to)
+            self.__child_transitions.append(trs)
+            to.__add_trs_from(trs)
 
     def add_trs_to_child_child(self, child):
-        for to in child.__child_transitions:
+        for to in [child_trs.get_to() for child_trs in child.__child_transitions]:
             self.add_trs_to_child(to)
-            to.__add_trs_from(self)
 
     def add_trs_to_neighbours_childs(self, item):
-        for to in item.__child_transitions:
-            if to not in self.__neighbour_transitions:
-                self.__neighbour_transitions.append(to)
-            to.__add_trs_from(self)
+        for to in [child_trs.get_to() for child_trs in item.__child_transitions]:
+            if to not in [neighbour_trs.get_to() for neighbour_trs in self.__neighbour_transitions]:
+                trs = TrsDef(None, self, to)
+                self.__neighbour_transitions.append(trs)
+                to.__add_trs_from(trs)
 
     def add_parent_trs(self, parent):
-        for to in parent.__neighbour_transitions:
-            if to not in self.__neighbour_transitions:
-                self.__neighbour_transitions.append(to)
-            to.__add_trs_from(self)
+        for to in [neighbour_trs.get_to() for neighbour_trs in parent.__neighbour_transitions]:
+            if to not in [n_trs.get_to() for n_trs in self.__neighbour_transitions]:
+                trs = TrsDef(None, self, to)
+                self.__neighbour_transitions.append(trs)
+                to.__add_trs_from(trs)
         if parent.is_repeated():
             self.add_trs_to_neighbours_childs(parent)
             self.add_trs_to_neighbour(parent)
 
-    def __add_trs_from(self, t_from):
-        if t_from not in self.__rtransitions:
-            self.__rtransitions.append(t_from)
-
-    def replace_trs(self, to_replace, to_replace_with):
-        if to_replace in self.__transitions:
-            self.__transitions.remove(to_replace)
-        if to_replace_with not in self.__transitions:
-            self.__transitions.append(to_replace_with)
-        if to_replace in self.__neighbour_transitions:
-            self.__neighbour_transitions.remove(to_replace)
-            self.__neighbour_transitions.append(to_replace_with)
-        if to_replace in self.__child_transitions:
-            self.__child_transitions.remove(to_replace)
-            self.__child_transitions.append(to_replace_with)
-        to_replace_with.__add_trs_from(self)
+    def __add_trs_from(self, trs):
+        assert isinstance(trs, TrsDef)
+        if trs not in self.__rtransitions:
+            self.__rtransitions.append(trs)
 
     def unlink_all(self):
-        for to in self.__neighbour_transitions:
-            to.unlink_from(self)
-        for to in self.__child_transitions:
-            to.unlink_from(self)
-        for t_from in self.__rtransitions:
-            t_from.unlink_to(self)
-        self.__neighbour_transitions = []
-        self.__child_transitions = []
-        self.__rtransitions = []
-        self.__transitions = []
+        for trs in set(self.__rtransitions + self.__transitions):
+            trs.unlink(must_exists=True)
+        for to_trs in self.__neighbour_transitions[:]:
+            to_trs.unlink(must_exists=False)
+        for to_trs in self.__child_transitions[:]:
+            to_trs.unlink(must_exists=False)
 
-    def unlink_from(self, t_from):
-        self.__rtransitions.remove(t_from)
+        assert not self.__neighbour_transitions and not self.__child_transitions and not self.__rtransitions and not self.__transitions, 'trs={0}, rtrs={1}'.format(repr(self.__transitions), repr(self.__rtransitions))
 
-    def unlink_to(self, to):
-        if to in self.__neighbour_transitions:
-            self.__neighbour_transitions.remove(to)
-        if to in self.__child_transitions:
-            self.__child_transitions.remove(to)
-        if to in self.__transitions:
-            self.__transitions.remove(to)
+    def remove_trs(self, trs, must_exists):
+        assert isinstance(trs, TrsDef)
+        assert trs.get_from() is self or trs.get_to() is self
+        if trs in self.__neighbour_transitions:
+            self.__neighbour_transitions.remove(trs)
+        if trs in self.__child_transitions:
+            self.__child_transitions.remove(trs)
+
+        removed = False
+        if trs in self.__transitions:
+            self.__transitions.remove(trs)
+            removed = True
+        if trs in self.__rtransitions:
+            self.__rtransitions.remove(trs)
+            removed = True
+        assert not must_exists or not self.__transitions_merged or removed, '{0} -> {1}'.format(trs.get_from().get_name(), trs.get_to().get_name())
 
     def merge_transitions(self):
-        self.__transitions = []
-        for to in self.__neighbour_transitions:
-            if to not in self.__transitions:
-                self.__transitions.append(to)
-        for to in self.__child_transitions:
-            if to not in self.__transitions:
-                self.__transitions.append(to)
+        self.__transitions_merged = True
+        for trs in self.__neighbour_transitions:
+            if trs.get_to() not in [t.get_to() for t in self.__transitions]:
+                self.__transitions.append(trs)
+        for trs in self.__child_transitions:
+            if trs.get_to() not in [t.get_to() for t in self.__transitions]:
+                self.__transitions.append(trs)
+
+        assert len(self.__transitions) == len(set(self.__transitions)), self.__transitions
 
     def __create_rule_list(self, compiler, is_static, rule_list, target_list):
         for r in rule_list:
@@ -723,10 +752,10 @@ class SpecStateDef(object):
         return False
 
     def get_transitions(self):
-        return self.__transitions
+        return self.__transitions[:]
 
     def get_rtransitions(self):
-        return self.__rtransitions
+        return self.__rtransitions[:]
 
     def is_static_applicable(self, form):
         for r in self.__stateless_rules:
@@ -865,7 +894,7 @@ class RtMatchSequence(gvariant.Sequence):
         new_sq = []
         for t in trs[0:-1]:
             trms = self.clone()
-            alive, fini = trms.__handle_trs(t, form)
+            alive, fini = trms.__handle_trs(t.get_to(), form)
             if alive:
                 new_sq.append(trms)
             if fini:
@@ -873,7 +902,7 @@ class RtMatchSequence(gvariant.Sequence):
 
         t = trs[-1]
         h.en(self) and h.log(self, u"Handling")
-        alive, fini = self.__handle_trs(t, form)
+        alive, fini = self.__handle_trs(t.get_to(), form)
         h.en(self) and h.log(self, u"Handled with alive={0}, fini={1}".format(alive, fini))
         if not alive:
             h.en(self) and h.log(self, "No carrier")
@@ -1185,11 +1214,7 @@ class RtMatchEntry(object):
         return rtme
 
     def find_transitions(self, form):
-        trs = []
-        for t in self.__spec.get_transitions():
-            if t.is_static_applicable(form):
-                trs.append(t)
-        return trs
+        return [t for t in self.__spec.get_transitions() if t.get_to().is_static_applicable(form)]
 
     def confirm_rule(self, rule):
         h.en() and h.log(self, "Confirming rule {0}, len(self.__pending)={1}, self.__pending_count={2}".format(rule, len(self.__pending), self.__pending_count))
