@@ -904,6 +904,41 @@ class CompiledSpec(object):
         return self.__local_spec_anchor
 
 
+class RtStackCounter(object):
+    def __init__(self, stack=None):
+        if stack is None:
+            self.__init_blank()
+        else:
+            self.__init_from_stack(stack)
+
+    def __init_blank(self):
+        self.__stack = []
+
+    def __init_from_stack(self, stack):
+        self.__stack = stack.__stack[:]
+
+    def __reset_under(self, l):
+        if l + 1 < len(self.__stack):
+            self.__stack = self.__stack[0:l + 1]
+
+    def __incr_level(self, l):
+        assert l == len(self.__stack) or l + 1 == len(self.__stack), 'l={0}, len={1}, stack={2}'.format(l, len(self.__stack), self.__stack)
+        if l + 1 == len(self.__stack):
+            self.__stack[l] += 1
+        else:
+            self.__stack.append(0)
+        assert l + 1 == len(self.__stack)
+
+    def handle_trs(self, trs):
+        levelpath = trs.get_levelpath()
+        self.__reset_under(min(levelpath))
+        for m in levelpath:
+            self.__incr_level(m)
+
+    def get_stack(self):
+        return self.__stack
+
+
 class RtMatchSequence(gvariant.Sequence):
     def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
         self.__matcher = matcher
@@ -919,6 +954,7 @@ class RtMatchSequence(gvariant.Sequence):
         self.__status = RtRule.res_none
         self.__pending_rules = {}
         self.__unwanted_links = []
+        self.__stack = RtStackCounter(stack=is_clone_of.__stack if is_clone_of is not None else None)
 
     def clone(self):
         rtms = RtMatchSequence(self.__matcher, is_clone_of=self)
@@ -956,7 +992,7 @@ class RtMatchSequence(gvariant.Sequence):
         new_sq = []
         for t in trs[0:-1]:
             trms = self.clone()
-            alive, fini = trms.__handle_trs(t.get_to(), form)
+            alive, fini = trms.__handle_trs(t, form)
             if alive:
                 new_sq.append(trms)
             if fini:
@@ -964,7 +1000,7 @@ class RtMatchSequence(gvariant.Sequence):
 
         t = trs[-1]
         h.en(self) and h.log(self, u"Handling")
-        alive, fini = self.__handle_trs(t.get_to(), form)
+        alive, fini = self.__handle_trs(t, form)
         h.en(self) and h.log(self, u"Handled with alive={0}, fini={1}".format(alive, fini))
         if not alive:
             h.en(self) and h.log(self, "No carrier")
@@ -1000,7 +1036,9 @@ class RtMatchSequence(gvariant.Sequence):
         else:
             self.__pending_rules.pop(rule)
 
-    def __handle_trs(self, to, form):
+    def __handle_trs(self, trs, form):
+        to = trs.get_to()
+        self.__stack.handle_trs(trs)
         prev = self.__entries[-1] if self.__entries else None
         if to.is_fini():
             rtme = RtMatchEntry(self, speccmn.SpecStateFiniForm(), to, prev=prev)
@@ -1073,6 +1111,9 @@ class RtMatchSequence(gvariant.Sequence):
     def add_unwanted_link(self, link):
         if link not in self.__unwanted_links:
             self.__unwanted_links.append(link)
+
+    def get_stack(self):
+        return self.__stack.get_stack()
 
 
 class SpecMatcher(object):
@@ -1262,7 +1303,7 @@ class RtMatchEntry(object):
             self.__reindex_name(self.__name)
 
     def __reindex_name(self, name):
-        return name.update(str(name).format(*(0, 0, 0, 0, 0)))
+        name.update(str(name).format(*self.__owner.get_stack()))
 
     def clone(self, owner, prev=None):
         rtme = RtMatchEntry(owner, self.__form, self.__spec, prev, do_not_init_rules=True)
