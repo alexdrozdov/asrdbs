@@ -138,21 +138,6 @@ class SpecGraphGen(object):
         self.__obj2id = {}
         self.__last_id = 0
 
-    def __dict_to_istr(self, d, offset=0):
-        r = u''
-        if isinstance(d, unicode) or isinstance(d, str):
-            d = json.loads(d)
-        for k, v in d.items():
-            r += u'  ' * offset + k + ': '
-            if isinstance(v, list):
-                r += '['
-                for vv in v:
-                    r += self.__dict_to_istr(vv, offset=offset+1)
-                r += u'  ' * offset + ']\l'
-            else:
-                r += str(v) + "\l"
-        return r
-
     def __mkid(self, iid):
         return 'obj_{0}'.format(iid)
 
@@ -163,24 +148,16 @@ class SpecGraphGen(object):
     def __get_obj_id(self, obj):
         return self.__obj2id[obj]
 
-    def __gen_link_label(self, l, subgraph=None):
-        if subgraph is None:
-            style = "filled"
-        elif subgraph.has_link(l):
-            style = "filled"
-        else:
-            style = "invisible"
-        s = u'\t{0} [label = "{1}", shape="octagon", style="{2}", fillcolor="orchid"];\r\n'.format(self.__get_obj_id(l), self.__dict_to_istr(l.get_rule().explain_str()), style)
-        return s
-
     def __gen_links(self, st):
         s = u''
-        for to in [trs.get_to() for trs in st.get_transitions()]:
+        for trs in st.get_transitions():
             try:
+                to = trs.get_to()
                 style = "filled"
+                n_trs = self.__get_obj_id(trs)
                 n_from = self.__get_obj_id(st)
                 n_to = self.__get_obj_id(to)
-                s += u'\t{0}->{1} [style="{2}"];\r\n'.format(n_from, n_to, style)
+                s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(n_from, n_trs, n_to, style)
             except:
                 print 'state name: {0}, trs name: {1}'.format(st.get_name(), to.get_name())
                 print traceback.format_exc()
@@ -191,6 +168,8 @@ class SpecGraphGen(object):
         label += '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(st.get_name())
         for r in st.get_rules_ro():
             label += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format('darkolivegreen1' if r.is_static() else 'burlywood1', r.get_info(wrap=True))
+        label += '<TR><TD ALIGN="LEFT">{0}</TD></TR>'.format('level: {0}'.format(st.get_level()))
+        label += '<TR><TD ALIGN="LEFT">{0}</TD></TR>'.format('glevel: {0}'.format(st.get_glevel()))
         label += '</TABLE>'
 
         style = "filled"
@@ -201,15 +180,26 @@ class SpecGraphGen(object):
             color = "orchid"
         return u'\t"{0}" [label=< {1} >, style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), label, style, color)
 
+    def __gen_trs(self, trs):
+        label = trs.get_levelpath()
+        return u'\t"{0}" [label="{1}", style="filled"];\r\n'.format(self.__get_obj_id(trs), label)
+
     def generate(self, states):
+        self.__trs = []
         for s in states:
             self.__add_obj(s)
             for r in s.get_rules_ro():
                 self.__add_obj(r)
+            for trs in s.get_transitions():
+                self.__add_obj(trs)
+                self.__trs.append(trs)
 
         s = u'digraph D {\r\n'
         for st in states:
             s += self.__gen_state(st)
+
+        for trs in self.__trs:
+            s += self.__gen_trs(trs)
 
         for st in states:
             s += self.__gen_links(st)

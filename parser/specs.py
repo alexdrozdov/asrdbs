@@ -457,15 +457,13 @@ class SpecCompiler(object):
                 self.__states.append(in_state)
                 self.__name2state[str(in_state.get_name())] = in_state
             for trs in ini[0].get_transitions():
-                to = trs.get_to()
                 for r_trs in state.get_rtransitions():
                     t_from = r_trs.get_from()
-                    t_from.add_trs_to(to)
+                    t_from.add_trs_to(trs, with_trs=r_trs)
             for r_trs in fini[0].get_rtransitions():
                 t_from = r_trs.get_from()
                 for trs in state.get_transitions():
-                    to = trs.get_to()
-                    t_from.add_trs_to(to)
+                    t_from.add_trs_to(trs)
             ini[0].unlink_all()
             fini[0].unlink_all()
             state.unlink_all()
@@ -528,10 +526,51 @@ class SpecCompiler(object):
 
 
 class TrsDef(object):
-    def __init__(self, compiler, st_from, st_to):
+    def __init__(self, compiler, st_from, restrict_default=None, st_to=None, trs_to=None, with_trs=None):
+        assert restrict_default is None
         assert compiler is None
+        assert st_to is not None or trs_to is not None
+        if st_to is not None:
+            self.__init_from_stto(compiler, st_from, st_to)
+        else:
+            self.__init_from_trsto(compiler, st_from, trs_to, with_trs)
+        assert self.__levelpath and isinstance(self.__levelpath, tuple)
+
+    def __init_from_stto(self, compiler, st_from, st_to):
+        assert isinstance(st_to, SpecStateDef)
         self.__from = st_from
         self.__to = st_to
+        if self.__from.get_glevel() == self.__to.get_glevel():
+            self.__levelpath = [self.__to.get_glevel(), ]
+        elif self.__from.get_glevel() > self.__to.get_glevel():
+            self.__levelpath = [self.__to.get_glevel(), ]  # to is higher than from. Anything below to doesnt matter
+        else:
+            self.__levelpath = range(self.__from.get_glevel() + 1, self.__to.get_glevel() + 1)
+        self.__levelpath = tuple(self.__levelpath)
+
+    def __init_from_trsto(self, compiler, st_from, trs_to, with_trs):
+        assert isinstance(trs_to, TrsDef)
+        self.__from = st_from
+        self.__to = trs_to.get_to()
+
+        if with_trs is not None:
+            upper_level = min(trs_to.get_from().get_glevel(), with_trs.get_to().get_glevel(), with_trs.__levelpath[0])
+        else:
+            upper_level = trs_to.get_from().get_glevel()
+
+        if self.__from.get_glevel() == upper_level:
+            self.__levelpath = [upper_level, ]
+        elif self.__from.get_glevel() > upper_level:
+            self.__levelpath = [upper_level, ]
+        else:
+            self.__levelpath = range(self.__from.get_glevel() + 1, upper_level + 1)
+
+        if upper_level < trs_to.get_from().get_glevel():
+            self.__levelpath.extend(range(upper_level + 1, trs_to.get_from().get_glevel()))
+
+        self.__levelpath.extend(trs_to.__levelpath)
+        to_level = trs_to.get_to().get_glevel()
+        self.__levelpath = tuple(sorted(filter(lambda x: x <= to_level, list(set(self.__levelpath)))))
 
     def get_to(self):
         return self.__to
@@ -539,10 +578,32 @@ class TrsDef(object):
     def get_from(self):
         return self.__from
 
+    def get_levelpath(self):
+        return self.__levelpath
+
     def unlink(self, must_exists=True):
         self.__from.remove_trs(self, must_exists=must_exists)
         if self.__to is not self.__from:
             self.__to.remove_trs(self, must_exists=must_exists)
+
+    def __cmp__(self, other):
+        assert isinstance(other, TrsDef)
+        if self == other:
+            return 0
+        return cmp(id(self), id(other))
+
+    def __eq__(self, other):
+        assert isinstance(other, TrsDef)
+        return self.__from == other.__from and self.__to == other.__to and self.__levelpath == other.__levelpath
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return '{0} -> {1} {2}'.format(str(self.__from), str(self.__to), self.__levelpath)
+
+    def __hash__(self):
+        return hash(self.__repr__())
 
 
 class SpecStateDef(object):
@@ -630,44 +691,47 @@ class SpecStateDef(object):
     def set_local_final(self):
         self.__is_local_final = True
 
-    def add_trs_to(self, to):
-        if to not in [t.get_to() for t in self.__transitions]:
-            trs = TrsDef(None, self, to)
+    def __append_neighbour_trs(self, trs):
+        assert isinstance(trs, TrsDef)
+        if trs not in self.__neighbour_transitions:
+            self.__neighbour_transitions.append(trs)
+            trs.get_to().__add_trs_from(trs)
+
+    def __append_child_trs(self, trs):
+        assert isinstance(trs, TrsDef)
+        if trs not in self.__child_transitions:
+            self.__child_transitions.append(trs)
+            trs.get_to().__add_trs_from(trs)
+
+    def __append_trs(self, trs):
+        assert isinstance(trs, TrsDef)
+        if trs not in self.__transitions:
             self.__transitions.append(trs)
-            to.__add_trs_from(trs)
+            trs.get_to().__add_trs_from(trs)
+
+    def add_trs_to(self, trs, with_trs=None):
+        self.__append_trs(TrsDef(None, self, trs_to=trs, with_trs=with_trs))
 
     def add_trs_to_self(self):
         self.add_trs_to_neighbour(self)
 
     def add_trs_to_neighbour(self, to):
-        if to not in [neighbour_trs.get_to() for neighbour_trs in self.__neighbour_transitions]:
-            trs = TrsDef(None, self, to)
-            self.__neighbour_transitions.append(trs)
-            to.__add_trs_from(trs)
+        self.__append_neighbour_trs(TrsDef(None, self, st_to=to))
 
     def add_trs_to_child(self, to):
-        if to not in [child_trs.get_to() for child_trs in self.__child_transitions]:
-            trs = TrsDef(None, self, to)
-            self.__child_transitions.append(trs)
-            to.__add_trs_from(trs)
+        self.__append_child_trs(TrsDef(None, self, st_to=to))
 
     def add_trs_to_child_child(self, child):
-        for to in [child_trs.get_to() for child_trs in child.__child_transitions]:
-            self.add_trs_to_child(to)
+        for trs in child.__child_transitions:
+            self.__append_child_trs(TrsDef(None, self, trs_to=trs))
 
     def add_trs_to_neighbours_childs(self, item):
-        for to in [child_trs.get_to() for child_trs in item.__child_transitions]:
-            if to not in [neighbour_trs.get_to() for neighbour_trs in self.__neighbour_transitions]:
-                trs = TrsDef(None, self, to)
-                self.__neighbour_transitions.append(trs)
-                to.__add_trs_from(trs)
+        for trs in item.__child_transitions:
+            self.__append_neighbour_trs(TrsDef(None, self, trs_to=trs))
 
     def add_parent_trs(self, parent):
-        for to in [neighbour_trs.get_to() for neighbour_trs in parent.__neighbour_transitions]:
-            if to not in [n_trs.get_to() for n_trs in self.__neighbour_transitions]:
-                trs = TrsDef(None, self, to)
-                self.__neighbour_transitions.append(trs)
-                to.__add_trs_from(trs)
+        for trs in parent.__neighbour_transitions:
+            self.__append_neighbour_trs(TrsDef(None, self, trs_to=trs))
         if parent.is_repeated():
             self.add_trs_to_neighbours_childs(parent)
             self.add_trs_to_neighbour(parent)
@@ -707,11 +771,9 @@ class SpecStateDef(object):
     def merge_transitions(self):
         self.__transitions_merged = True
         for trs in self.__neighbour_transitions:
-            if trs.get_to() not in [t.get_to() for t in self.__transitions]:
-                self.__transitions.append(trs)
+            self.__append_trs(trs)
         for trs in self.__child_transitions:
-            if trs.get_to() not in [t.get_to() for t in self.__transitions]:
-                self.__transitions.append(trs)
+            self.__append_trs(trs)
 
         assert len(self.__transitions) == len(set(self.__transitions)), self.__transitions
 
