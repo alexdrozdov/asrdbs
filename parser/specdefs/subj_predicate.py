@@ -39,3 +39,6 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
                 "add-to-seq": False
             },
         ]
+
+    def get_validate(self):
+        return ValidatePresence(self, ['$SPEC::subject', '$SPEC::predicate'])

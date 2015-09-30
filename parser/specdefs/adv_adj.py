@@ -59,3 +59,6 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 "fsm": FsmSpecs().IsFini(),
             },
         ]
+
+    def get_validate(self):
+        return ValidatePresence(self, ['$SPEC::adv', '$SPEC::adj'])

@@ -57,6 +57,10 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
         self.__index_all_entries()
         self.__index_layers()
         self.__index_hierarchy()
+        self.__validate = spec.get_validate()
+
+    def get_validate(self):
+        return self.__validate
 
     def __index_subentries(self, item, level):
         if item.has_key("entries"):
@@ -518,7 +522,7 @@ class SpecCompiler(object):
         self.__incapsulate_states()
         self.__create_state_rules()
 
-        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchor)
+        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchor, spec.get_validate() if self.__level == 0 else None)
         return cs
 
     def get_level(self):
@@ -878,7 +882,7 @@ class SpecStateDef(object):
 
 
 class CompiledSpec(object):
-    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchor):
+    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchor, validator):
         self.__src_spec = src_spec
         assert states, 'Spec without states'
         assert inis, 'Spec without init states'
@@ -887,6 +891,7 @@ class CompiledSpec(object):
         self.__finis = finis
         self.__local_spec_anchor = local_spec_anchor
         self.__name = name
+        self.__validator = validator
 
     def get_name(self):
         return self.__name
@@ -902,6 +907,9 @@ class CompiledSpec(object):
 
     def get_local_spec_anchor(self):
         return self.__local_spec_anchor
+
+    def get_validate(self):
+        return self.__validator
 
 
 class RtStackCounter(object):
@@ -1115,6 +1123,15 @@ class RtMatchSequence(gvariant.Sequence):
     def get_stack(self):
         return self.__stack.get_stack()
 
+    def has_item(self, name=None, starts_with=None, cmp_fcn=None):
+        assert name is not None or starts_with is not None or cmp_fcn is not None
+        assert name is None and cmp_fcn is None
+        for e in self.__entries:
+            name = str(e.get_name())
+            if name.startswith(starts_with):
+                return True
+        return False
+
 
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec, matched_cb=None):
@@ -1156,8 +1173,10 @@ class SpecMatcher(object):
                 next_sequences.extend(new_sq)
             if alive:
                 next_sequences.append(sq)
-            if sq.is_valid() and sq.is_complete() and self.__matched_cb:
-                self.__matched_cb(sq)
+            if sq.is_valid() and sq.is_complete():
+                if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(sq):
+                    if self.__matched_cb:
+                        self.__matched_cb(sq)
         self.__sequences = next_sequences
 
     def __handle_sequences(self, form):

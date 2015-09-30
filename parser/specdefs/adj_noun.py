@@ -17,7 +17,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "fsm": FsmSpecs().IsInit(),
             },
             {
-                "id": "$PARENT:adj-pre",
+                "id": "$PARENT::adj-pre",
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
@@ -29,7 +29,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
-                "id": "$PARENT:adj-post",
+                "id": "$PARENT::adj-post",
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
@@ -40,3 +40,6 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "fsm": FsmSpecs().IsFini(),
             },
         ]
+
+    def get_validate(self):
+        return ValidatePresence(self, ['$SPEC::noun', '$SPEC::adj'])
