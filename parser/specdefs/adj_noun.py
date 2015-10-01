@@ -21,6 +21,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$SPEC::noun",
@@ -33,6 +34,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$SPEC::fini",

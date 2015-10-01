@@ -326,14 +326,15 @@ class PositionSpecs(object):
 
 
 class c__slave_master_spec(RtDynamicRule):
-    def __init__(self, anchor=None):
+    def __init__(self, anchor=None, weight=None):
         self.__anchor = RtMatchString(anchor)
+        self.__weight = weight
 
     def new_copy(self):
-        return c__slave_master_spec(self.__anchor)
+        return c__slave_master_spec(self.__anchor, self.__weight)
 
     def clone(self):
-        return c__slave_master_spec(self.__anchor)
+        return c__slave_master_spec(self.__anchor, self.__weight)
 
     def is_applicable(self, rtme, other_rtme):
         other_name = other_rtme.get_name()
@@ -343,7 +344,12 @@ class c__slave_master_spec(RtDynamicRule):
         return False
 
     def apply_on(self, rtme, other_rtme):
-        return RtRule.res_matched if other_rtme.get_form() in rtme.get_form().get_master_forms() else RtRule.res_failed
+        rtme_form = rtme.get_form()
+        other_form = other_rtme.get_form()
+        is_slave = other_form in rtme_form.get_master_forms()
+        if is_slave:
+            rtme.add_confirmed_link(rtme_form.get_link_to(other_form), weight=self.__weight, rule=self)
+        return RtRule.res_matched if is_slave else RtRule.res_failed
 
     def always_pending(self):
         return False
@@ -352,7 +358,7 @@ class c__slave_master_spec(RtDynamicRule):
         return False
 
     def get_info(self, wrap=False):
-        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s = u'master-slave{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
@@ -366,14 +372,15 @@ class c__slave_master_spec(RtDynamicRule):
 
 
 class c__slave_master_unwanted_spec(RtDynamicRule):
-    def __init__(self, anchor):
+    def __init__(self, anchor, weight=None):
         self.__anchor = RtMatchString(anchor)
+        self.__weight = weight
 
     def new_copy(self):
-        return c__slave_master_unwanted_spec(self.__anchor)
+        return c__slave_master_unwanted_spec(self.__anchor, self.__weight)
 
     def clone(self):
-        return c__slave_master_unwanted_spec(self.__anchor)
+        return c__slave_master_unwanted_spec(self.__anchor, self.__weight)
 
     def is_applicable(self, rtme, other_rtme):
         other_name = other_rtme.get_name()
@@ -398,7 +405,7 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
         return True
 
     def get_info(self, wrap=False):
-        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s = u'unwanted-links{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
@@ -412,13 +419,13 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
 
 
 class LinkSpecs(object):
-    def IsSlave(self, anchor):
-        return RtRuleFactory(c__slave_master_spec, anchor=anchor)
+    def IsSlave(self, anchor, weight=None):
+        return RtRuleFactory(c__slave_master_spec, anchor=anchor, weight=weight)
 
-    def MastersExcept(self, anchor):
-        return RtRuleFactory(c__slave_master_unwanted_spec, anchor=anchor)
+    def MastersExcept(self, anchor, weight=None):
+        return RtRuleFactory(c__slave_master_unwanted_spec, anchor=anchor, weight=weight)
 
-    def AllMasters(self):
+    def AllMasters(self, weight=None):
         return RtRuleFactory(c__slave_master_unwanted_spec, ("__all_masters", ))
 
 
@@ -504,7 +511,7 @@ class RtRuleFactory(object):
     def __init__(self, classname, *args, **kwargs):
         self.__classname = classname
         self.__args = args
-        self.__kwargs = {k: w if '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+        self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
         self.__created = False
 
     def create(self, compiler, state):
@@ -589,3 +596,8 @@ class ValidateOne(object):
                     return False
                 r = True
         return r
+
+
+class LinkWeight(object):
+    def __init__(self, ref_name):
+        self.__ref_name = ref_name

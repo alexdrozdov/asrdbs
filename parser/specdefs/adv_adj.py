@@ -30,7 +30,8 @@ class AdvAdjSequenceSpec(SequenceSpec):
                                 "id": "$PARENT::adv",
                                 "repeatable": RepeatableSpecs().Once(),
                                 "incapsulate": ["basic-adv", ],
-                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                             },
                             {
                                 "id": "$PARENT::comma-and-or",
@@ -44,6 +45,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
                         "repeatable": RepeatableSpecs().Once(),
                         "incapsulate": ["basic-adv", ],
                         "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                        "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                     },
                 ]
             },

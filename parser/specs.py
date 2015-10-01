@@ -947,6 +947,25 @@ class RtStackCounter(object):
         return self.__stack
 
 
+class RtSequenceLinkEntry(object):
+    def __init__(self, rule, link, weight):
+        self.__rule = rule
+        self.__link = link
+        self.__weight = weight
+
+    def get_link(self):
+        return self.__link
+
+    def get_master(self):
+        self.__link.get_master()
+
+    def get_slave(self):
+        self.__link.get_slave()
+
+    def get_weight(self):
+        return self.__weight
+
+
 class RtMatchSequence(gvariant.Sequence):
     def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
         self.__matcher = matcher
@@ -962,6 +981,7 @@ class RtMatchSequence(gvariant.Sequence):
         self.__status = RtRule.res_none
         self.__pending_rules = {}
         self.__unwanted_links = []
+        self.__confirmed_links = []
         self.__stack = RtStackCounter(stack=is_clone_of.__stack if is_clone_of is not None else None)
 
     def clone(self):
@@ -1110,15 +1130,19 @@ class RtMatchSequence(gvariant.Sequence):
             print f.get_word(),
         print '>'
 
-    def add_required_link(self, link):
-        pass
-
     def get_unwanted_links(self):
-        return []
+        return self.__unwanted_links
 
-    def add_unwanted_link(self, link):
-        if link not in self.__unwanted_links:
-            self.__unwanted_links.append(link)
+    def add_confirmed_link(self, sq_link_entry):
+        assert isinstance(sq_link_entry, RtSequenceLinkEntry)
+        if sq_link_entry not in self.__confirmed_links:
+            self.__confirmed_links.append(sq_link_entry)
+
+    def add_unwanted_link(self, sq_link_entry):
+        assert isinstance(sq_link_entry, RtSequenceLinkEntry)
+        print "Adding unwanted link"
+        if sq_link_entry not in self.__unwanted_links:
+            self.__unwanted_links.append(sq_link_entry)
 
     def get_stack(self):
         return self.__stack.get_stack()
@@ -1395,3 +1419,6 @@ class RtMatchEntry(object):
 
     def add_unwanted_link(self, l):
         self.__owner.add_unwanted_link(l)
+
+    def add_confirmed_link(self, l, weight=None, rule=None):
+        self.__owner.add_confirmed_link(RtSequenceLinkEntry(rule, l, weight))

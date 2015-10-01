@@ -386,6 +386,15 @@ class WordForm(WordFormInfo, SentenceEntry):
     def get_link_count(self):
         return len(self.__masters) + len(self.__slaves)
 
+    def get_link_to(self, other):
+        for m, l in self.__masters:
+            if other == m:
+                return l
+        for s, l in self.__slaves:
+            if other == s:
+                return l
+        return None
+
 
 class WordForms(object):
     def __init__(self, form_matcher, word, forms, uniq):
