@@ -15,7 +15,7 @@ class SubjectGroupSpec(SequenceSpec):
                 "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::init",
                 "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
+                "add-to-seq": False,
             },
             {
                 "id": "$PARENT::sub",
@@ -30,6 +30,7 @@ class SubjectGroupSpec(SequenceSpec):
                         "id": "$PARENT::spacer",
                         "repeatable": RepeatableSpecs().Any(),
                         "pos_type": [PosSpecs().IsExcept(["noun", "pronoun", "verb"]), ],
+                        "add-to-seq": False,
                     }
                 ]
             },
@@ -37,6 +38,6 @@ class SubjectGroupSpec(SequenceSpec):
                 "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::fini",
                 "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
+                "add-to-seq": False,
             },
         ]

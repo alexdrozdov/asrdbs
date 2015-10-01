@@ -642,6 +642,7 @@ class SpecStateDef(object):
         self.__glevel = compiler.get_level() + self.__level
         self.__is_local_anchor = spec_dict.has_key('anchor')
         self.__transitions_merged = False
+        self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
 
     def get_name(self):
         return self.__name
@@ -694,6 +695,9 @@ class SpecStateDef(object):
 
     def set_local_final(self):
         self.__is_local_final = True
+
+    def add_to_seq(self):
+        return self.__add_to_seq
 
     def __append_neighbour_trs(self, trs):
         assert isinstance(trs, TrsDef)
@@ -970,12 +974,13 @@ class RtMatchSequence(gvariant.Sequence):
     def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
         self.__matcher = matcher
         self.__entries = []
+        self.__all_entries = []
         h.en() and h.register_object(self, is_clone_of=is_clone_of, label=str(self) + '-' + self.__matcher.get_name())
         if graph_id is not None:
             h.en(self) and h.log(self, u"Init for {0}".format(graph_id))
 
         if initial_entry is not None:
-            self.__entries.append(initial_entry)
+            self.__append_entries(initial_entry)
         self.__matched = 0
         self.__pending = 0
         self.__status = RtRule.res_none
@@ -987,11 +992,11 @@ class RtMatchSequence(gvariant.Sequence):
     def clone(self):
         rtms = RtMatchSequence(self.__matcher, is_clone_of=self)
         prev = None
-        for e in self.__entries:
+        for e in self.__all_entries:
             prev = e.clone(rtms, prev=prev)
             assert prev.get_owner() == rtms
-            rtms.__entries.append(prev)
-        assert len(self.__entries) == len(rtms.__entries)
+            rtms.__append_entries(prev)
+        assert len(self.__all_entries) == len(rtms.__all_entries) and len(self.__entries) == len(rtms.__entries)
         return rtms
 
     def dismiss(self, reason=None):
@@ -1008,11 +1013,11 @@ class RtMatchSequence(gvariant.Sequence):
 
     def handle_form(self, form):
         h.en(self) and h.log(self, u"Processing {0} / {1}".format(form.get_word(), form.get_info()))
-        head = self.__entries[-1]
+        head = self.__all_entries[-1]
         trs = head.find_transitions(form)
         if not trs:
             h.en(self) and h.log(self, u"No carrier")
-            return False, []
+            return []
 
         h.en(self) and h.log(self, u"Found {0} possible transitions".format(len(trs)))
         if len(trs) > 1:
@@ -1021,10 +1026,13 @@ class RtMatchSequence(gvariant.Sequence):
         for t in trs[0:-1]:
             trms = self.clone()
             alive, fini = trms.__handle_trs(t, form)
-            if alive:
-                new_sq.append(trms)
+            h.en(trms) and h.log(trms, u"Handled with alive={0}, fini={1}".format(alive, fini))
+            if alive or fini:
+                new_sq.append((trms, alive))
+            else:
+                h.en(trms) and h.log(trms, "No carrier")
             if fini:
-                pass
+                h.en(trms) and h.log(trms, "Matched")
 
         t = trs[-1]
         h.en(self) and h.log(self, u"Handling")
@@ -1034,7 +1042,9 @@ class RtMatchSequence(gvariant.Sequence):
             h.en(self) and h.log(self, "No carrier")
         if fini:
             h.en(self) and h.log(self, "Matched")
-        return alive, new_sq
+        if alive or fini:
+            new_sq.append((self, alive))
+        return new_sq
 
     def is_registered(self, rule, rtentry):
         return self.__pending_rules.has_key(rule) and rtentry in self.__pending_rules[rule]
@@ -1067,10 +1077,10 @@ class RtMatchSequence(gvariant.Sequence):
     def __handle_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
-        prev = self.__entries[-1] if self.__entries else None
+        prev = self.__all_entries[-1] if self.__all_entries else None
         if to.is_fini():
             rtme = RtMatchEntry(self, speccmn.SpecStateFiniForm(), to, prev=prev)
-            self.__entries.append(rtme)
+            self.__append_entries(rtme)
 
             if not self.__handle_pending_rules(rtme):
                 return False, True
@@ -1079,7 +1089,7 @@ class RtMatchSequence(gvariant.Sequence):
             return False, True
         else:
             rtme = RtMatchEntry(self, form, to, prev=prev)
-            self.__entries.append(rtme)
+            self.__append_entries(rtme)
             if rtme.has_pending():
                 self.__pending += 1
             else:
@@ -1110,6 +1120,11 @@ class RtMatchSequence(gvariant.Sequence):
                     return False
                 rtme.confirm_rule(rule)
         return True
+
+    def __append_entries(self, rtme):
+        self.__all_entries.append(rtme)
+        if rtme.get_spec().add_to_seq():
+            self.__entries.append(rtme)
 
     def get_rule_name(self):
         return self.__matcher.get_name()
@@ -1189,18 +1204,21 @@ class SpecMatcher(object):
         ini_spec = self.__compiled_spec.get_inis()[0]
         self.__sequences = [RtMatchSequence(self, initial_entry=RtMatchEntry(None, speccmn.SpecStateIniForm(), ini_spec, None), graph_id=self.__graph_id)]
 
+    def __handle_form_result(self, sq, alive, next_sequences):
+        if alive:
+            next_sequences.append(sq)
+        if sq.is_valid() and sq.is_complete():
+            if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(sq):
+                if self.__matched_cb:
+                    self.__matched_cb(sq)
+
     def __handle_sequence_list(self, form):
         next_sequences = []
         for sq in self.__sequences:
-            alive, new_sq = sq.handle_form(form)
+            new_sq = sq.handle_form(form)
             if new_sq:
-                next_sequences.extend(new_sq)
-            if alive:
-                next_sequences.append(sq)
-            if sq.is_valid() and sq.is_complete():
-                if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(sq):
-                    if self.__matched_cb:
-                        self.__matched_cb(sq)
+                for nsq, alive in new_sq:
+                    self.__handle_form_result(nsq, alive, next_sequences)
         self.__sequences = next_sequences
 
     def __handle_sequences(self, form):

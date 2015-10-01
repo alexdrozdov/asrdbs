@@ -15,7 +15,7 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
                 "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::init",
                 "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
+                "add-to-seq": False,
             },
             {
                 "repeatable": RepeatableSpecs().Any(),
@@ -36,7 +36,7 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
                 "required": RequiredSpecs().IsNecessary(),
                 "id": "$SPEC::fini",
                 "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
+                "add-to-seq": False,
             },
         ]
 

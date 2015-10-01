@@ -15,6 +15,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "id": "$SPEC::init",
                 "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsInit(),
+                "add-to-seq": False,
             },
             {
                 "id": "$PARENT::adj-pre",
@@ -40,6 +41,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "id": "$SPEC::fini",
                 "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsFini(),
+                "add-to-seq": False,
             },
         ]
 
