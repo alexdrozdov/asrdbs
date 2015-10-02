@@ -7,11 +7,13 @@ import speccmn
 import specdefs.basic_adj
 import specdefs.basic_adv
 import specdefs.basic_noun
+import specdefs.basic_verb
 import specdefs.basic_subject
 import specdefs.subject_group
 import specdefs.comma_and_or
 import specdefs.adj_noun
 import specdefs.adv_adj
+import specdefs.adv_verb
 import specdefs.subj_predicate
 import specdefs.noun_noun
 import gvariant
@@ -1260,11 +1262,13 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.basic_adj.BasicAdjSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_adv.BasicAdvSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=False)
+        self.add_spec(specdefs.basic_verb.BasicVerbSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_subject.BasicSubjectSpec(), independent_compile=False)
         self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=True)
         self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=False)
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
         self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=True)
+        self.add_spec(specdefs.adv_verb.AdvVerbSequenceSpec(), independent_compile=True)
         self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec(), independent_compile=True)
         # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
         self.build_specs()
