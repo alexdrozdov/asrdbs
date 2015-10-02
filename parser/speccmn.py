@@ -394,7 +394,7 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
         master = other_rtme.get_form()
         for m, l in slave.get_masters():
             if m != master:
-                rtme.add_unwanted_link(l)
+                rtme.add_unwanted_link(l, weight=self.__weight, rule=self)
 
         return RtRule.res_matched
 

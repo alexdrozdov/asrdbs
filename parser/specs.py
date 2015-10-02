@@ -1107,6 +1107,9 @@ class RtMatchSequence(gvariant.Sequence):
             self.__status = RtRule.res_matched
 
     def __handle_pending_rules(self, rtentry):
+        return self.__handle_prev_pending_rules(rtentry) and self.__handle_rtme_pending_rules(rtentry)
+
+    def __handle_prev_pending_rules(self, rtentry):
         h.en(self) and h.log(self, "Handling pending rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
         for rule, rtmes in self.__pending_rules.items():
             h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule, len(rtmes), rule.get_info()))
@@ -1121,6 +1124,24 @@ class RtMatchSequence(gvariant.Sequence):
                     h.en(self) and h.log(self, 'Mismatch')
                     return False
                 rtme.confirm_rule(rule)
+        return True
+
+    def __handle_rtme_pending_rules(self, rtentry):
+        if not rtentry.has_pending():
+            return True
+        for rule in rtentry.get_pending_rules():
+            for rtme in self.__all_entries:
+                assert rtme.get_owner() is None or rtme.get_owner() == self
+                if rtme.get_owner() is None:
+                    continue
+                if not rule.is_applicable(rtentry, rtme):
+                    h.en(self) and h.log(self, 'Inapplicable')
+                    continue
+                res = rule.apply_on(rtentry, rtme)
+                if res == RtRule.res_failed:
+                    h.en(self) and h.log(self, 'Mismatch')
+                    return False
+                rtentry.confirm_rule(rule)
         return True
 
     def __append_entries(self, rtme):
@@ -1157,7 +1178,6 @@ class RtMatchSequence(gvariant.Sequence):
 
     def add_unwanted_link(self, sq_link_entry):
         assert isinstance(sq_link_entry, RtSequenceLinkEntry)
-        print "Adding unwanted link"
         if sq_link_entry not in self.__unwanted_links:
             self.__unwanted_links.append(sq_link_entry)
 
@@ -1362,6 +1382,9 @@ class RtMatchEntry(object):
                 self.__pending_count += 1
             self.__owner.register_rule_handler(r, self)
 
+    def get_pending_rules(self):
+        return self.__pending[:]
+
     def __create_name(self, name):
         self.__name = RtMatchString(name)
         if self.__name.need_reindex():
@@ -1439,8 +1462,8 @@ class RtMatchEntry(object):
     def get_spec(self):
         return self.__spec
 
-    def add_unwanted_link(self, l):
-        self.__owner.add_unwanted_link(l)
+    def add_unwanted_link(self, l, weight=None, rule=None):
+        self.__owner.add_unwanted_link(RtSequenceLinkEntry(rule, l, weight))
 
     def add_confirmed_link(self, l, weight=None, rule=None):
         self.__owner.add_confirmed_link(RtSequenceLinkEntry(rule, l, weight))
