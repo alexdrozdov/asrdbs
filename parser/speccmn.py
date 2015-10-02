@@ -208,6 +208,9 @@ class PosSpecs(object):
     def IsSuject(self):
         return RtRuleFactory(c__pos_check, ["noun", "pronoun"])
 
+    def IsPronoun(self):
+        return RtRuleFactory(c__pos_check, ["pronoun", ])
+
     def IsComma(self):
         return RtRuleFactory(c__pos_syntax_check, "comma")
 
