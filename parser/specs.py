@@ -1007,10 +1007,11 @@ class RtMatchSequence(gvariant.Sequence):
         self.__matcher.dismiss(self, reason)
 
     def confirm_match_entry(self, rtentry):
-        not_confirmed = [True for rtmes in self.__pending_rules.values() if rtentry in rtmes]
-        assert not not_confirmed
+        has_pending_rules = [True for rtmes in self.__pending_rules.values() if rtentry in rtmes]
+        assert not has_pending_rules
         self.__matched += 1
         self.__pending -= 1
+        assert 0 <= self.__pending
         h.en(self) and h.log(self, u"Confirmed entry {0}, pending={1}, matched={2}".format(rtentry, self.__pending, self.__matched))
 
     def handle_form(self, form):
@@ -1071,10 +1072,7 @@ class RtMatchSequence(gvariant.Sequence):
         else:
             return
         rr.remove(rtentry)
-        if rr:
-            self.__pending_rules[rule] = rr
-        else:
-            self.__pending_rules.pop(rule)
+        self.__pending_rules[rule] = rr
 
     def __handle_trs(self, trs, form):
         to = trs.get_to()
@@ -1107,13 +1105,17 @@ class RtMatchSequence(gvariant.Sequence):
             self.__status = RtRule.res_matched
 
     def __handle_pending_rules(self, rtentry):
-        return self.__handle_prev_pending_rules(rtentry) and self.__handle_rtme_pending_rules(rtentry)
+        prev_pending_res = self.__handle_prev_pending_rules(rtentry)
+        rtme_pending_res = self.__handle_rtme_pending_rules(rtentry)
+        return prev_pending_res and rtme_pending_res
 
     def __handle_prev_pending_rules(self, rtentry):
         h.en(self) and h.log(self, "Handling pending rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
         for rule, rtmes in self.__pending_rules.items():
+            if not rtmes:
+                continue
             h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule, len(rtmes), rule.get_info()))
-            for rtme in rtmes:
+            for rtme in rtmes[:]:
                 assert rtme.get_owner() == self
                 h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))
                 if not rule.is_applicable(rtme, rtentry):
@@ -1127,13 +1129,17 @@ class RtMatchSequence(gvariant.Sequence):
         return True
 
     def __handle_rtme_pending_rules(self, rtentry):
+        h.en(self) and h.log(self, "Handling rtme rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
         if not rtentry.has_pending():
+            h.en(self) and h.log(self, "Nothing to handle")
             return True
         for rule in rtentry.get_pending_rules():
+            h.en(self) and h.log(self, "Handling rule {0} {1}".format(rule, rule.get_info()))
             for rtme in self.__all_entries:
                 assert rtme.get_owner() is None or rtme.get_owner() == self
                 if rtme.get_owner() is None:
                     continue
+                h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))
                 if not rule.is_applicable(rtentry, rtme):
                     h.en(self) and h.log(self, 'Inapplicable')
                     continue
@@ -1413,7 +1419,7 @@ class RtMatchEntry(object):
         if not rule.ignore_pending_state():
             self.__pending_count -= 1
 
-        if self.__owner.is_registered(rule, self):
+        if not rule.always_pending() and self.__owner.is_registered(rule, self):
             self.__owner.unregister_rule_handler(rule, self)
         self.__matched.append(rule)
 
@@ -1421,10 +1427,11 @@ class RtMatchEntry(object):
         if not self.__pending_count:
             if self.__pending:
                 for r in self.__pending:
-                    if self.__owner.is_registered(r, self):
+                    if not rule.always_pending() and self.__owner.is_registered(r, self):
                         self.__owner.unregister_rule_handler(r, self)
+            if self.__status != RtRule.res_matched:
+                self.__owner.confirm_match_entry(self)
             self.__status = RtRule.res_matched
-            self.__owner.confirm_match_entry(self)
 
     def dismiss(self, reason=None):
         if self.__prev is not None:
