@@ -127,4 +127,4 @@ def log(obj, log_string):
 
 
 def en(obj=None):
-    return True
+    return False

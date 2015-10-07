@@ -38,7 +38,7 @@ sentence = [u'друзья', u'шли', u'по', u'зеленым', u'лугам
 # sentence = [u'в', u'весеннем', u'саду', u'цвели', u'ярко', u'красные', u'тюльпаны', u'нежно', u'белые', u'нарциссы', ]
 # sentence = [u'в', u'весеннем', u'саде', u'цвели', u'ярко', u'красные', u'тюльпаны']
 # sentence = [u'в', u'весеннем', u'саде', u'у', u'дома', u'цвели', u'ярко', u'красные', u'тюльпаны']
-# sentence = [u'в', u'весеннем', u'саде', u'у', u'моего', u'дома', u'цвели', u'ярко', u'красные', u'тюльпаны']
+sentence = [u'в', u'весеннем', u'саде', u'у', u'моего', u'дома', u'цвели', u'ярко', u'красные', u'тюльпаны']
 # sentence = [u'на', u'береге', u'синего', u'моря', u'стояла', u'хижина', u'рыбака']
 # sentence = [u'он', u'сидел', u'на', u'стволе', u'упавшего', u'дерева']
 # sentence = [u'наши', u'дела', u'шли']
@@ -64,19 +64,17 @@ graphs = gv.export_graphs()
 
 # srm = parser.gvariant.SequenceRuleMatcher()
 srm = parser.specs.SequenceSpecMatcher(True)
-i = 0
-for gr in graphs:
-    print u"#" + str(i+1)
+
+for i, gr in enumerate(graphs, 1):
+    print u"#" + str(i)
     gr.print_graph()
-    sqs = srm.match_graph(gr, graph_id='gr-{0}'.format(i + 1))
+    sqs = srm.match_graph(gr, graph_id='gr-{0}'.format(i))
     for sq in sqs:
         sq.print_sequence()
     print ''
     gr.apply_sequences()
 
-    file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i + 1))
+    file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i))
     g.generate(res, file_name, gr)
-
-    i += 1
 
     srm.reset()

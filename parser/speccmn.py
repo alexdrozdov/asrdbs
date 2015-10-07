@@ -87,12 +87,6 @@ class RtRule(object):
     def apply_on(self, rtme, other_rtme):
         raise RuntimeError('unimplemented')
 
-    def always_pending(self):
-        raise RuntimeError('unimplemented')
-
-    def ignore_pending_state(self):
-        raise RuntimeError('unimplemented')
-
     def get_info(self, wrap=False):
         raise RuntimeError('unimplemented')
 
@@ -107,6 +101,11 @@ class RtRule(object):
 
 
 class RtDynamicRule(RtRule):
+    def __init__(self, optional=False, persistent=False):
+        assert not persistent or optional, "persistent rule must be optional, either all entries will fail"
+        self.__optional = optional
+        self.__persistent = persistent
+
     def match(self, form):
         raise RuntimeError('not applicable')
 
@@ -119,6 +118,12 @@ class RtDynamicRule(RtRule):
     def is_static(self):
         return False
 
+    def is_optional(self):
+        return self.__optional
+
+    def is_persistent(self):
+        return self.__persistent
+
 
 class RtStaticRule(RtRule):
     def is_applicable(self, rtme, other_rtme):
@@ -127,10 +132,10 @@ class RtStaticRule(RtRule):
     def apply_on(self, rtme, other_rtme):
         raise RuntimeError('not applicable')
 
-    def always_pending(self):
+    def is_optional(self):
         raise RuntimeError('not applicable')
 
-    def ignore_pending_state(self):
+    def is_persistent(self):
         raise RuntimeError('not applicable')
 
     def has_bindings(self):
@@ -252,6 +257,7 @@ class CaseSpecs(object):
 
 class c__position_spec(RtDynamicRule):
     def __init__(self, anchor=None):
+        RtDynamicRule.__init__(self, False, False)
         self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
@@ -270,17 +276,11 @@ class c__position_spec(RtDynamicRule):
     def apply_on(self, rtme, other_rtme):
         return RtRule.res_matched if rtme.get_form().get_position() < other_rtme.get_form().get_position() else RtRule.res_failed
 
-    def always_pending(self):
-        return False
-
-    def ignore_pending_state(self):
-        return False
-
     def get_info(self, wrap=False):
         s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
         return s
 
     def has_bindings(self):
@@ -292,6 +292,7 @@ class c__position_spec(RtDynamicRule):
 
 class c__position_fini(RtDynamicRule):
     def __init__(self, anchor=None):
+        RtDynamicRule.__init__(self, False, False)
         self.__anchor = RtMatchString(anchor)
 
     def new_copy(self):
@@ -330,6 +331,7 @@ class PositionSpecs(object):
 
 class c__slave_master_spec(RtDynamicRule):
     def __init__(self, anchor=None, weight=None):
+        RtDynamicRule.__init__(self, False, False)
         self.__anchor = RtMatchString(anchor)
         self.__weight = weight
 
@@ -354,17 +356,11 @@ class c__slave_master_spec(RtDynamicRule):
             rtme.add_confirmed_link(rtme_form.get_link_to(other_form), weight=self.__weight, rule=self)
         return RtRule.res_matched if is_slave else RtRule.res_failed
 
-    def always_pending(self):
-        return False
-
-    def ignore_pending_state(self):
-        return False
-
     def get_info(self, wrap=False):
         s = u'master-slave{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
         return s
 
     def has_bindings(self):
@@ -376,6 +372,7 @@ class c__slave_master_spec(RtDynamicRule):
 
 class c__slave_master_unwanted_spec(RtDynamicRule):
     def __init__(self, anchor, weight=None):
+        RtDynamicRule.__init__(self, True, True)
         self.__anchor = RtMatchString(anchor)
         self.__weight = weight
 
@@ -401,17 +398,11 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
 
         return RtRule.res_matched
 
-    def always_pending(self):
-        return True
-
-    def ignore_pending_state(self):
-        return True
-
     def get_info(self, wrap=False):
         s = u'unwanted-links{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
         s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' always_pending: {0}{1}'.format(self.always_pending(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' ignore_pend_state: {0}{1}'.format(self.ignore_pending_state(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
         return s
 
     def has_bindings(self):

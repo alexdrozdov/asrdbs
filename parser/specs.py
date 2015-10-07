@@ -21,6 +21,7 @@ from speccmn import RtRule, RtMatchString
 import graph
 import common.output
 import common.history as h
+from argparse import Namespace as ns
 
 
 class UniqEnum(object):
@@ -983,36 +984,18 @@ class RtMatchSequence(gvariant.Sequence):
 
         if initial_entry is not None:
             self.__append_entries(initial_entry)
-        self.__matched = 0
-        self.__pending = 0
         self.__status = RtRule.res_none
-        self.__pending_rules = {}
         self.__unwanted_links = []
         self.__confirmed_links = []
         self.__stack = RtStackCounter(stack=is_clone_of.__stack if is_clone_of is not None else None)
 
     def clone(self):
         rtms = RtMatchSequence(self.__matcher, is_clone_of=self)
-        prev = None
         for e in self.__all_entries:
-            prev = e.clone(rtms, prev=prev)
-            assert prev.get_owner() == rtms
-            rtms.__append_entries(prev)
+            ee = RtMatchEntry(rtms, e)
+            rtms.__append_entries(ee)
         assert len(self.__all_entries) == len(rtms.__all_entries) and len(self.__entries) == len(rtms.__entries)
         return rtms
-
-    def dismiss(self, reason=None):
-        self.__status = RtRule.res_failed
-        h.en(self) and h.log(self, u"Dismissed")
-        self.__matcher.dismiss(self, reason)
-
-    def confirm_match_entry(self, rtentry):
-        has_pending_rules = [True for rtmes in self.__pending_rules.values() if rtentry in rtmes]
-        assert not has_pending_rules
-        self.__matched += 1
-        self.__pending -= 1
-        assert 0 <= self.__pending
-        h.en(self) and h.log(self, u"Confirmed entry {0}, pending={1}, matched={2}".format(rtentry, self.__pending, self.__matched))
 
     def handle_form(self, form):
         h.en(self) and h.log(self, u"Processing {0} / {1}".format(form.get_word(), form.get_info()))
@@ -1026,128 +1009,37 @@ class RtMatchSequence(gvariant.Sequence):
         if len(trs) > 1:
             h.en(self) and h.log(self, u"Fork for trs from 1 to {0}".format(len(trs)))
         new_sq = []
-        for t in trs[0:-1]:
-            trms = self.clone()
-            alive, fini = trms.__handle_trs(t, form)
-            h.en(trms) and h.log(trms, u"Handled with alive={0}, fini={1}".format(alive, fini))
-            if alive or fini:
-                new_sq.append((trms, alive))
-            else:
-                h.en(trms) and h.log(trms, "No carrier")
-            if fini:
-                h.en(trms) and h.log(trms, "Matched")
 
-        t = trs[-1]
-        h.en(self) and h.log(self, u"Handling")
-        alive, fini = self.__handle_trs(t, form)
-        h.en(self) and h.log(self, u"Handled with alive={0}, fini={1}".format(alive, fini))
-        if not alive:
-            h.en(self) and h.log(self, "No carrier")
-        if fini:
-            h.en(self) and h.log(self, "Matched")
-        if alive or fini:
-            new_sq.append((self, alive))
+        trs_sqs = [self, ] + map(lambda x: self.clone(), trs[0:-1])
+        for sq, t in zip(trs_sqs, trs):
+            res = sq.__handle_trs(t, form)
+            if res.valid:
+                new_sq.append(res)
+
         return new_sq
-
-    def is_registered(self, rule, rtentry):
-        return self.__pending_rules.has_key(rule) and rtentry in self.__pending_rules[rule]
-
-    def register_rule_handler(self, rule, rtentry):
-        assert rule is not None, 'Rule is None'
-        assert isinstance(rule, RtRule), 'Rule is not RtRule'
-
-        if self.__pending_rules.has_key(rule):
-            rr = self.__pending_rules[rule]
-        else:
-            rr = []
-
-        assert rtentry not in rr
-
-        rr.append(rtentry)
-        self.__pending_rules[rule] = rr
-
-    def unregister_rule_handler(self, rule, rtentry):
-        if self.__pending_rules.has_key(rule):
-            rr = self.__pending_rules[rule]
-        else:
-            return
-        rr.remove(rtentry)
-        self.__pending_rules[rule] = rr
 
     def __handle_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
-        prev = self.__all_entries[-1] if self.__all_entries else None
+
+        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else speccmn.SpecStateFiniForm(), spec_state_def=to))
+        self.__append_entries(rtme)
+
+        if not rtme.handle_rules():
+            return ns(sq=self, valid=False, fini=False)
+
+        for e in self.get_entries(hidden=True, exclude=rtme):
+            if not e.handle_rules(on_entry=rtme):
+                return ns(sq=self, valid=False, fini=False)
+
         if to.is_fini():
-            rtme = RtMatchEntry(self, speccmn.SpecStateFiniForm(), to, prev=prev)
-            self.__append_entries(rtme)
+            return ns(sq=self, valid=self.__on_fini(), fini=True)
+        return ns(sq=self, valid=True, fini=False)
 
-            if not self.__handle_pending_rules(rtme):
-                return False, True
-
-            self.__handle_fini()
-            return False, True
-        else:
-            rtme = RtMatchEntry(self, form, to, prev=prev)
-            self.__append_entries(rtme)
-            if rtme.has_pending():
-                self.__pending += 1
-            else:
-                self.__matched += 1
-            if not self.__handle_pending_rules(rtme):
-                return False, False
-        return True, False
-
-    def __handle_fini(self):
-        if self.__pending:
-            self.__status = RtRule.res_failed
-        else:
-            self.__status = RtRule.res_matched
-
-    def __handle_pending_rules(self, rtentry):
-        prev_pending_res = self.__handle_prev_pending_rules(rtentry)
-        rtme_pending_res = self.__handle_rtme_pending_rules(rtentry)
-        return prev_pending_res and rtme_pending_res
-
-    def __handle_prev_pending_rules(self, rtentry):
-        h.en(self) and h.log(self, "Handling pending rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
-        for rule, rtmes in self.__pending_rules.items():
-            if not rtmes:
-                continue
-            h.en(self) and h.log(self, "Handling rule {0} with {1} pending rtmes / {2}".format(rule, len(rtmes), rule.get_info()))
-            for rtme in rtmes[:]:
-                assert rtme.get_owner() == self
-                h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))
-                if not rule.is_applicable(rtme, rtentry):
-                    h.en(self) and h.log(self, 'Inapplicable')
-                    continue
-                res = rule.apply_on(rtme, rtentry)
-                if res == RtRule.res_failed:
-                    h.en(self) and h.log(self, 'Mismatch')
-                    return False
-                rtme.confirm_rule(rule)
-        return True
-
-    def __handle_rtme_pending_rules(self, rtentry):
-        h.en(self) and h.log(self, "Handling rtme rules, len(self.__pending_rules)={0}".format(len(self.__pending_rules)))
-        if not rtentry.has_pending():
-            h.en(self) and h.log(self, "Nothing to handle")
-            return True
-        for rule in rtentry.get_pending_rules():
-            h.en(self) and h.log(self, "Handling rule {0} {1}".format(rule, rule.get_info()))
-            for rtme in self.__all_entries:
-                assert rtme.get_owner() is None or rtme.get_owner() == self
-                if rtme.get_owner() is None:
-                    continue
-                h.en(self) and h.log(self, u"Applying to {0} {1} {2} / {3}".format(rtme, rtme.get_name(), rtme.get_form().get_word(), rtme.get_form().get_info()))
-                if not rule.is_applicable(rtentry, rtme):
-                    h.en(self) and h.log(self, 'Inapplicable')
-                    continue
-                res = rule.apply_on(rtentry, rtme)
-                if res == RtRule.res_failed:
-                    h.en(self) and h.log(self, 'Mismatch')
-                    return False
-                rtentry.confirm_rule(rule)
+    def __on_fini(self):
+        for e in self.get_entries(hidden=False):
+            if e.has_pending(required_only=True):
+                return False
         return True
 
     def __append_entries(self, rtme):
@@ -1157,15 +1049,6 @@ class RtMatchSequence(gvariant.Sequence):
 
     def get_rule_name(self):
         return self.__matcher.get_name()
-
-    def is_complete(self):
-        return self.__status != RtRule.res_none and self.__status != RtRule.res_continue
-
-    def is_valid(self):
-        return self.__pending == 0
-
-    def finalize(self, valid):
-        pass
 
     def print_sequence(self):
         print self.get_rule_name(), '<',
@@ -1199,9 +1082,16 @@ class RtMatchSequence(gvariant.Sequence):
                 return True
         return False
 
+    def get_entries(self, hidden=False, exclude=None):
+        src = self.__entries if not hidden else self.__all_entries
+        if exclude is None:
+            return src[:]
+        return [e for e in src if e is not exclude]
+
 
 class SpecMatcher(object):
-    def __init__(self, owner, compiled_spec, matched_cb=None):
+    def __init__(self, owner, compiled_spec, matched_cb):
+        assert owner is not None and isinstance(compiled_spec, CompiledSpec) and matched_cb is not None
         self.__owner = owner
         self.__compiled_spec = compiled_spec
         self.__matched_cb = matched_cb
@@ -1211,63 +1101,41 @@ class SpecMatcher(object):
     def reset(self):
         self.__sequences = []
         self.__rtentry2sequence = {}
-        self.__is_running = False
         self.__graph_id = None
 
-    def is_waiting(self):
-        return not self.__is_running
-
     def match(self, forms, graph_id):
-        assert self.__graph_id is None or graph_id is None or self.__graph_id == graph_id
-        if graph_id is not None:
-            self.__graph_id = graph_id
+        assert self.__graph_id is None or self.__graph_id == graph_id
+        self.__graph_id = graph_id if graph_id is not None else self.__graph_id
 
-        self.__is_running = True
         for form in forms:
             self.__handle_sequences(form)
-        if not self.__sequences:
-            self.__is_running = False
 
-    def __create_ini_rtentry(self):
+    def __create_new_sequence(self):
         ini_spec = self.__compiled_spec.get_inis()[0]
-        self.__sequences = [RtMatchSequence(self, initial_entry=RtMatchEntry(None, speccmn.SpecStateIniForm(), ini_spec, None), graph_id=self.__graph_id)]
+        self.__sequences.append(
+            RtMatchSequence(self,
+                            initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec)),
+                            graph_id=self.__graph_id))
 
-    def __handle_form_result(self, sq, alive, next_sequences):
-        if alive:
-            next_sequences.append(sq)
-        if sq.is_valid() and sq.is_complete():
-            if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(sq):
-                if self.__matched_cb:
-                    self.__matched_cb(sq)
-
-    def __handle_sequence_list(self, form):
-        next_sequences = []
-        for sq in self.__sequences:
-            new_sq = sq.handle_form(form)
-            if new_sq:
-                for nsq, alive in new_sq:
-                    self.__handle_form_result(nsq, alive, next_sequences)
-        self.__sequences = next_sequences
+    def __handle_form_result(self, res, next_sequences):
+        if not res.fini:
+            next_sequences.append(res.sq)
+        else:
+            if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
+                self.__matched_cb(res.sq)
 
     def __handle_sequences(self, form):
-        ini_rtentry_created = False
-        if not self.__sequences:
-            self.__create_ini_rtentry()
-            ini_rtentry_created = True
+        self.__create_new_sequence()
 
-        self.__handle_sequence_list(form)
-
-        if not self.__sequences and not ini_rtentry_created:
-            self.__create_ini_rtentry()
-            self.__handle_sequence_list(form)
+        next_sequences = []
+        for sq in self.__sequences:
+            for res in sq.handle_form(form):
+                self.__handle_form_result(res, next_sequences)
+        self.__sequences = next_sequences
 
     def __print_sequences(self):
         for sq in self.__sequences:
             sq.print_sequence()
-
-    def dismiss(self, sequence, reason=None):
-        if sequence in self.__sequences:
-            self.__sequences.remove(sequence)
 
     def get_name(self):
         return self.__name
@@ -1341,55 +1209,47 @@ class SequenceSpecMatcher(object):
 
 
 class RtMatchEntry(object):
-    def __init__(self, owner, form, spec_state_def, prev=None, do_not_init_rules=False):
-        assert form is not None, "Form is required"
-        assert spec_state_def is not None, "Spec is required"
+    def __init__(self, owner, based_on):
+        if isinstance(based_on, RtMatchEntry):
+            self.__init_from_rtme(owner, based_on)
+        elif isinstance(based_on, ns):
+            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def)
+
+    def __init_from_form_spec(self, owner, form, spec_state_def):
+        assert form is not None and spec_state_def is not None
         self.__owner = owner
         self.__form = form
         self.__spec = spec_state_def
         self.__status = RtRule.res_none
-        self.__next = None
-        self.__prev = prev
-        if self.__owner is not None:
-            h.en() and h.register_subobject(self.__owner, self, label=self.__spec.get_name(), is_uniq=True)
-            h.en() and h.log(self, u'Create RtMatchEntry')
 
-        if prev is not None:
-            prev.__next = self
-
-        self.__matched = []
-        self.__pending_count = 0
         self.__create_name(self.__spec.get_name())
-        if not do_not_init_rules:
-            self.__init_pending_rules()
-            self.__register_pending_rules()
-        else:
-            self.__pending = []
+        self.__create_rules()
+        self.__index_rules()
 
-    def get_name(self):
-        return self.__name
+    def __init_from_rtme(self, owner, rtme):
+        self.__owner = owner
+        self.__form = rtme.__form
+        self.__spec = rtme.__spec
+        self.__status = rtme.__status
 
-    def get_owner(self):
-        return self.__owner
+        self.__name = RtMatchString(rtme.__name)
+        self.__pending = rtme.__pending[:]
+        self.__index_rules()
 
-    def __init_pending_rules(self):
+    def __create_rules(self):
         self.__pending = []
-        for rt in self.__spec.get_rt_rules():
-            for b in rt.get_bindings():
+        for r in self.__spec.get_rt_rules():
+            assert r is not None
+            for b in r.get_bindings():
                 if b.need_reindex():
                     self.__reindex_name(b)
-            self.__pending.append(rt)
+            self.__pending.append(r)
 
-    def __register_pending_rules(self):
-        self.__pending_count = 0
+    def __index_rules(self):
+        self.__required_count = 0
         for r in self.__pending:
-            assert r is not None
-            if not r.ignore_pending_state():
-                self.__pending_count += 1
-            self.__owner.register_rule_handler(r, self)
-
-    def get_pending_rules(self):
-        return self.__pending[:]
+            if not r.is_optional():
+                self.__required_count += 1
 
     def __create_name(self, name):
         self.__name = RtMatchString(name)
@@ -1399,69 +1259,15 @@ class RtMatchEntry(object):
     def __reindex_name(self, name):
         name.update(str(name).format(*self.__owner.get_stack()))
 
-    def clone(self, owner, prev=None):
-        rtme = RtMatchEntry(owner, self.__form, self.__spec, prev, do_not_init_rules=True)
-        rtme.__status = self.__status
-        if prev is not None:
-            prev.__next = rtme
+    def __decrease_rule_counters(self, rule):
+        if not rule.is_persistent():
+            self.__required_count -= 1
 
-        rtme.__matched = [m for m in self.__matched]
-        rtme.__pending = [p.clone() for p in self.__pending]
-        rtme.__register_pending_rules()
-        return rtme
+    def get_name(self):
+        return self.__name
 
-    def find_transitions(self, form):
-        return [t for t in self.__spec.get_transitions() if t.get_to().is_static_applicable(form)]
-
-    def confirm_rule(self, rule):
-        h.en() and h.log(self, "Confirming rule {0}, len(self.__pending)={1}, self.__pending_count={2}".format(rule, len(self.__pending), self.__pending_count))
-        self.__pending.remove(rule)
-        if not rule.ignore_pending_state():
-            self.__pending_count -= 1
-
-        if not rule.always_pending() and self.__owner.is_registered(rule, self):
-            self.__owner.unregister_rule_handler(rule, self)
-        self.__matched.append(rule)
-
-        h.en() and h.log(self, "Localy confirmed, len(self.__pending)={0}, self.__pending_count={1}".format(len(self.__pending), self.__pending_count))
-        if not self.__pending_count:
-            if self.__pending:
-                for r in self.__pending:
-                    if not rule.always_pending() and self.__owner.is_registered(r, self):
-                        self.__owner.unregister_rule_handler(r, self)
-            if self.__status != RtRule.res_matched:
-                self.__owner.confirm_match_entry(self)
-            self.__status = RtRule.res_matched
-
-    def dismiss(self, reason=None):
-        if self.__prev is not None:
-            self.__prev.__dismiss_prev()
-        if self.__next:
-            self.__next.__dismiss_next()
-        self.__unregister_pending_rules()
-        self.__owner.dismiss(self)
-        self.__next = None
-        self.__prev = None
-
-    def has_pending(self):
-        return self.__pending_count > 0
-
-    def __unregister_pending_rules(self):
-        for r in self.__pending:
-            self.__owner.unregister_rule_handler(r, self)
-        self.__pending = []
-
-    def __dismiss_next(self):
-        if self.__next:
-            self.__next.__dismiss_next()
-        self.__unregister_pending_rules()
-        self.__next = None
-
-    def __dismiss_prev(self):
-        if self.__prev:
-            self.__prev.__dismiss_prev()
-        self.__unregister_pending_rules()
-        self.__prev = None
+    def get_owner(self):
+        return self.__owner
 
     def get_form(self):
         return self.__form
@@ -1469,8 +1275,34 @@ class RtMatchEntry(object):
     def get_spec(self):
         return self.__spec
 
+    def has_pending(self, required_only=False):
+        if required_only:
+            return self.__required_count > 0
+        return len(self.__pending) > 0
+
     def add_unwanted_link(self, l, weight=None, rule=None):
         self.__owner.add_unwanted_link(RtSequenceLinkEntry(rule, l, weight))
 
     def add_confirmed_link(self, l, weight=None, rule=None):
         self.__owner.add_confirmed_link(RtSequenceLinkEntry(rule, l, weight))
+
+    def find_transitions(self, form):
+        return [t for t in self.__spec.get_transitions() if t.get_to().is_static_applicable(form)]
+
+    def handle_rules(self, on_entry=None):
+        pending = []
+        entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
+        for r in self.__pending:
+            applied = False
+            for e in entries:
+                if r.is_applicable(self, e):
+                    applied = True
+                    if RtRule.res_failed == r.apply_on(self, e):
+                        return False
+                    self.__decrease_rule_counters(r)
+                    if not r.is_persistent():
+                        break
+            if not applied or r.is_persistent():
+                pending.append(r)
+            self.__pending = pending
+        return True
