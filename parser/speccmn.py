@@ -369,6 +369,12 @@ class c__slave_master_spec(RtDynamicRule):
     def get_bindings(self):
         return [self.__anchor, ]
 
+    def __repr__(self):
+        return "MasterSlave(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+    def __str__(self):
+        return "MasterSlave(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
 
 class c__slave_master_unwanted_spec(RtDynamicRule):
     def __init__(self, anchor, weight=None):
@@ -410,6 +416,12 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
 
     def get_bindings(self):
         return [self.__anchor, ]
+
+    def __repr__(self):
+        return "UnwantedExcept(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+    def __str__(self):
+        return "UnwantedExcept(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
 
 
 class LinkSpecs(object):

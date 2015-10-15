@@ -22,6 +22,7 @@ import graph
 import common.output
 import common.history as h
 from argparse import Namespace as ns
+import logging
 
 
 class UniqEnum(object):
@@ -607,7 +608,7 @@ class TrsDef(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return '{0} -> {1} {2}'.format(str(self.__from), str(self.__to), self.__levelpath)
+        return 'TrsDef(from={0}, to={1}, levelpath={2})'.format(str(self.__from), str(self.__to), self.__levelpath)
 
     def __hash__(self):
         return hash(self.__repr__())
@@ -887,6 +888,12 @@ class SpecStateDef(object):
     def get_incapsulate_binding(self):
         return self.__incapsulate_binding
 
+    def __repr__(self):
+        return "SpecStateDef(name='{0}')".format(self.get_name())
+
+    def __str__(self):
+        return "SpecStateDef(name='{0}')".format(self.get_name())
+
 
 class CompiledSpec(object):
     def __init__(self, src_spec, name, states, inis, finis, local_spec_anchor, validator):
@@ -972,31 +979,107 @@ class RtSequenceLinkEntry(object):
     def get_weight(self):
         return self.__weight
 
+argres_level = 0
+
+
+def argres(show_result=True, repr_result=None):
+    def argres_internal(func):
+        "This decorator dumps out the arguments passed to a function before calling it"
+        argnames = func.func_code.co_varnames[:func.func_code.co_argcount]
+        fname = func.func_name
+
+        def argres_fcn(*args, **kwargs):
+            obj = args[0]
+            logger = obj.get_logger()
+            global argres_level
+            argres_level += 1
+            space = '  ' * argres_level
+            if logger is not None:
+                s = '>>{0}{1}: {2}'.format(space, fname, ', '.join(
+                    '%s=%r' % entry
+                    for entry in zip(argnames, args) + kwargs.items()))
+                logger.info(s)
+            res = func(*args, **kwargs)
+            if logger is not None and show_result:
+                s = '<<{0}{1}: {2}'.format(space, fname, res if repr_result is None else repr_result(res))
+                logger.info(s)
+            argres_level -= 1
+            return res
+
+        return argres_fcn
+    return argres_internal
+
 
 class RtMatchSequence(gvariant.Sequence):
-    def __init__(self, matcher, initial_entry=None, is_clone_of=None, graph_id=None):
+    def __new__(cls, *args, **kwargs):
+        obj = super(RtMatchSequence, cls).__new__(cls)
+
+        graph_id = None
+        if isinstance(args[0], RtMatchSequence):
+            graph_id = args[0].get_graph_id()
+        elif isinstance(args[0], ns):
+            graph_id = args[0].graph_id
+
+        obj.logger = RtMatchSequence.__create_logger(str(obj), str(graph_id) + '_' + hex(id(obj)) + '.log')
+        return obj
+
+    @staticmethod
+    def __create_logger(logger_name, log_file, level=logging.INFO):
+        log_file = common.output.output.get_output_file('hist', log_file)
+        l = logging.getLogger(logger_name)
+        formatter = logging.Formatter('%(asctime)s : %(message)s')
+        fileHandler = logging.FileHandler(log_file, mode='w')
+        fileHandler.setFormatter(formatter)
+
+        l.setLevel(level)
+        l.addHandler(fileHandler)
+        return l
+
+    def get_logger(self):
+        return self.logger
+
+    @argres(show_result=False)
+    def __init__(self, based_on):
+        if isinstance(based_on, RtMatchSequence):
+            self.__init_from_sq(based_on)
+        elif isinstance(based_on, ns):
+            self.__init_new(based_on.matcher, based_on.initial_entry, graph_id=based_on.graph_id)
+        else:
+            raise ValueError('unsupported source for RtMatchSequence contruction {0}'.format(type(based_on)))
+
+    @argres(show_result=False)
+    def __init_new(self, matcher, initial_entry, graph_id=None):
         self.__matcher = matcher
+        self.__graph_id = graph_id
         self.__entries = []
         self.__all_entries = []
-        h.en() and h.register_object(self, is_clone_of=is_clone_of, label=str(self) + '-' + self.__matcher.get_name())
-        if graph_id is not None:
-            h.en(self) and h.log(self, u"Init for {0}".format(graph_id))
 
-        if initial_entry is not None:
-            self.__append_entries(initial_entry)
+        self.__append_entries(initial_entry)
         self.__status = RtRule.res_none
         self.__unwanted_links = []
         self.__confirmed_links = []
-        self.__stack = RtStackCounter(stack=is_clone_of.__stack if is_clone_of is not None else None)
+        self.__stack = RtStackCounter()
 
-    def clone(self):
-        rtms = RtMatchSequence(self.__matcher, is_clone_of=self)
-        for e in self.__all_entries:
-            ee = RtMatchEntry(rtms, e)
-            rtms.__append_entries(ee)
-        assert len(self.__all_entries) == len(rtms.__all_entries) and len(self.__entries) == len(rtms.__entries)
-        return rtms
+    @argres(show_result=True)
+    def __init_from_sq(self, sq):
+        self.__matcher = sq.__matcher
+        self.__graph_id = sq.__graph_id
+        self.__entries = []
+        self.__all_entries = []
 
+        self.__status = sq.__status
+        self.__unwanted_links = sq.__unwanted_links[:]
+        self.__confirmed_links = sq.__confirmed_links[:]
+        self.__stack = RtStackCounter(stack=sq.__stack)
+
+        for e in sq.__all_entries:
+            self.__append_entries(RtMatchEntry(self, e))
+        assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
+
+    def get_graph_id(self):
+        return self.__graph_id
+
+    @argres()
     def handle_form(self, form):
         h.en(self) and h.log(self, u"Processing {0} / {1}".format(form.get_word(), form.get_info()))
         head = self.__all_entries[-1]
@@ -1010,7 +1093,7 @@ class RtMatchSequence(gvariant.Sequence):
             h.en(self) and h.log(self, u"Fork for trs from 1 to {0}".format(len(trs)))
         new_sq = []
 
-        trs_sqs = [self, ] + map(lambda x: self.clone(), trs[0:-1])
+        trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
         for sq, t in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             if res.valid:
@@ -1018,6 +1101,7 @@ class RtMatchSequence(gvariant.Sequence):
 
         return new_sq
 
+    @argres()
     def __handle_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
@@ -1036,6 +1120,7 @@ class RtMatchSequence(gvariant.Sequence):
             return ns(sq=self, valid=self.__on_fini(), fini=True)
         return ns(sq=self, valid=True, fini=False)
 
+    @argres()
     def __on_fini(self):
         for e in self.get_entries(hidden=False):
             if e.has_pending(required_only=True):
@@ -1088,6 +1173,12 @@ class RtMatchSequence(gvariant.Sequence):
             return src[:]
         return [e for e in src if e is not exclude]
 
+    def __repr__(self):
+        return "RtMatchSequence(objid={0})".format(hex(id(self)))
+
+    def __str__(self):
+        return "RtMatchSequence(objid={0})".format(hex(id(self)))
+
 
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec, matched_cb):
@@ -1113,9 +1204,14 @@ class SpecMatcher(object):
     def __create_new_sequence(self):
         ini_spec = self.__compiled_spec.get_inis()[0]
         self.__sequences.append(
-            RtMatchSequence(self,
-                            initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec)),
-                            graph_id=self.__graph_id))
+            RtMatchSequence(
+                ns(
+                    matcher=self,
+                    initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec)),
+                    graph_id=self.__graph_id
+                )
+            )
+        )
 
     def __handle_form_result(self, res, next_sequences):
         if not res.fini:
@@ -1209,12 +1305,23 @@ class SequenceSpecMatcher(object):
 
 
 class RtMatchEntry(object):
+    def __new__(cls, *args, **kwargs):
+        obj = super(RtMatchEntry, cls).__new__(cls)
+        owner = args[0]
+        obj.logger = owner.get_logger() if owner is not None else None
+        return obj
+
+    def get_logger(self):
+        return self.logger
+
+    @argres(show_result=False)
     def __init__(self, owner, based_on):
         if isinstance(based_on, RtMatchEntry):
             self.__init_from_rtme(owner, based_on)
         elif isinstance(based_on, ns):
             self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def)
 
+    @argres(show_result=False)
     def __init_from_form_spec(self, owner, form, spec_state_def):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
@@ -1226,6 +1333,7 @@ class RtMatchEntry(object):
         self.__create_rules()
         self.__index_rules()
 
+    @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
         self.__form = rtme.__form
@@ -1236,6 +1344,7 @@ class RtMatchEntry(object):
         self.__pending = rtme.__pending[:]
         self.__index_rules()
 
+    @argres(show_result=False)
     def __create_rules(self):
         self.__pending = []
         for r in self.__spec.get_rt_rules():
@@ -1245,6 +1354,7 @@ class RtMatchEntry(object):
                     self.__reindex_name(b)
             self.__pending.append(r)
 
+    @argres(show_result=False)
     def __index_rules(self):
         self.__required_count = 0
         for r in self.__pending:
@@ -1259,9 +1369,11 @@ class RtMatchEntry(object):
     def __reindex_name(self, name):
         name.update(str(name).format(*self.__owner.get_stack()))
 
+    @argres()
     def __decrease_rule_counters(self, rule):
         if not rule.is_persistent():
             self.__required_count -= 1
+        return self.__required_count
 
     def get_name(self):
         return self.__name
@@ -1275,29 +1387,34 @@ class RtMatchEntry(object):
     def get_spec(self):
         return self.__spec
 
+    @argres()
     def has_pending(self, required_only=False):
         if required_only:
             return self.__required_count > 0
         return len(self.__pending) > 0
 
+    @argres(show_result=False)
     def add_unwanted_link(self, l, weight=None, rule=None):
         self.__owner.add_unwanted_link(RtSequenceLinkEntry(rule, l, weight))
 
+    @argres(show_result=False)
     def add_confirmed_link(self, l, weight=None, rule=None):
         self.__owner.add_confirmed_link(RtSequenceLinkEntry(rule, l, weight))
 
+    @argres()
     def find_transitions(self, form):
         return [t for t in self.__spec.get_transitions() if t.get_to().is_static_applicable(form)]
 
+    @argres()
     def handle_rules(self, on_entry=None):
         pending = []
         entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
         for r in self.__pending:
             applied = False
             for e in entries:
-                if r.is_applicable(self, e):
+                if self.__check_applicable(r, e):
                     applied = True
-                    if RtRule.res_failed == r.apply_on(self, e):
+                    if not self.__apply_on(r, e):
                         return False
                     self.__decrease_rule_counters(r)
                     if not r.is_persistent():
@@ -1306,3 +1423,23 @@ class RtMatchEntry(object):
                 pending.append(r)
             self.__pending = pending
         return True
+
+    @argres()
+    def __check_applicable(self, rule, other_rtme):
+        return rule.is_applicable(self, other_rtme)
+
+    @argres()
+    def __apply_on(self, rule, other_rtme):
+        return rule.apply_on(self, other_rtme) != RtRule.res_failed
+
+    def __repr__(self):
+        try:
+            return "RtMatchEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+        except:
+            return "RtMatchEntry(objid={0})".format(hex(id(self)))
+
+    def __str__(self):
+        try:
+            return "RtMatchEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+        except:
+            return "RtMatchEntry(objid={0})".format(hex(id(self)))

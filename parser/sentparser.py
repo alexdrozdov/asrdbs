@@ -271,6 +271,12 @@ class WordFormInfo(object):
             return False
         return True
 
+    def __repr__(self):
+        return "WordFormInfo(word='{0}')".format(self.get_word().encode('utf8'))
+
+    def __str__(self):
+        return "WordFormInfo(word='{0}')".format(self.get_word().encode('utf8'))
+
 
 class Link(object):
     def __init__(self, rule, master, slave, uniq=None):
@@ -394,6 +400,12 @@ class WordForm(WordFormInfo, SentenceEntry):
             if other == s:
                 return l
         return None
+
+    def __repr__(self):
+        return "WordForm(word='{0}')".format(self.get_word().encode('utf8'))
+
+    def __str__(self):
+        return "WordForm(word='{0}')".format(self.get_word().encode('utf8'))
 
 
 class WordForms(object):
