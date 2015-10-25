@@ -862,6 +862,9 @@ class SpecStateDef(object):
             rules.append(r)
         return rules
 
+    def get_stateless_rules(self):
+        return [r.new_copy() for r in self.__stateless_rules]
+
     def has_incapsulated_spec(self):
         return self.__incapsulate_spec_name is not None
 
@@ -1074,6 +1077,8 @@ class RtMatchSequence(gvariant.Sequence):
 
         for e in sq.__all_entries:
             self.__append_entries(RtMatchEntry(self, e))
+        for e in self.__all_entries:
+            e.resolve_matched_rtmes()
         assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
 
     def get_graph_id(self):
@@ -1106,7 +1111,11 @@ class RtMatchSequence(gvariant.Sequence):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
-        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else speccmn.SpecStateFiniForm(), spec_state_def=to))
+        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else speccmn.SpecStateFiniForm(),
+                                     spec_state_def=to,
+                                     rtms_offset=len(self.__all_entries)
+                                     )
+                            )
         self.__append_entries(rtme)
 
         if not rtme.handle_rules():
@@ -1131,6 +1140,9 @@ class RtMatchSequence(gvariant.Sequence):
         self.__all_entries.append(rtme)
         if rtme.get_spec().add_to_seq():
             self.__entries.append(rtme)
+
+    def __getitem__(self, index):
+        return self.__all_entries[index]
 
     def get_rule_name(self):
         return self.__matcher.get_name()
@@ -1207,7 +1219,7 @@ class SpecMatcher(object):
             RtMatchSequence(
                 ns(
                     matcher=self,
-                    initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec)),
+                    initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec, rtms_offset=0)),
                     graph_id=self.__graph_id
                 )
             )
@@ -1319,30 +1331,32 @@ class RtMatchEntry(object):
         if isinstance(based_on, RtMatchEntry):
             self.__init_from_rtme(owner, based_on)
         elif isinstance(based_on, ns):
-            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def)
+            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def, based_on.rtms_offset)
 
     @argres(show_result=False)
-    def __init_from_form_spec(self, owner, form, spec_state_def):
+    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
         self.__form = form
         self.__spec = spec_state_def
-        self.__status = RtRule.res_none
+        self.__rtms_offset = rtms_offset
 
         self.__create_name(self.__spec.get_name())
         self.__create_rules()
         self.__index_rules()
+        self.__create_static_rules()
 
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
         self.__form = rtme.__form
         self.__spec = rtme.__spec
-        self.__status = rtme.__status
+        self.__rtms_offset = rtme.__rtms_offset
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
         self.__index_rules()
+        self.__copy_matched_rules(rtme)
 
     @argres(show_result=False)
     def __create_rules(self):
@@ -1353,6 +1367,39 @@ class RtMatchEntry(object):
                 if b.need_reindex():
                     self.__reindex_name(b)
             self.__pending.append(r)
+
+    @argres(show_result=False)
+    def __create_static_rules(self):
+        self.__matched = []
+        for r in self.__spec.get_stateless_rules():
+            self.__matched.append(ns(rule=r, rtme=self))
+
+    @argres(show_result=False)
+    def __copy_matched_rules(self, rtme):
+        self.__matched = []
+        for rule_rtme in rtme.__matched:
+            self.__matched.append(
+                ns(
+                    rule=rule_rtme.rule.new_copy(),
+                    rtme=self if id(rule_rtme) == id(rtme) else self.__owner[rule_rtme.rtme.get_offset()] if rule_rtme.rtme.get_offset() < self.get_offset() else rule_rtme.rtme.get_offset()
+                )
+            )
+
+    @argres(show_result=True)
+    def matched_list_valid(self):
+        for rule_rtme in self.__matched:
+            if isinstance(rule_rtme.rtme, RtMatchEntry):
+                continue
+            return False
+        return True
+
+    @argres(show_result=False)
+    def resolve_matched_rtmes(self):
+        for rule_rtme in self.__matched:
+            if isinstance(rule_rtme.rtme, RtMatchEntry):
+                continue
+            rule_rtme.rtme = self.__owner[rule_rtme.rtme]
+        return True
 
     @argres(show_result=False)
     def __index_rules(self):
@@ -1387,6 +1434,9 @@ class RtMatchEntry(object):
     def get_spec(self):
         return self.__spec
 
+    def get_offset(self, base=None):
+        return self.__rtms_offset
+
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -1417,12 +1467,17 @@ class RtMatchEntry(object):
                     if not self.__apply_on(r, e):
                         return False
                     self.__decrease_rule_counters(r)
+                    self.__add_matched_rule(r, e)
                     if not r.is_persistent():
                         break
             if not applied or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
         return True
+
+    @argres(show_result=False)
+    def __add_matched_rule(self, rule, rtme):
+        self.__matched.append(ns(rule=rule, rtme=rtme))
 
     @argres()
     def __check_applicable(self, rule, other_rtme):

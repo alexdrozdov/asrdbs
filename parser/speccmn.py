@@ -152,6 +152,9 @@ class c__pos_check(RtStaticRule):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
 
+    def new_copy(self):
+        return c__pos_check(self.__pos_names)
+
     def match(self, form):
         return form.get_pos() in self.__pos_names
 
@@ -162,6 +165,9 @@ class c__pos_check(RtStaticRule):
 class c__pos_check_inv(RtStaticRule):
     def __init__(self, pos_names):
         self.__pos_names = pos_names
+
+    def new_copy(self):
+        return c__pos_check_inv(self.__pos_names)
 
     def match(self, form):
         return form.get_pos() not in self.__pos_names
@@ -180,6 +186,9 @@ class c__pos_syntax_check(RtStaticRule):
             self.__syntax_check_cb = self.__dot_check_cb
         if syntax_name == 'question':
             self.__syntax_check_cb = self.__question_check_cb
+
+    def new_copy(self):
+        return c__pos_syntax_check(self.__syntax)
 
     def __comma_check_cb(self, form):
         return form.is_comma()
@@ -227,6 +236,9 @@ class c__word_check(RtStaticRule):
     def __init__(self, words):
         self.__words = words
 
+    def new_copy(self):
+        return c__word_check(self.__words)
+
     def match(self, form):
         return form.get_word() in self.__words
 
@@ -242,6 +254,9 @@ class WordSpecs(object):
 class c__case_check(RtStaticRule):
     def __init__(self, cases):
         self.__cases = cases
+
+    def new_copy(self):
+        return c__case_check(self.__cases)
 
     def match(self, form):
         return form.get_case() in self.__cases
