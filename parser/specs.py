@@ -1225,7 +1225,6 @@ class SpecMatcher(object):
 
     def reset(self):
         self.__sequences = []
-        self.__rtentry2sequence = {}
         self.__graph_id = None
 
     def match(self, forms, graph_id):
@@ -1272,6 +1271,19 @@ class SpecMatcher(object):
 
     def get_compiled_spec(self):
         return self.__compiled_spec
+
+
+class SequenceMatchRes(object):
+    def __init__(self, graph, sqs, graph_id):
+        self.__graph = graph
+        self.__sqs = sqs
+        self.__graph_id = graph_id
+
+    def get_sequences(self):
+        return self.__sqs
+
+    def get_graph(self):
+        return self.__graph
 
 
 class SequenceSpecMatcher(object):
@@ -1327,15 +1339,17 @@ class SequenceSpecMatcher(object):
             sp.reset()
 
     def match_graph(self, graph, graph_id=None):
-        self.__matched_specs = []
+        self.__matched_sqs = []
         forms = graph.get_forms()
         for sp in self.__specs:
             sp.match(forms, graph_id)
             sp.match([speccmn.SpecStateFiniForm()], graph_id)
-        return self.__matched_specs
+        smr = SequenceMatchRes(graph, self.__matched_sqs, graph_id)
+        self.reset()
+        return smr
 
     def add_matched(self, sq):
-        self.__matched_specs.append(sq)
+        self.__matched_sqs.append(sq)
 
 
 class RtMatchEntry(object):
