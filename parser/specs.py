@@ -965,10 +965,23 @@ class RtStackCounter(object):
 
 
 class RtSequenceLinkEntry(object):
-    def __init__(self, rule, link, weight):
+    def __init__(self, based_on):
+        if isinstance(based_on, ns):
+            self.__init_on_spec(based_on.rule, based_on.link, based_on.weight)
+        elif isinstance(based_on, RtSequenceLinkEntry):
+            self.__init_on_rsle(based_on)
+        else:
+            raise ValueError('Unsupported initializer')
+
+    def __init_on_spec(self, rule, link, weight):
         self.__rule = rule
         self.__link = link
         self.__weight = weight
+
+    def __init_on_rsle(self, rsle):
+        self.__rule = rsle.__rule
+        self.__link = rsle.__link
+        self.__weight = rsle.__weight
 
     def get_link(self):
         return self.__link
@@ -1071,18 +1084,27 @@ class RtMatchSequence(gvariant.Sequence):
         self.__all_entries = []
 
         self.__status = sq.__status
-        self.__unwanted_links = sq.__unwanted_links[:]
-        self.__confirmed_links = sq.__confirmed_links[:]
         self.__stack = RtStackCounter(stack=sq.__stack)
 
+        self.__copy_all_entries(sq)
+        self.__copy_unwanted_links(sq)
+        self.__copy_confirmed_links(sq)
+
+    def get_graph_id(self):
+        return self.__graph_id
+
+    def __copy_all_entries(self, sq):
         for e in sq.__all_entries:
             self.__append_entries(RtMatchEntry(self, e))
         for e in self.__all_entries:
             e.resolve_matched_rtmes()
         assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
 
-    def get_graph_id(self):
-        return self.__graph_id
+    def __copy_unwanted_links(self, sq):
+        self.__unwanted_links = map(lambda s: RtSequenceLinkEntry(s), sq.__unwanted_links)
+
+    def __copy_confirmed_links(self, sq):
+        self.__confirmed_links = map(lambda s: RtSequenceLinkEntry(s), sq.__confirmed_links)
 
     @argres()
     def handle_form(self, form):
@@ -1445,11 +1467,11 @@ class RtMatchEntry(object):
 
     @argres(show_result=False)
     def add_unwanted_link(self, l, weight=None, rule=None):
-        self.__owner.add_unwanted_link(RtSequenceLinkEntry(rule, l, weight))
+        self.__owner.add_unwanted_link(RtSequenceLinkEntry(ns(rule=rule, link=l, weight=weight)))
 
     @argres(show_result=False)
     def add_confirmed_link(self, l, weight=None, rule=None):
-        self.__owner.add_confirmed_link(RtSequenceLinkEntry(rule, l, weight))
+        self.__owner.add_confirmed_link(RtSequenceLinkEntry(ns(rule=rule, link=l, weight=weight)))
 
     @argres()
     def find_transitions(self, form):
