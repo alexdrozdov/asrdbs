@@ -73,7 +73,6 @@ for i, gr in enumerate(graphs, 1):
     for sq in sqs:
         sq.print_sequence()
     print ''
-    gr.apply_sequences()
 
     file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i))
     g.generate(res, file_name, gr)

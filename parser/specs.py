@@ -16,7 +16,6 @@ import specdefs.adv_adj
 import specdefs.adv_verb
 import specdefs.subj_predicate
 import specdefs.noun_noun
-import gvariant
 from speccmn import RtRule, RtMatchString
 import graph
 import common.output
@@ -1026,7 +1025,7 @@ def argres(show_result=True, repr_result=None):
     return argres_internal
 
 
-class RtMatchSequence(gvariant.Sequence):
+class RtMatchSequence(object):
     def __new__(cls, *args, **kwargs):
         obj = super(RtMatchSequence, cls).__new__(cls)
 
