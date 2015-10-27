@@ -4,7 +4,7 @@
 
 import parser.sentparser
 import parser.graph
-import parser.gvariant
+import parser.graph_span
 import parser.specs
 import sys
 import codecs
@@ -52,7 +52,7 @@ res = sp.parse(sentence)
 g = parser.graph.SentGraph(img_type='svg')
 g.generate(res, common.output.output.get_output_file('imgs', 'g.svg'))
 
-gv = parser.gvariant.GraphSnakes()
+gv = parser.graph_span.GraphSnakes()
 snakes = gv.build(res)
 
 for i in range(len(snakes)):
@@ -62,7 +62,6 @@ for i in range(len(snakes)):
 
 graphs = gv.export_graphs()
 
-# srm = parser.gvariant.SequenceRuleMatcher()
 srm = parser.specs.SequenceSpecMatcher(True)
 
 for i, gr in enumerate(graphs, 1):
