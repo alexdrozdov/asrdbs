@@ -514,9 +514,9 @@ class SpecCompiler(object):
                 return
             if state.has_incapsulated_spec():
                 in_spec = state.get_incapsulated_spec()
-                in_spec_anchor = in_spec.get_local_spec_anchors()
-                assert in_spec_anchor is not None
-                return in_spec_anchor.get_name()
+                in_spec_anchors = in_spec.get_local_spec_anchors()
+                assert in_spec_anchors is not None and len(in_spec_anchors) == 1
+                return in_spec_anchors[0].get_name()
         raise RuntimeError('state name matching not implemented')
 
     def compile(self, spec, parent_spec_name=''):
@@ -1147,6 +1147,9 @@ class MatchedSequence(object):
     def get_links(self, hidden=False):
         return self.__all_links if hidden else self.__links
 
+    def get_entry_count(self, hidden=False):
+        return len(self.get_entries(hidden=hidden))
+
     def print_sequence(self):
         print self.get_name(), '<',
         for e in self.__all_entries:
@@ -1495,6 +1498,7 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.verb_group.VerbGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.noun_group.NounGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.noun_group.NounGroupAuxSpec(), independent_compile=False)
+        self.add_spec(specdefs.noun_group.NounCtrlNounSpec(), independent_compile=False)
         self.add_spec(specdefs.sentance.SentanceSpec(), independent_compile=True)
         self.build_specs()
 
@@ -1527,12 +1531,24 @@ class SequenceSpecMatcher(object):
         for sp in self.__specs:
             sp.reset()
 
-    def match_graph(self, graph, graph_id=None):
+    def __select_most_complete(self):
+        max_entries = reduce(
+            lambda prev_max, msq:
+                msq.get_entry_count(hidden=False) if prev_max < msq.get_entry_count(hidden=False) else prev_max,
+            self.__matched_sqs,
+            0
+        )
+        self.__matched_sqs = filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), self.__matched_sqs)
+
+    def match_graph(self, graph, graph_id=None, most_complete=False):
         self.__matched_sqs = set()
         forms = graph.get_forms()
         for sp in self.__specs:
             sp.match(forms, graph_id)
             sp.match([speccmn.SpecStateFiniForm()], graph_id)
+
+        if most_complete:
+            self.__select_most_complete()
         smr = SequenceMatchRes(graph, self.__matched_sqs, graph_id)
         self.reset()
         return smr
