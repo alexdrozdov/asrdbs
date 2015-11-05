@@ -166,6 +166,8 @@ class SpecGraphGen(object):
     def __gen_state(self, st):
         label = '<TABLE>'
         label += '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(st.get_name())
+        if st.is_anchor():
+            label += '<TR><TD BGCOLOR="blue">ANCHOR</TD></TR>'
         for r in st.get_rules_ro():
             label += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format('darkolivegreen1' if r.is_static() else 'burlywood1', r.get_info(wrap=True))
         label += '<TR><TD ALIGN="LEFT">{0}</TD></TR>'.format('level: {0}'.format(st.get_level()))
@@ -203,6 +205,105 @@ class SpecGraphGen(object):
 
         for st in states:
             s += self.__gen_links(st)
+
+        s += u'}\r\n'
+
+        return s
+
+
+class SequenceGraph(object):
+    def __init__(self, img_type='png'):
+        self.__out_type = img_type
+
+    def generate(self, sequence, outfile):
+        gen = SequenceGraphGen()
+        s = gen.generate(sequence)
+
+        tmp_file = outfile + '.tmp.graph'
+        with open(tmp_file, 'w') as f:
+            f.write(s.encode('utf8'))
+
+        os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
+
+
+class GraphGen(object):
+    def __init__(self):
+        self.__obj2id = {}
+        self.__last_id = 0
+
+    def dict_to_istr(self, d, offset=0):
+        r = u''
+        if isinstance(d, unicode) or isinstance(d, str):
+            d = json.loads(d)
+        for k, v in d.items():
+            r += u'  ' * offset + k + ': '
+            if isinstance(v, list):
+                r += '['
+                for vv in v:
+                    r += self.dict_to_istr(vv, offset=offset+1)
+                r += u'  ' * offset + ']\l'
+            else:
+                r += str(v) + "\l"
+        return r
+
+    def __mkid(self, iid):
+        return 'obj_{0}'.format(iid)
+
+    def add_obj(self, obj):
+        self.__obj2id[obj] = self.__mkid(self.__last_id)
+        self.__last_id += 1
+
+    def get_obj_id(self, obj):
+        return self.__obj2id[obj]
+
+
+class SequenceGraphGen(GraphGen):
+    def __init__(self):
+        super(SequenceGraphGen, self).__init__()
+
+    def __gen_link(self, link):
+        s = u'\t{0} [label = "{1}", shape="octagon", style="filled", fillcolor="orchid"];\r\n'.format(
+            self.get_obj_id(link),
+            self.dict_to_istr(link.get_rule().explain_str()))
+        return s
+
+    def __gen_entry(self, entry):
+        label = u'<TABLE>'
+        label += u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(entry.get_name())
+
+        label += u'<TR><TD BGCOLOR="darkseagreen2">{0}</TD></TR>'.format(entry.get_form().get_word())
+
+        for r in entry.get_rules():
+            label += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format(
+                u'darkolivegreen1' if r.is_static() else u'burlywood1',
+                r.get_info(wrap=True))
+        label += u'</TABLE>'
+
+        s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
+            self.get_obj_id(entry),
+            label)
+        return s
+
+    def __link_entries(self, link):
+        s = u'\t{0}->{1}->{2} [style="filled"];\r\n'.format(
+            self.get_obj_id(link.get_master()),
+            self.get_obj_id(link),
+            self.get_obj_id(link.get_slave()))
+        return s
+
+    def generate(self, sequence):
+        s = u'digraph D {\r\n'
+
+        for e in sequence.get_entries(hidden=False):
+            self.add_obj(e)
+            s += self.__gen_entry(e)
+
+        for l in sequence.get_links(hidden=False):
+            self.add_obj(l)
+            s += self.__gen_link(l)
+
+        for l in sequence.get_links(hidden=False):
+            s += self.__link_entries(l)
 
         s += u'}\r\n'
 

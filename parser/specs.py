@@ -16,12 +16,16 @@ import specdefs.adv_adj
 import specdefs.adv_verb
 import specdefs.subj_predicate
 import specdefs.noun_noun
+import specdefs.verb_group
+import specdefs.noun_group
+import specdefs.sentance
 from speccmn import RtRule, RtMatchString
 import graph
 import common.output
 import common.history as h
 from argparse import Namespace as ns
 import logging
+import sentparser
 
 
 class UniqEnum(object):
@@ -230,12 +234,13 @@ class SpecCompiler(object):
         self.__states = []
         self.__name2state = {}
         self.__containers = []
+        self.__anchor_containers = []
         self.__containers_qq = []
         self.__inis = []
         self.__finis = []
         self.__incapsulate_in = []
         self.__rule_bindins = {}
-        self.__local_spec_anchor = None
+        self.__local_spec_anchors = []
 
     def __create_parent_path(self, st):
         parent = self.__spec.get_parent(st)
@@ -262,8 +267,8 @@ class SpecCompiler(object):
         if '$GLEVEL' in name:
             name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
         if '$LOCAL_SPEC_ANCHOR' in name:
-            assert self.__local_spec_anchor is not None
-            name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchor.get_name()))
+            assert self.__local_spec_anchors, 'Tried to resolve name for spec "{0}" without local spec anchor'.format(self.__spec_name)
+            name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))  # FIXME There could be multiple anchors
         if '$INCAPSULATED' in name:
             assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
             name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
@@ -295,6 +300,19 @@ class SpecCompiler(object):
         if state.has_incapsulated_spec():
             self.__incapsulate_in.append(state)
 
+    def __handle_anchor_state(self, state):
+        if state.is_container() or state.is_uniq_container():
+            return
+
+        if state.has_incapsulated_spec():
+            in_spec = state.get_incapsulated_spec()
+            in_spec_anchors = in_spec.get_local_spec_anchors()
+            if in_spec_anchors:
+                self.__local_spec_anchors.extend(in_spec_anchors)
+            return
+
+        self.__local_spec_anchors.append(state)
+
     def __create_states(self, spec):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
@@ -303,7 +321,10 @@ class SpecCompiler(object):
             if state.get_level() > 0:
                 parent_st = spec.get_parent(st)
                 parent_state_name = str(self.gen_state_name(parent_st))
-                state.set_parent_state(self.__name2state[parent_state_name])
+                parent_state = self.__name2state[parent_state_name]
+                state.set_parent_state(parent_state)
+                if parent_state.is_anchor():
+                    state.force_anchor()
 
             if state.has_incapsulated_spec():
                 in_spec_name = state.get_incapsulated_spec_name()
@@ -313,16 +334,7 @@ class SpecCompiler(object):
                 state.set_incapsulated_spec(compiled_in_spec)
 
             if state.is_anchor():
-                assert self.__local_spec_anchor is None
-                if state.is_container():
-                    raise RuntimeError('container anchors are not implemented')
-                if state.is_uniq_container():
-                    raise RuntimeError('uniq container anchors are not implemented')
-                if state.has_incapsulated_spec():
-                    in_spec = state.get_incapsulated_spec()
-                    self.__local_spec_anchor = in_spec.get_local_spec_anchor()
-                else:
-                    self.__local_spec_anchor = state
+                self.__handle_anchor_state(state)
 
             self.__add_state(state)
 
@@ -446,10 +458,10 @@ class SpecCompiler(object):
             if not state.has_rt_rules():
                 continue
             in_spec = state.get_incapsulated_spec()
-            in_spec_anchor = in_spec.get_local_spec_anchor()
-            assert in_spec_anchor is not None
-            rules_to_incapsulate = state.get_rt_rules_list()
-            in_spec_anchor.extend_rules(rules_to_incapsulate)
+            for in_spec_anchor in in_spec.get_local_spec_anchors():
+                assert in_spec_anchor is not None
+                rules_to_incapsulate = state.get_rt_rules_list()
+                in_spec_anchor.extend_rules(rules_to_incapsulate)
 
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
@@ -502,7 +514,7 @@ class SpecCompiler(object):
                 return
             if state.has_incapsulated_spec():
                 in_spec = state.get_incapsulated_spec()
-                in_spec_anchor = in_spec.get_local_spec_anchor()
+                in_spec_anchor = in_spec.get_local_spec_anchors()
                 assert in_spec_anchor is not None
                 return in_spec_anchor.get_name()
         raise RuntimeError('state name matching not implemented')
@@ -525,7 +537,7 @@ class SpecCompiler(object):
         self.__incapsulate_states()
         self.__create_state_rules()
 
-        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchor, spec.get_validate() if self.__level == 0 else None)
+        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchors, spec.get_validate() if self.__level == 0 else None)
         return cs
 
     def get_level(self):
@@ -689,6 +701,9 @@ class SpecStateDef(object):
     def is_anchor(self):
         return self.__is_local_anchor
 
+    def force_anchor(self):
+        self.__is_local_anchor = True
+
     def get_parent_state(self):
         return self.__parent
 
@@ -840,7 +855,7 @@ class SpecStateDef(object):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [rr for rr in rule_def]
+            rule_def = [speccmn.RtRuleFactory(rr) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
             if not self.__spec_dict.has_key(r):
@@ -898,15 +913,16 @@ class SpecStateDef(object):
 
 
 class CompiledSpec(object):
-    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchor, validator):
+    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchors, validator):
         self.__src_spec = src_spec
+        self.__name = name
         assert states, 'Spec without states'
         assert inis, 'Spec without init states'
+        assert local_spec_anchors, 'Tried to create CompiledSpec "{0}" without any anchor'.format(self.__name)
         self.__states = states
         self.__inis = inis
         self.__finis = finis
-        self.__local_spec_anchor = local_spec_anchor
-        self.__name = name
+        self.__local_spec_anchors = local_spec_anchors
         self.__validator = validator
 
     def get_name(self):
@@ -921,8 +937,9 @@ class CompiledSpec(object):
     def get_finis(self):
         return self.__finis
 
-    def get_local_spec_anchor(self):
-        return self.__local_spec_anchor
+    def get_local_spec_anchors(self):
+        assert self.__local_spec_anchors, '"{0}" spec doesnt have anchor'.format(self.__name)
+        return self.__local_spec_anchors
 
     def get_validate(self):
         return self.__validator
@@ -973,11 +990,15 @@ class RtSequenceLinkEntry(object):
             raise ValueError('Unsupported initializer')
 
     def __init_on_spec(self, rule, link, weight):
+        assert isinstance(link, sentparser.Link)
+        assert link.get_master() is not None and link.get_slave() is not None
         self.__rule = rule
         self.__link = link
         self.__weight = weight
 
     def __init_on_rsle(self, rsle):
+        assert isinstance(rsle.__link, sentparser.Link)
+        assert rsle.__link.get_master() is not None and rsle.__link.get_slave() is not None
         self.__rule = rsle.__rule
         self.__link = rsle.__link
         self.__weight = rsle.__weight
@@ -986,10 +1007,10 @@ class RtSequenceLinkEntry(object):
         return self.__link
 
     def get_master(self):
-        self.__link.get_master()
+        return self.__link.get_master()
 
     def get_slave(self):
-        self.__link.get_slave()
+        return self.__link.get_slave()
 
     def get_weight(self):
         return self.__weight
@@ -1023,6 +1044,142 @@ def argres(show_result=True, repr_result=None):
 
         return argres_fcn
     return argres_internal
+
+
+class MatchedEntry(object):
+    def __init__(self, rtme):
+        self.__form = rtme.get_form().clone_without_links()
+        self.__name = rtme.get_name()
+        self.__is_hidden = not rtme.get_spec().add_to_seq()
+        self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
+        self.__masters = []
+        self.__slaves = []
+        self.__masters_csum = 0
+        self.__slaves_csum = 0
+
+    def get_name(self):
+        return self.__name
+
+    def get_form(self):
+        return self.__form
+
+    def get_links(self, hidden=False):
+        return self.__links
+
+    def get_uniq(self):
+        return self.__form.get_uniq()
+
+    def is_hidden(self):
+        return self.__is_hidden
+
+    def add_link(self, link):
+        assert isinstance(link, sentparser.Link)
+        assert link.get_master() == self or link.get_slave() == self
+        if link.get_master() == self:
+            self.__slaves.append(link)
+            self.__slaves_csum |= link.get_uniq()
+        else:
+            self.__masters.append(link)
+            self.__masters_csum |= link.get_uniq()
+
+    def get_master_links(self):
+        return self.__masters
+
+    def get_slave_links(self):
+        return self.__slaves
+
+    def get_masters(self):
+        return [l.get_from() for l in self.__masters]
+
+    def get_slaves(self):
+        return [l.get_to() for l in self.__slaves]
+
+    def get_rules(self):
+        return self.__rules
+
+
+class MatchedSequence(object):
+    def __init__(self, sq):
+        self.__name = sq.get_rule_name()
+        self.__graph_id = sq.get_graph_id()
+        self.__entries = []
+        self.__all_entries = []
+        self.__links = []
+        self.__all_links = []
+        self.__entries_csum = 0
+        self.__links_csum = 0
+        self.__uid2me = {}
+
+        for e in sq.get_entries(hidden=True):
+            self.__append_entries(MatchedEntry(e))
+
+        for cl in sq.get_confirmed_links():
+            self.__mk_link(cl)
+
+    def __mk_link(self, link):
+        assert isinstance(link, RtSequenceLinkEntry)
+        me_from = self.__uid2me[link.get_master().get_uniq()]
+        me_to = self.__uid2me[link.get_slave().get_uniq()]
+        l = sentparser.Link(link.get_link().get_rule(), me_from, me_to, link.get_link().get_uniq())
+        me_from.add_link(l)
+        me_to.add_link(l)
+        self.__append_links(l)
+
+    def __append_entries(self, me):
+        self.__all_entries.append(me)
+        if not me.is_hidden():
+            self.__entries.append(me)
+        self.__uid2me[me.get_uniq()] = me
+        self.__entries_csum |= me.get_uniq()
+
+    def __append_links(self, link):
+        if not link.get_master().is_hidden() and not link.get_slave().is_hidden():
+            self.__links.append(link)
+        self.__all_links.append(link)
+        self.__links_csum += link.get_uniq()
+
+    def get_name(self):
+        return self.__name
+
+    def get_entries(self, hidden=False):
+        return self.__all_entries if hidden else self.__entries
+
+    def get_links(self, hidden=False):
+        return self.__all_links if hidden else self.__links
+
+    def print_sequence(self):
+        print self.get_name(), '<',
+        for e in self.__all_entries:
+            f = e.get_form()
+            if not e.is_hidden():
+                print f.get_word(),
+            else:
+                print '<', f.get_word(), '>',
+        print '>'
+
+    def __repr__(self):
+        r = u"MatchedSequence(objid={0}, entries=[{1}])".format(
+            hex(id(self)),
+            u', '.join(map(lambda x: x.get_form().get_word(), self.__entries))
+        )
+        return r.encode('utf-8')
+
+    def __str__(self):
+        return "MatchedSequence(objid={0})".format(hex(id(self)))
+
+    def __eq__(self, other):
+        assert isinstance(other, MatchedSequence)
+        if id(self) == id(other):
+            return True
+        return all((self.__graph_id == other.__graph_id,
+                    self.__entries_csum == other.__entries_csum,
+                    self.__links_csum == other.__links_csum,))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.__graph_id, self.__entries_csum, self.__links_csum))
 
 
 class RtMatchSequence(object):
@@ -1068,12 +1225,14 @@ class RtMatchSequence(object):
         self.__graph_id = graph_id
         self.__entries = []
         self.__all_entries = []
-
-        self.__append_entries(initial_entry)
-        self.__status = RtRule.res_none
         self.__unwanted_links = []
         self.__confirmed_links = []
+        self.__forms_csum = 0
+        self.__confirmed_csum = 0
+        self.__unwanted_csum = 0
+
         self.__stack = RtStackCounter()
+        self.__append_entries(initial_entry)
 
     @argres(show_result=True)
     def __init_from_sq(self, sq):
@@ -1081,8 +1240,10 @@ class RtMatchSequence(object):
         self.__graph_id = sq.__graph_id
         self.__entries = []
         self.__all_entries = []
+        self.__forms_csum = 0
+        self.__confirmed_csum = 0
+        self.__unwanted_csum = 0
 
-        self.__status = sq.__status
         self.__stack = RtStackCounter(stack=sq.__stack)
 
         self.__copy_all_entries(sq)
@@ -1101,9 +1262,11 @@ class RtMatchSequence(object):
 
     def __copy_unwanted_links(self, sq):
         self.__unwanted_links = map(lambda s: RtSequenceLinkEntry(s), sq.__unwanted_links)
+        self.__unwanted_csum = reduce(lambda x, s: x | s.get_link().get_uniq(), self.__unwanted_links, 0)
 
     def __copy_confirmed_links(self, sq):
         self.__confirmed_links = map(lambda s: RtSequenceLinkEntry(s), sq.__confirmed_links)
+        self.__confirmed_csum = reduce(lambda x, s: x | s.get_link().get_uniq(), self.__confirmed_links, 0)
 
     @argres()
     def handle_form(self, form):
@@ -1161,6 +1324,7 @@ class RtMatchSequence(object):
         self.__all_entries.append(rtme)
         if rtme.get_spec().add_to_seq():
             self.__entries.append(rtme)
+        self.__forms_csum |= rtme.get_form().get_uniq()
 
     def __getitem__(self, index):
         return self.__all_entries[index]
@@ -1175,18 +1339,25 @@ class RtMatchSequence(object):
             print f.get_word(),
         print '>'
 
+    def get_confirmed_links(self):
+        return self.__confirmed_links
+
     def get_unwanted_links(self):
         return self.__unwanted_links
 
+    @argres(show_result=False)
     def add_confirmed_link(self, sq_link_entry):
         assert isinstance(sq_link_entry, RtSequenceLinkEntry)
         if sq_link_entry not in self.__confirmed_links:
             self.__confirmed_links.append(sq_link_entry)
+            self.__confirmed_csum |= sq_link_entry.get_link().get_uniq()
 
+    @argres(show_result=False)
     def add_unwanted_link(self, sq_link_entry):
         assert isinstance(sq_link_entry, RtSequenceLinkEntry)
         if sq_link_entry not in self.__unwanted_links:
             self.__unwanted_links.append(sq_link_entry)
+            self.__unwanted_csum |= sq_link_entry.get_link().get_uniq()
 
     def get_stack(self):
         return self.__stack.get_stack()
@@ -1211,6 +1382,21 @@ class RtMatchSequence(object):
 
     def __str__(self):
         return "RtMatchSequence(objid={0})".format(hex(id(self)))
+
+    def __eq__(self, other):
+        assert isinstance(other, RtMatchSequence)
+        if id(self) == id(other):
+            return True
+        return all((self.__graph_id == other.__graph_id,
+                    self.__forms_csum == other.__forms_csum,
+                    self.__confirmed_csum == other.__confirmed_csum,
+                    self.__unwanted_csum == other.__unwanted_csum))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.__graph_id, self.__forms_csum, self.__confirmed_csum, self.__unwanted_csum))
 
 
 class SpecMatcher(object):
@@ -1250,7 +1436,8 @@ class SpecMatcher(object):
             next_sequences.append(res.sq)
         else:
             if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
-                self.__matched_cb(res.sq)
+                ms = MatchedSequence(res.sq)
+                self.__matched_cb(ms)
 
     def __handle_sequences(self, form):
         self.__create_new_sequence()
@@ -1299,13 +1486,16 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_verb.BasicVerbSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_subject.BasicSubjectSpec(), independent_compile=False)
-        self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=True)
+        self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=False)
-        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=True)
-        self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=True)
-        self.add_spec(specdefs.adv_verb.AdvVerbSequenceSpec(), independent_compile=True)
-        self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec(), independent_compile=True)
-        # self.add_spec(specdefs.noun_noun.NounNounSequenceSpec(), independent_compile=True)
+        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=False)
+        self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=False)
+        self.add_spec(specdefs.adv_verb.AdvVerbSequenceSpec(), independent_compile=False)
+        self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec(), independent_compile=False)
+        self.add_spec(specdefs.verb_group.VerbGroupSpec(), independent_compile=False)
+        self.add_spec(specdefs.noun_group.NounGroupSpec(), independent_compile=False)
+        self.add_spec(specdefs.noun_group.NounGroupAuxSpec(), independent_compile=False)
+        self.add_spec(specdefs.sentance.SentanceSpec(), independent_compile=True)
         self.build_specs()
 
     def add_spec(self, base_spec_class, independent_compile=False):
@@ -1338,7 +1528,7 @@ class SequenceSpecMatcher(object):
             sp.reset()
 
     def match_graph(self, graph, graph_id=None):
-        self.__matched_sqs = []
+        self.__matched_sqs = set()
         forms = graph.get_forms()
         for sp in self.__specs:
             sp.match(forms, graph_id)
@@ -1348,7 +1538,7 @@ class SequenceSpecMatcher(object):
         return smr
 
     def add_matched(self, sq):
-        self.__matched_sqs.append(sq)
+        self.__matched_sqs.add(sq)
 
 
 class RtMatchEntry(object):
@@ -1419,6 +1609,9 @@ class RtMatchEntry(object):
                     rtme=self if id(rule_rtme) == id(rtme) else self.__owner[rule_rtme.rtme.get_offset()] if rule_rtme.rtme.get_offset() < self.get_offset() else rule_rtme.rtme.get_offset()
                 )
             )
+
+    def get_matched_rules(self):
+        return self.__matched
 
     @argres(show_result=True)
     def matched_list_valid(self):

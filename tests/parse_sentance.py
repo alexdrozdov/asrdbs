@@ -26,7 +26,7 @@ sentence = [u'мелькнул', u'последний', u',', u'яркий', u'�
 # sentence = [u'на', u'солнце']
 # sentence = [u'полная', u'луна', u'медленно', u'плыла', u'на', u'темном', u'ночном', u'небе']
 sentence = [u'полная', u'луна', u'медленно', u'плыла', u'на', u'темном', u'ночном', u'небе']
-sentence = [u'друзья', u'шли', u'по', u'зеленым', u'лугам', u'бескрайним', u'полям']
+sentence = [u'друзья', u'быстро', u'шли', u'по', u'зеленым', u'лугам', u',', u'бескрайним', u'полям']
 # sentence = [u'зеленым', u'лугам', u'бескрайним', u'полям']
 # sentence = [u'луна', u'сияла', u'на', u'темном', u'ночном', u'небе']
 # sentence = [u'холод', u'зимы']
@@ -62,16 +62,16 @@ for i in range(len(snakes)):
 
 graphs = gv.export_graphs()
 
-srm = parser.specs.SequenceSpecMatcher(True)
+srm = parser.specs.SequenceSpecMatcher(False)
 
+sqg = parser.graph.SequenceGraph(img_type='svg')
 for i, gr in enumerate(graphs, 1):
     print u"#" + str(i)
     gr.print_graph()
-    smr = srm.match_graph(gr, graph_id='gr-{0}'.format(i))
-    sqs = smr.get_sequences()
-    for sq in sqs:
-        sq.print_sequence()
-    print ''
 
-    file_name = common.output.output.get_output_file('imgs', 'gr-{0}.svg'.format(i))
-    g.generate(res, file_name, gr)
+    smr = srm.match_graph(gr, graph_id='gr-{0}'.format(i))
+    for j, sq in enumerate(smr.get_sequences()):
+        sq.print_sequence()
+        file_name = common.output.output.get_output_file('imgs', 'g-{0}_sq-{1}.svg'.format(i, j))
+        sqg.generate(sq, file_name)
+    print ''

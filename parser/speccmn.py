@@ -225,6 +225,9 @@ class PosSpecs(object):
     def IsPronoun(self):
         return RtRuleFactory(c__pos_check, ["pronoun", ])
 
+    def IsPreposition(self):
+        return RtRuleFactory(c__pos_check, ["preposition", ])
+
     def IsComma(self):
         return RtRuleFactory(c__pos_syntax_check, "comma")
 
@@ -346,7 +349,7 @@ class PositionSpecs(object):
 
 class c__slave_master_spec(RtDynamicRule):
     def __init__(self, anchor=None, weight=None):
-        RtDynamicRule.__init__(self, False, False)
+        RtDynamicRule.__init__(self, True, False)
         self.__anchor = RtMatchString(anchor)
         self.__weight = weight
 
@@ -460,6 +463,12 @@ class SpecStateIniForm(object):
     def get_pos(self):
         return u'ini'
 
+    def get_uniq(self):
+        return 0
+
+    def clone_without_links(self):
+        return SpecStateIniForm()
+
 
 class SpecStateFiniForm(object):
     def __init__(self):
@@ -473,6 +482,12 @@ class SpecStateFiniForm(object):
 
     def get_pos(self):
         return u'fini'
+
+    def get_uniq(self):
+        return 0
+
+    def clone_without_links(self):
+        return SpecStateIniForm()
 
 
 class RtMatchString(object):
@@ -530,6 +545,19 @@ class RtMatchString(object):
 
 class RtRuleFactory(object):
     def __init__(self, classname, *args, **kwargs):
+        if isinstance(classname, RtRuleFactory):
+            self.__init_from_factory(classname)
+        else:
+            self.__init_from_params(classname, args, kwargs)
+
+    def __init_from_factory(self, rrf):
+        assert not rrf.__created
+        self.__classname = rrf.__classname
+        self.__args = rrf.__args
+        self.__kwargs = {k: RtMatchString(w) if isinstance(w, RtMatchString) else w for k, w in rrf.__kwargs.items()}
+        self.__created = False
+
+    def __init_from_params(self, classname, args, kwargs):
         self.__classname = classname
         self.__args = args
         self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}

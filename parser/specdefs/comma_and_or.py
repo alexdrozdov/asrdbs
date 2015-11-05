@@ -20,6 +20,7 @@ class CommaAndOrSpec(SequenceSpec):
             {
                 "repeatable": RepeatableSpecs().Once(),
                 "id": "$PARENT:or",
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "uniq_items": [
                     {
                         "id": "$PARENT::comma",

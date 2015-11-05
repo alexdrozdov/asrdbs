@@ -25,6 +25,7 @@ class SubjectGroupSpec(SequenceSpec):
                         "id": "$PARENT::subject",
                         "repeatable": RepeatableSpecs().Once(),
                         "incapsulate": ["basic-subject", ],
+                        "anchor": AnchorSpecs().LocalSpecAnchor(),
                     },
                     {
                         "id": "$PARENT::spacer",

@@ -20,6 +20,7 @@ class BasicSubjectSpec(SequenceSpec):
             {
                 "repeatable": RepeatableSpecs().Once(),
                 "id": "$PARENT:subject",
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "uniq_items": [
                     {
                         "id": "$PARENT::noun",
