@@ -26,7 +26,7 @@ class NounGroupSpec(SequenceSpec):
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "incapsulate": ["adj+-noun", ],
+                "incapsulate": ["noun-ctrl-noun", ],
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::preposition"), ],
             },
             {
@@ -70,7 +70,52 @@ class NounGroupAuxSpec(SequenceSpec):
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "incapsulate": ["noun-ctrl-noun", ],
+            },
+            {
+                "id": "$SPEC::fini",
+                "required": RequiredSpecs().IsNecessary(),
+                "fsm": FsmSpecs().IsFini(),
+                "add-to-seq": False,
+            },
+        ]
+
+
+class NounCtrlNounSpec(SequenceSpec):
+    def __init__(self):
+        SequenceSpec.__init__(self, 'noun-ctrl-noun')
+        self.__compared_with = {}
+
+        self.spec = [
+            {
+                "id": "$SPEC::init",
+                "required": RequiredSpecs().IsNecessary(),
+                "fsm": FsmSpecs().IsInit(),
+                "add-to-seq": False,
+            },
+            {
+                "id": "$PARENT::noun",
+                "repeatable": RepeatableSpecs().Once(),
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "incapsulate": ["adj+-noun", ],
+            },
+            {
+                "id": "$PARENT::ctrled-noun",
+                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
+                "entries": [
+                    {
+                        "id": "$PARENT::noun",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
+                        "incapsulate": ["adj+-noun", ],
+                    },
+                    {
+                        "id": "$PARENT::ctrled-noun",
+                        "repeatable": RepeatableSpecs().LessOrEqualThan(1),
+                        "master-slave": [LinkSpecs().IsSlave("$SPEC::ctrled-noun::noun"), ],
+                        "incapsulate": ["adj+-noun", ],
+                    }
+                ]
             },
             {
                 "id": "$SPEC::fini",
