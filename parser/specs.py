@@ -455,12 +455,12 @@ class SpecCompiler(object):
 
     def __incapsulate_rules(self):
         for state in self.__incapsulate_in:
-            if not state.has_rt_rules():
+            if not state.has_rules():
                 continue
             in_spec = state.get_incapsulated_spec()
             for in_spec_anchor in in_spec.get_local_spec_anchors():
                 assert in_spec_anchor is not None
-                rules_to_incapsulate = state.get_rt_rules_list()
+                rules_to_incapsulate = state.get_rules_list()
                 in_spec_anchor.extend_rules(rules_to_incapsulate)
 
     def __incapsulate_states(self):
@@ -882,8 +882,14 @@ class SpecStateDef(object):
     def has_incapsulated_spec(self):
         return self.__incapsulate_spec_name is not None
 
+    def has_rules(self):
+        return len(set(['pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+
     def has_rt_rules(self):
         return len(set(['position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+
+    def get_rules_list(self):
+        return {r: self.__spec_dict[r] for r in ['pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def get_rt_rules_list(self):
         return {r: self.__spec_dict[r] for r in ['position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
