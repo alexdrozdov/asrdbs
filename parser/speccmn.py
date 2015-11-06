@@ -347,6 +347,79 @@ class PositionSpecs(object):
         return RtRuleFactory(c__position_spec, anchor=anchor)
 
 
+class c__sameas_spec(RtDynamicRule):
+    def __init__(self, anchor=None, get_param_fcn=None, param_name=None):
+        assert get_param_fcn is not None
+        RtDynamicRule.__init__(self, False, False)
+        self.__anchor = RtMatchString(anchor)
+        self.__get_param_fcn = get_param_fcn
+        self.__param_name = param_name
+
+    def new_copy(self):
+        return c__sameas_spec(self.__anchor, self.__get_param_fcn, self.__param_name)
+
+    def clone(self):
+        return c__sameas_spec(self.__anchor, self.__get_param_fcn, self.__param_name)
+
+    def is_applicable(self, rtme, other_rtme):
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
+            return True
+        return False
+
+    def apply_on(self, rtme, other_rtme):
+        return RtRule.res_matched if self.__get_param_fcn(rtme) == self.__get_param_fcn(other_rtme) else RtRule.res_failed
+
+    def get_info(self, wrap=False):
+        s = u'sameas{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' param: {0}{1}'.format(self.__param_name, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
+
+class SameAsSpecs(object):
+    def SameCase(self, anchor):
+        return RtRuleFactory(
+            c__sameas_spec,
+            anchor=anchor,
+            get_param_fcn=lambda rtme: rtme.get_form().get_case(),
+            param_name='case'
+        )
+
+    def SamePartOfSpeech(self, anchor):
+        return RtRuleFactory(
+            c__sameas_spec,
+            anchor=anchor,
+            get_param_fcn=lambda rtme: rtme.get_form().get_pos(),
+            param_name='pos_type'
+        )
+
+    def SameCount(self, anchor):
+        return RtRuleFactory(
+            c__sameas_spec,
+            anchor=anchor,
+            get_param_fcn=lambda rtme: rtme.get_form().get_count(),
+            param_name='count'
+        )
+
+    def SameTime(self, anchor):
+        return RtRuleFactory(
+            c__sameas_spec,
+            anchor=anchor,
+            get_param_fcn=lambda rtme: rtme.get_form().get_time(),
+            param_name='time'
+        )
+
+
 class c__slave_master_spec(RtDynamicRule):
     def __init__(self, anchor=None, weight=None):
         RtDynamicRule.__init__(self, True, False)

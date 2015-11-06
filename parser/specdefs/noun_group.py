@@ -33,6 +33,7 @@ class NounGroupSpec(SequenceSpec):
                 "id": "$PARENT::noun-seq",
                 "repeatable": RepeatableSpecs().Any(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "same_as": [SameAsSpecs().SameCase("$PARENT::noun"), ],
                 "incapsulate": ["noun-group-aux", ],
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::preposition"), ],
             },

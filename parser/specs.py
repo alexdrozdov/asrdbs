@@ -820,14 +820,14 @@ class SpecStateDef(object):
         self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
 
     def __create_rt_rules(self, compiler):
-        self.__create_rule_list(compiler, False, ['position', 'master-slave', 'unwanted-links'], self.__rt_rules)
+        self.__create_rule_list(compiler, False, ['same_as', 'position', 'master-slave', 'unwanted-links'], self.__rt_rules)
 
     def create_rules(self, compiler):
         self.__create_stateless_rules(compiler)
         self.__create_rt_rules(compiler)
 
     def has_noncreated_rules(self):
-        for r in ['position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
+        for r in ['same_as', 'position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
             if self.__spec_dict.has_key(r):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
@@ -883,16 +883,16 @@ class SpecStateDef(object):
         return self.__incapsulate_spec_name is not None
 
     def has_rules(self):
-        return len(set(['pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(['same_as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
 
     def has_rt_rules(self):
-        return len(set(['position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(['same_as', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
 
     def get_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in ['same_as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def get_rt_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in ['same_as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def get_incapsulated_spec_name(self):
         assert self.__incapsulate_spec_name is not None
