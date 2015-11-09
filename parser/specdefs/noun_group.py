@@ -108,14 +108,14 @@ class NounCtrlNounSpec(SequenceSpec):
                         "id": "$PARENT::noun",
                         "repeatable": RepeatableSpecs().Once(),
                         "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
-                        "case": [CaseSpecs().IsCase("genitive"), ],
+                        "case": [CaseSpecs().IsCase(["genitive", ]), ],
                         "incapsulate": ["adj+-noun", ],
                     },
                     {
                         "id": "$PARENT::ctrled-noun",
                         "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                         "master-slave": [LinkSpecs().IsSlave("$SPEC::ctrled-noun::noun"), ],
-                        "case": [CaseSpecs().IsCase("genitive"), ],
+                        "case": [CaseSpecs().IsCase(["genitive", ]), ],
                         "incapsulate": ["adj+-noun", ],
                     }
                 ]

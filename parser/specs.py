@@ -261,14 +261,28 @@ class SpecCompiler(object):
     def gen_state_name(self, st):
         return self.resolve_name(st, st['id'])
 
-    def resolve_name(self, ref_state, name):
+    def resolve_variant_count(self, ref_state, name):
+        if '$LOCAL_SPEC_ANCHOR' in name:
+            return len(self.__local_spec_anchors)
+        return 1
+
+    def resolve_name(self, ref_state, name, var_num=None):
         if '$LEVEL' in name:
             name = name.replace('$LEVEL', str(ref_state['level']))
         if '$GLEVEL' in name:
             name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
         if '$LOCAL_SPEC_ANCHOR' in name:
-            assert self.__local_spec_anchors, 'Tried to resolve name for spec "{0}" without local spec anchor'.format(self.__spec_name)
-            name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))  # FIXME There could be multiple anchors
+            assert self.__local_spec_anchors, 'Tried to resolve name for spec "{0}" without local spec anchor'.format(
+                self.__spec_name
+            )
+            assert len(self.__local_spec_anchors) == 1 or var_num is not None, 'Tried to resolve name for spec "{0}" with multiple local spec anchors {1}'.format(
+                self.__spec_name,
+                self.__local_spec_anchors
+            )
+            if var_num is None:
+                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))
+            else:
+                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[var_num].get_name()))
         if '$INCAPSULATED' in name:
             assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
             name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
@@ -811,10 +825,10 @@ class SpecStateDef(object):
                     for rd in rule_def:
                         if rd.created():
                             continue
-                        target_list.append(rd.create(compiler, self.__spec_dict))
+                        target_list.extend(rd.create(compiler, self.__spec_dict))
                 else:
                     if not rule_def.created():
-                        target_list.append(rule_def.create(compiler, self.__spec_dict))
+                        target_list.extend(rule_def.create(compiler, self.__spec_dict))
 
     def __create_stateless_rules(self, comiler):
         self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
@@ -1664,7 +1678,12 @@ class RtMatchEntry(object):
             self.__reindex_name(self.__name)
 
     def __reindex_name(self, name):
-        name.update(str(name).format(*self.__owner.get_stack()))
+        stack = self.__owner.get_stack()
+        try:
+            name.update(str(name).format(*stack))
+        except IndexError:
+            stack = stack + ['\\d+'] * 20
+            name.update(str(name).format(*stack))
 
     @argres()
     def __decrease_rule_counters(self, rule):

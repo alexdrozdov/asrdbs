@@ -23,16 +23,16 @@ class BasicSubjectSpec(SequenceSpec):
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "uniq_items": [
                     {
-                        "id": "$PARENT::noun",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [PosSpecs().IsNoun(), ],
-                        "case": [CaseSpecs().IsCase(["nominative", ]), ],
-                    },
-                    {
                         "id": "$PARENT::pronoun",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsPronoun(), ],
                         "case": [CaseSpecs().IsCase(["nominative", ]), ],
+                    },
+                    {
+                        "id": "$PARENT::noun",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "case": [CaseSpecs().IsCase(["nominative", ]), ],
+                        "incapsulate": ["noun-group", ],
                     },
                 ],
             },

@@ -18,22 +18,10 @@ class SubjectGroupSpec(SequenceSpec):
                 "add-to-seq": False,
             },
             {
-                "id": "$PARENT::sub",
-                "repeatable": RepeatableSpecs().EqualOrMoreThan(1),
-                "entries": [
-                    {
-                        "id": "$PARENT::subject",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["basic-subject", ],
-                        "anchor": AnchorSpecs().LocalSpecAnchor(),
-                    },
-                    {
-                        "id": "$PARENT::spacer",
-                        "repeatable": RepeatableSpecs().Any(),
-                        "pos_type": [PosSpecs().IsExcept(["noun", "pronoun", "verb"]), ],
-                        "add-to-seq": False,
-                    }
-                ]
+                "id": "$PARENT::subject",
+                "repeatable": RepeatableSpecs().Once(),
+                "incapsulate": ["basic-subject", ],
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
                 "required": RequiredSpecs().IsNecessary(),

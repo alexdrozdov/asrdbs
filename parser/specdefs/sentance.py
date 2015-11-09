@@ -19,7 +19,7 @@ class SentanceSpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::subject-pre",
-                "repeatable": RepeatableSpecs().Once(),
+                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "incapsulate": ["subject-group", ],
             },
