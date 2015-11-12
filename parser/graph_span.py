@@ -241,6 +241,11 @@ class GraphSnake(object):
         self.__checksum += node.get_uniq()
         self.__groups_csum += node.get_group().get_uniq()
 
+    def add_special_node(self, node):
+        self.__nodes.append(node)
+        self.__checksum += node.get_uniq()
+        self.__groups_csum += node.get_group().get_uniq()
+
     def __cmp__(self, other):
         if self.__score != other.__score:
             return -cmp(self.__score, other.__score)
@@ -325,6 +330,25 @@ class GraphSnakes(object):
             for n in syntax_nodes:
                 s.add_syntax_node(n)
 
+    def __entry_is_special(self, entry):
+        form = entry.get_forms()[0]
+        return form.get_word() in [u'и', u'или']
+
+    def __add_special_words(self, entries):
+        special_nodes = []
+        for e in entries:
+            forms = e.get_forms()
+            if not len(forms):
+                continue
+            if forms[0].is_syntax():
+                continue
+            if not self.__entry_is_special(e):
+                continue
+            special_nodes.append(forms[0])
+        for s in self.__snakes:
+            for n in special_nodes:
+                s.add_special_node(n)
+
     def build(self, entries):
         self.__init_snake_lists(entries)
         self.__grow_snakes()
@@ -335,6 +359,7 @@ class GraphSnakes(object):
         self.__find_subject_predicates()
         self.__sort_snakes()
         self.__add_syntax(entries)
+        self.__add_special_words(entries)
 
         for s in self.__snakes:
             s.print_entries()
