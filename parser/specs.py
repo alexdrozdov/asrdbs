@@ -475,7 +475,7 @@ class SpecCompiler(object):
             for in_spec_anchor in in_spec.get_local_spec_anchors():
                 assert in_spec_anchor is not None
                 rules_to_incapsulate = state.get_rules_list()
-                in_spec_anchor.extend_rules(rules_to_incapsulate)
+                in_spec_anchor.extend_rules(rules_to_incapsulate, state.get_glevel())
 
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
@@ -825,10 +825,10 @@ class SpecStateDef(object):
                     for rd in rule_def:
                         if rd.created():
                             continue
-                        target_list.extend(rd.create(compiler, self.__spec_dict))
+                        target_list.extend(rd.create(compiler, self))
                 else:
                     if not rule_def.created():
-                        target_list.extend(rule_def.create(compiler, self.__spec_dict))
+                        target_list.extend(rule_def.create(compiler, self))
 
     def __create_stateless_rules(self, comiler):
         self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
@@ -865,11 +865,11 @@ class SpecStateDef(object):
                 return False
         return True
 
-    def extend_rules(self, rules):
+    def extend_rules(self, rules, max_level):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [speccmn.RtRuleFactory(rr) for rr in rule_def]
+            rule_def = [speccmn.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
             if not self.__spec_dict.has_key(r):
@@ -1679,11 +1679,14 @@ class RtMatchEntry(object):
 
     def __reindex_name(self, name):
         stack = self.__owner.get_stack()
+        if name.get_max_level() is not None:
+            stack = stack[0:max(name.get_max_level() - 1, 0)]
         try:
             name.update(str(name).format(*stack))
         except IndexError:
             stack = stack + ['\\d+'] * 20
-            name.update(str(name).format(*stack))
+            str_name = str(name).replace('[', '\\[').replace(']', '\\]').replace('+', '\\+')
+            name.update(str_name.format(*stack))
 
     @argres()
     def __decrease_rule_counters(self, rule):

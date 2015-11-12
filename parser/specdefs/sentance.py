@@ -32,7 +32,8 @@ class SentanceSpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::subject-post",
-                "repeatable": RepeatableSpecs().Any(),
+                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "incapsulate": ["subject-group", ],
             },
             {

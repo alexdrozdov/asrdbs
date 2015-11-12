@@ -65,7 +65,6 @@ class NounGroupAuxSpec(SequenceSpec):
                 "id": "$PARENT::comma-and-or",
                 "repeatable": RepeatableSpecs().Once(),
                 "incapsulate": ["comma-and-or", ],
-                # "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$PARENT::noun",

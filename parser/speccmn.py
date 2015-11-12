@@ -567,36 +567,41 @@ class SpecStateFiniForm(object):
 
 
 class RtMatchString(object):
-    def __init__(self, string):
+    def __init__(self, string, max_level=None):
         assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
 
         if isinstance(string, RtMatchString):
-            self.__init_from_rtmatchstring(string)
+            self.__init_from_rtmatchstring(string, max_level)
         else:
-            self.__init_from_string(string)
+            self.__init_from_string(string, max_level)
 
-    def __init_from_string(self, string):
+    def __init_from_string(self, string, max_level):
         self.__raw_string = string
         self.__need_resolve = '$' in self.__raw_string
         self.__need_reindex = '{' in self.__raw_string
         self.__is_re = '\\d+' in self.__raw_string
+        self.__max_level = max_level
         self.__string = self.__raw_string if not self.__need_resolve and not self.__need_reindex and not self.__is_re else None
         self.__re = None if not self.__is_re else re.compile(self.__raw_string)
 
-    def __init_from_rtmatchstring(self, rtmstr):
+    def __init_from_rtmatchstring(self, rtmstr, max_level):
         self.__raw_string = rtmstr.__raw_string
         self.__string = rtmstr.__string
         self.__re = rtmstr.__re
         self.__need_resolve = rtmstr.__need_resolve
         self.__need_reindex = rtmstr.__need_reindex
         self.__is_re = rtmstr.__is_re
+        self.__max_level = max_level if max_level is not None else rtmstr.__max_level
+
+    def get_max_level(self):
+        return self.__max_level
 
     def update(self, string):
         assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
         if isinstance(string, RtMatchString):
-            self.__init_from_rtmatchstring(string)
+            self.__init_from_rtmatchstring(string, self.__max_level)
         else:
-            self.__init_from_string(string)
+            self.__init_from_string(string, self.__max_level)
 
     def need_resolve(self):
         return self.__need_resolve
@@ -665,39 +670,45 @@ class SameDictList(object):
 class RtRuleFactory(object):
     def __init__(self, classname, *args, **kwargs):
         if isinstance(classname, RtRuleFactory):
-            self.__init_from_factory(classname)
+            max_level = None
+            if 'max_level' in kwargs:
+                max_level = kwargs['max_level']
+            self.__init_from_factory(classname, max_level=max_level)
         else:
             self.__init_from_params(classname, args, kwargs)
 
-    def __init_from_factory(self, rrf):
+    def __init_from_factory(self, rrf, max_level):
         assert not rrf.__created
         self.__classname = rrf.__classname
+        self.__max_level = max_level if max_level is not None else rrf.__max_level
         self.__args = rrf.__args
         self.__kwargs = {k: RtMatchString(w) if isinstance(w, RtMatchString) else w for k, w in rrf.__kwargs.items()}
         self.__created = False
 
     def __init_from_params(self, classname, args, kwargs):
         self.__classname = classname
-        self.__args = args
+        self.__max_level = None
+        self.__args = args  # FIXME Some strange logic in the next line
         self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
         self.__created = False
 
     def create(self, compiler, state):
         assert not self.__created
         self.__created = True
+        max_level = state.get_glevel() if self.__max_level is None else min(self.__max_level, state.get_glevel())
         kwargs = SameDictList()
         for k, w in self.__kwargs.items():
             if isinstance(w, RtMatchString) and w.need_resolve():
-                n = compiler.resolve_variant_count(state, str(w))
+                n = compiler.resolve_variant_count(state.get_spec(), str(w))
                 if n == 1:
-                    w = RtMatchString(w)
-                    w.update(compiler.resolve_name(state, str(w)))
+                    w = RtMatchString(w, max_level=max_level)
+                    w.update(compiler.resolve_name(state.get_spec(), str(w)))
                     ww = [w, ]
                 else:
                     ww = []
                     for i in range(n):
-                        w_ = RtMatchString(w)
-                        w_.update(compiler.resolve_name(state, str(w_), i))
+                        w_ = RtMatchString(w, max_level)
+                        w_.update(compiler.resolve_name(state.get_spec(), str(w_), i))
                         ww.append(w_)
             else:
                 ww = [w, ]
