@@ -9,6 +9,7 @@ import specdefs.basic_adv
 import specdefs.basic_noun
 import specdefs.basic_verb
 import specdefs.basic_subject
+import specdefs.pronoun_group
 import specdefs.subject_group
 import specdefs.comma_and_or
 import specdefs.adj_noun
@@ -1509,6 +1510,7 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_verb.BasicVerbSpec(), independent_compile=False)
         self.add_spec(specdefs.basic_subject.BasicSubjectSpec(), independent_compile=False)
+        self.add_spec(specdefs.pronoun_group.PronounGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=False)
         self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=False)

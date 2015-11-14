@@ -3,7 +3,8 @@
 
 
 import matcher
-from matcher import independentFalse, defaultFalse, possibleTrue, reliableTrue
+from matcher import independentFalse, defaultFalse, possibleTrue
+import traceback
 
 
 class RuleCase(matcher.PosMatchRule):
@@ -12,11 +13,13 @@ class RuleCase(matcher.PosMatchRule):
 
     def apply_cb(self, mt, wf1, wf2):
         try:
-            if wf1.get_case() != wf2.get_case():
-                return matcher.PosMatchRes(independentFalse())
-            return matcher.PosMatchRes(reliableTrue())
+            if wf1.get_case() == wf2.get_case():
+                return matcher.PosMatchRes(possibleTrue())
+            if wf2.get_case() == 'genitive':
+                return matcher.PosMatchRes(possibleTrue())
+            return matcher.PosMatchRes(independentFalse())
         except:
-            pass
+            print traceback.format_exc()
         return matcher.PosMatchRes(possibleTrue())
 
 
