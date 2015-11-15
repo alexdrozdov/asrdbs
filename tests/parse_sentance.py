@@ -67,17 +67,13 @@ g.generate(res, common.output.output.get_output_file('imgs', 'g.svg'))
 gv = parser.graph_span.GraphSnakes()
 snakes = gv.build(res)
 
-for i in range(len(snakes)):
-    snake = snakes[i]
-    file_name = common.output.output.get_output_file('imgs', 'g-{0}.svg'.format(i + 1))
+for i, snake in enumerate(snakes, 1):
+    file_name = common.output.output.get_output_file('imgs', 'g-{0}.svg'.format(i))
     g.generate(res, file_name, snake)
-
-graphs = gv.export_graphs()
 
 srm = parser.specs.SequenceSpecMatcher(False)
 
-sqg = parser.graph.SequenceGraph(img_type='svg')
-for i, gr in enumerate(graphs, 1):
+for i, gr in enumerate(gv.export_graphs(), 1):
     print u"#" + str(i)
     gr.print_graph()
 
@@ -85,5 +81,5 @@ for i, gr in enumerate(graphs, 1):
     for j, sq in enumerate(smr.get_sequences()):
         sq.print_sequence()
         file_name = common.output.output.get_output_file('imgs', 'g-{0}_sq-{1}.svg'.format(i, j))
-        sqg.generate(sq, file_name)
+        parser.graph.SequenceGraph(img_type='svg').generate(sq, file_name)
     print ''

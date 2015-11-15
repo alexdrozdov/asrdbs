@@ -280,8 +280,6 @@ class GraphSnakes(object):
         while len(self.__snakes_qq):
             snake = self.__snakes_qq[0]
             self.__snakes_qq = self.__snakes_qq[1:]
-            # snake.print_entries()
-            # return
             if snake.can_grow():
                 snake.grow(self)
             if snake.can_grow():
@@ -351,13 +349,9 @@ class GraphSnakes(object):
         self.__add_syntax(entries)
         self.__add_special_words(entries)
 
-        for s in self.__snakes:
-            s.print_entries()
-
         return self.__snakes
 
     def add_snake(self, snake):
-        # print "add_snake"
         self.__snakes.append(snake)
         self.__snakes_qq.append(snake)
 
