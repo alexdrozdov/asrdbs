@@ -104,17 +104,6 @@ class SyntaxEntry(SentenceEntry):
         return False
 
 
-class ConflictResolver(object):
-    def __init__(self):
-        pass
-
-    def add(self, wf):
-        pass
-
-
-conflict_resolver = ConflictResolver()
-
-
 class FormMatcher(matcher.PosMatcherSelector):
     def __init__(self):
         matcher.PosMatcherSelector.__init__(self)
@@ -122,7 +111,6 @@ class FormMatcher(matcher.PosMatcherSelector):
         self.add_matcher(noun_noun.NounNounMatcher())
         self.add_matcher(noun_noun.NounNounRMatcher())
         self.add_matcher(noun_pronoun.NounPronounMatcher())
-        # self.add_matcher(noun_pronoun.PronounNounMatcher())
         self.add_matcher(preposition_noun.PrepositionNounMatcher())
         self.add_matcher(verb_adverb.VerbAdverbMatcher())
         self.add_matcher(verb_noun.VerbNounMatcher())
@@ -136,30 +124,14 @@ class FormMatcher(matcher.PosMatcherSelector):
         matchers = self.get_matchers(wf1.get_pos(), wf2.get_pos())
         for m in matchers:
             res, master, slave = m.match(wf1, wf2)
-            s = '{0} {1} {2}'.format(type(m), m.get_pos_names(), res.explain_str())
             if res.is_true():
                 master.link(slave, res)
-                if slave.get_master_count() > 1:
-                    conflict_resolver.add(slave)
-                    s = ' [CONFLICT]' + s
-                # print "\t\t\tApplyed", s
-            # else:
-                # print "\t\t\tDismissed", s
-
-
-class AdverbAdjective(object):
-    def __init__(self):
-        pass
-
-    def compare(self, info1, info2):
-        return True
 
 
 class WordFormInfo(object):
-    def __init__(self, form, primary):
-        self.form = form
-        self.primary = primary
-        self.info = eval(self.form['info'])
+    def __init__(self, word, info):
+        self.word = word
+        self.info = info
 
     def is_adjective(self):
         return self.info['parts_of_speech'] == 'adjective'
@@ -203,73 +175,33 @@ class WordFormInfo(object):
         return self.__get_info_param('time')
 
     def get_word(self):
-        return self.form['word']
+        return self.word
 
-    def has_property(self, prop_name):
-        return self.info.has_key(prop_name)
+    def __format_info(self, sep):
+        short_names = {
+            'parts_of_speech': 'pos',
+            'case': 'case',
+            'gender': 'gender',
+            'count': 'count',
+            'time': 'time',
+        }
+        return sep.join(
+            map(
+                lambda (k, v): '{0}: {1}'.format(short_names[k], v),
+                filter(
+                    lambda (k, v): k in short_names,
+                    self.info.items()
+                )
+            )
+        )
 
     def format_info(self, crlf=False):
-        res = ""
-        if self.info.has_key('parts_of_speech'):
-            res += " pos: " + self.info['parts_of_speech']
-            if crlf:
-                res += "\r\n"
-        if self.info.has_key('case'):
-            res += " case: " + self.info['case']
-            if crlf:
-                res += "\r\n"
-        if self.info.has_key('gender'):
-            res += " gender: " + self.info['gender']
-            if crlf:
-                res += "\r\n"
-        if self.info.has_key('count'):
-            res += " count: " + self.info['count']
-            if crlf:
-                res += "\r\n"
-        if self.info.has_key('time'):
-            res += " time: " + self.info['time']
-            if crlf:
-                res += "\r\n"
-        return res
+        sep = '\r\n' if crlf else ' '
+        return self.__format_info(sep)
 
     def get_info(self, crlf=False):
-        res = ""
-        if self.info.has_key('parts_of_speech'):
-            res += " pos: " + self.info['parts_of_speech']
-            if crlf:
-                res += ","
-        if self.info.has_key('case'):
-            res += " case: " + self.info['case']
-            if crlf:
-                res += ","
-        if self.info.has_key('gender'):
-            res += " gender: " + self.info['gender']
-            if crlf:
-                res += ","
-        if self.info.has_key('count'):
-            res += " count: " + self.info['count']
-            if crlf:
-                res += ","
-        if self.info.has_key('time'):
-            res += " time: " + self.info['time']
-        return res
-
-    def is_subject(self):
-        return self.info.has_key('parts_of_speech') and self.info.has_key('case') and self.info['parts_of_speech'] == 'noun' and self.info['case'] == 'nominative'
-
-    def is_predicate(self):
-        return self.info.has_key('parts_of_speech') and self.info['parts_of_speech'] == 'verb'
-
-    def spec_cmp(self, spec, ignore_missing=False):
-        for k, v in spec.items():
-            if self.info.has_key(k):
-                if self.info[k] == v:
-                    continue
-                return False
-            if ignore_missing:
-                continue
-            return False
-        return True
+        sep = ', ' if crlf else ' '
+        return self.__format_info(sep)
 
     def __repr__(self):
         return "WordFormInfo(word='{0}')".format(self.get_word().encode('utf8'))
@@ -307,13 +239,10 @@ class Link(object):
     def clone_without_links(self):
         return Link(self.__rule, None, None, uniq=self.get_uniq())
 
-    def unlink(self):
-        pass
-
 
 class WordForm(WordFormInfo, SentenceEntry):
-    def __init__(self, form, primary, pos, uniq):
-        WordFormInfo.__init__(self, form, primary)
+    def __init__(self, word, info, pos, uniq):
+        WordFormInfo.__init__(self, word, info)
         SentenceEntry.__init__(self, is_word=True)
         self.__masters = []
         self.__slaves = []
@@ -354,18 +283,13 @@ class WordForm(WordFormInfo, SentenceEntry):
         return self.__uniq
 
     def clone_without_links(self):
-        return WordForm(self.form, self.primary, self.__pos, self.__uniq)
+        return WordForm(self.word, self.info, self.__pos, self.__uniq)
 
     def has_links(self):
         return (len(self.__slaves) + len(self.__masters)) > 0
 
     def get_links(self):
-        r = []
-        for l in self.__masters:
-            r.append(l)
-        for l in self.__slaves:
-            r.append(l)
-        return r
+        return self.__masters + self.__slaves
 
     def add_slave(self, link, slave):
         self.__slaves.append((slave, link))
@@ -374,20 +298,10 @@ class WordForm(WordFormInfo, SentenceEntry):
         self.__masters.append((master, link))
 
     def remove_master(self, master):
-        masters = []
-        for m, l in self.__masters:
-            if master == m:
-                continue
-            masters.append((m, l))
-        self.__masters = masters
+        self.__masters = filter(lambda m, l: m != master, self.__masters)
 
     def remove_slave(self, slave):
-        slaves = []
-        for s, l in self.__slaves:
-            if slave == s:
-                continue
-            slaves.append((s, l))
-        self.__slaves = slaves
+        self.__slaves = filter(lambda s, l: s != slave, self.__slaves)
 
     def get_link_count(self):
         return len(self.__masters) + len(self.__slaves)
@@ -419,9 +333,7 @@ class WordForms(object):
 
     def match(self, other_wfs):
         for my_wf in self.__forms:
-            # print "\tUsing", my_wf.get_word(), my_wf.format_info()
             for other_wf in other_wfs.__forms:
-                # print "\t\tMatching with", other_wf.get_word(), other_wf.format_info()
                 self.__fm.match(my_wf, other_wf)
 
     def get_forms(self):
@@ -444,7 +356,22 @@ class WordFormFabric(object):
     def create(self, word, position):
         if word in '.,;-!?':
             return self.__create_syntax_entry(word, position)
-        return self.__create_word_form(word, position)
+        return self.__create_word_entry(word, position)
+
+    def __unused(self, *args, **kwargs):
+        pass
+
+    def __validate_info(self, info):
+        try:
+            info = eval(info['info'])
+            if info['parts_of_speech'] in ['noun', 'pronoun', 'adjective']:
+                self.__unused(info['case'])
+                self.__unused(info['count'])
+            return True
+        except:
+            print "Info validation failed for", info
+            print traceback.format_exc()
+            return False
 
     def __create_syntax_entry(self, symbol, position):
         se = SyntaxEntry(symbol, position, self.__form_uniq)
@@ -453,35 +380,22 @@ class WordFormFabric(object):
         self.__group_uniq *= 2
         return wf
 
-    def __validate_info(self, info):
-        try:
-            info = eval(info['info'])
-            if info['parts_of_speech'] == 'noun' or info['parts_of_speech'] == 'pronoun' or info['parts_of_speech'] == 'adjective':
-                if info.has_key('case') and info.has_key('count'):  # and info.has_key('gender'):
-                    return True
-                print info.has_key('case'), info.has_key('count'), info.has_key('gender'), info
-                return False
-            return True
-        except:
-            print "Info validation failed for", info
-            print traceback.format_exc()
-            return False
-
-    def __create_word_form(self, word, position):
+    def __create_word_entry(self, word, position):
         res = []
         info = self.__wdb.get_word_info(word)
-        if info is None:
-            print word
-            raise ValueError(u"No info avaible for " + word)
-        self.variants = []
-        for i in info:
-            form = i['form']
-            primary = i['primary']
-            for f in form:
-                if not self.__validate_info(f):
-                    continue
-                res.append(WordForm(f, primary, position, self.__form_uniq))
-                self.__form_uniq *= 2
+        assert isinstance(info, list), u"No info avaible for {0}".format(word)
+        for form in filter(
+            lambda form: self.__validate_info(form),
+            reduce(
+                lambda x, y: x + y,
+                map(
+                    lambda i: i['form'],
+                    info
+                )
+            )
+        ):
+            res.append(WordForm(form['word'], eval(form['info']), position, self.__form_uniq))
+            self.__form_uniq *= 2
         wf = WordForms(self.__fm, word, res, self.__group_uniq)
         self.__group_uniq *= 2
         return wf
@@ -493,42 +407,10 @@ class SentenceParser(object):
 
     def parse(self, sentence):
         entries = []
-        word_position = 0
-        for w in sentence:
-            wfs = self.__wff.create(w, word_position)
-            # print "Processing", w
+        for word_pos, w in enumerate(sentence):
+            wfs = self.__wff.create(w, word_pos)
             for e in entries:
                 wfs.match(e)
             entries.append(wfs)
-            word_position += 1
 
         return entries
-
-    def validate_complete_attraction(self):
-        for e in self.entries:
-            if not e.has_attractions():
-                return False
-        return True
-
-    def validate_group_linkage(self):
-        unknown = [e for e in self.entries[1:]]
-        accessable = [self.entries[0]]
-        finalized = []
-        while len(accessable) > 0:
-            e = accessable.pop()
-            acc = e.get_accessable_groups()
-            for a in acc:
-                if a not in unknown:
-                    continue
-                accessable.append(a)
-                unknown.remove(a)
-            finalized.append(e)
-        if len(unknown) > 0:
-            return False
-        return True
-
-    def attract(self):
-        for e in self.entries:
-            for ee in self.entries:
-                if e != ee:
-                    e.check_attract(ee)

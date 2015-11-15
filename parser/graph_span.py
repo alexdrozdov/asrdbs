@@ -213,11 +213,6 @@ class GraphSnake(object):
     def get_score(self):
         return self.__score
 
-    def find_subject_predicate(self):
-        self.__find_subject_predicate()
-        self.__eval_score()
-        # print self.__has_subject, self.__has_predicate, self.__has_subject_predicate
-
     def has_link(self, link):
         if link.get_uniq() & self.__links_csum:
             return True
@@ -309,10 +304,6 @@ class GraphSnakes(object):
                 break
         self.__snakes = snakes
 
-    def __find_subject_predicates(self):
-        for s in self.__snakes:
-            s.find_subject_predicate()
-
     def __make_lost_internal_links(self):
         for s in self.__snakes:
             s.make_internal_links()
@@ -356,7 +347,6 @@ class GraphSnakes(object):
         self.__remove_duplicate_snakes()
         self.__sort_snakes()
         self.__remove_incomplete_snakes()
-        self.__find_subject_predicates()
         self.__sort_snakes()
         self.__add_syntax(entries)
         self.__add_special_words(entries)
