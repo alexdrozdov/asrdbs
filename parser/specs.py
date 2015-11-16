@@ -23,7 +23,6 @@ import specdefs.sentance
 from speccmn import RtRule, RtMatchString
 import graph
 import common.output
-import common.history as h
 from argparse import Namespace as ns
 import logging
 import sentparser
@@ -1122,7 +1121,6 @@ class MatchedEntry(object):
 class MatchedSequence(object):
     def __init__(self, sq):
         self.__name = sq.get_rule_name()
-        self.__graph_id = sq.get_graph_id()
         self.__entries = []
         self.__all_entries = []
         self.__links = []
@@ -1195,28 +1193,20 @@ class MatchedSequence(object):
         assert isinstance(other, MatchedSequence)
         if id(self) == id(other):
             return True
-        return all((self.__graph_id == other.__graph_id,
-                    self.__entries_csum == other.__entries_csum,
+        return all((self.__entries_csum == other.__entries_csum,
                     self.__links_csum == other.__links_csum,))
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.__graph_id, self.__entries_csum, self.__links_csum))
+        return hash((self.__entries_csum, self.__links_csum))
 
 
 class RtMatchSequence(object):
     def __new__(cls, *args, **kwargs):
         obj = super(RtMatchSequence, cls).__new__(cls)
-
-        graph_id = None
-        if isinstance(args[0], RtMatchSequence):
-            graph_id = args[0].get_graph_id()
-        elif isinstance(args[0], ns):
-            graph_id = args[0].graph_id
-
-        obj.logger = RtMatchSequence.__create_logger(str(obj), str(graph_id) + '_' + hex(id(obj)) + '.log')
+        obj.logger = RtMatchSequence.__create_logger(str(obj), hex(id(obj)) + '.log')
         return obj
 
     @staticmethod
@@ -1239,14 +1229,13 @@ class RtMatchSequence(object):
         if isinstance(based_on, RtMatchSequence):
             self.__init_from_sq(based_on)
         elif isinstance(based_on, ns):
-            self.__init_new(based_on.matcher, based_on.initial_entry, graph_id=based_on.graph_id)
+            self.__init_new(based_on.matcher, based_on.initial_entry)
         else:
             raise ValueError('unsupported source for RtMatchSequence contruction {0}'.format(type(based_on)))
 
     @argres(show_result=False)
-    def __init_new(self, matcher, initial_entry, graph_id=None):
+    def __init_new(self, matcher, initial_entry):
         self.__matcher = matcher
-        self.__graph_id = graph_id
         self.__entries = []
         self.__all_entries = []
         self.__unwanted_links = []
@@ -1261,7 +1250,6 @@ class RtMatchSequence(object):
     @argres(show_result=True)
     def __init_from_sq(self, sq):
         self.__matcher = sq.__matcher
-        self.__graph_id = sq.__graph_id
         self.__entries = []
         self.__all_entries = []
         self.__forms_csum = 0
@@ -1273,9 +1261,6 @@ class RtMatchSequence(object):
         self.__copy_all_entries(sq)
         self.__copy_unwanted_links(sq)
         self.__copy_confirmed_links(sq)
-
-    def get_graph_id(self):
-        return self.__graph_id
 
     def __copy_all_entries(self, sq):
         for e in sq.__all_entries:
@@ -1293,21 +1278,16 @@ class RtMatchSequence(object):
         self.__confirmed_csum = reduce(lambda x, s: x | s.get_link().get_uniq(), self.__confirmed_links, 0)
 
     @argres()
-    def handle_form(self, form):
-        h.en(self) and h.log(self, u"Processing {0} / {1}".format(form.get_word(), form.get_info()))
+    def handle_forms(self, forms):
         head = self.__all_entries[-1]
-        trs = head.find_transitions(form)
+        trs = head.find_transitions(forms)
         if not trs:
-            h.en(self) and h.log(self, u"No carrier")
             return []
 
-        h.en(self) and h.log(self, u"Found {0} possible transitions".format(len(trs)))
-        if len(trs) > 1:
-            h.en(self) and h.log(self, u"Fork for trs from 1 to {0}".format(len(trs)))
         new_sq = []
 
         trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
-        for sq, t in zip(trs_sqs, trs):
+        for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             if res.valid:
                 new_sq.append(res)
@@ -1411,8 +1391,7 @@ class RtMatchSequence(object):
         assert isinstance(other, RtMatchSequence)
         if id(self) == id(other):
             return True
-        return all((self.__graph_id == other.__graph_id,
-                    self.__forms_csum == other.__forms_csum,
+        return all((self.__forms_csum == other.__forms_csum,
                     self.__confirmed_csum == other.__confirmed_csum,
                     self.__unwanted_csum == other.__unwanted_csum))
 
@@ -1420,7 +1399,7 @@ class RtMatchSequence(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.__graph_id, self.__forms_csum, self.__confirmed_csum, self.__unwanted_csum))
+        return hash((self.__forms_csum, self.__confirmed_csum, self.__unwanted_csum))
 
 
 class SpecMatcher(object):
@@ -1434,14 +1413,10 @@ class SpecMatcher(object):
 
     def reset(self):
         self.__sequences = []
-        self.__graph_id = None
 
-    def match(self, forms, graph_id):
-        assert self.__graph_id is None or self.__graph_id == graph_id
-        self.__graph_id = graph_id if graph_id is not None else self.__graph_id
-
-        for form in forms:
-            self.__handle_sequences(form)
+    def match(self, sentence):
+        for forms in sentence:
+            self.__handle_sequences(forms)
 
     def __create_new_sequence(self):
         ini_spec = self.__compiled_spec.get_inis()[0]
@@ -1450,12 +1425,11 @@ class SpecMatcher(object):
                 ns(
                     matcher=self,
                     initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec, rtms_offset=0)),
-                    graph_id=self.__graph_id
                 )
             )
         )
 
-    def __handle_form_result(self, res, next_sequences):
+    def __handle_forms_result(self, res, next_sequences):
         if not res.fini:
             next_sequences.append(res.sq)
         else:
@@ -1463,13 +1437,13 @@ class SpecMatcher(object):
                 ms = MatchedSequence(res.sq)
                 self.__matched_cb(ms)
 
-    def __handle_sequences(self, form):
+    def __handle_sequences(self, forms):
         self.__create_new_sequence()
 
         next_sequences = []
         for sq in self.__sequences:
-            for res in sq.handle_form(form):
-                self.__handle_form_result(res, next_sequences)
+            for res in sq.handle_forms(forms):
+                self.__handle_forms_result(res, next_sequences)
         self.__sequences = next_sequences
 
     def __print_sequences(self):
@@ -1484,16 +1458,11 @@ class SpecMatcher(object):
 
 
 class SequenceMatchRes(object):
-    def __init__(self, graph, sqs, graph_id):
-        self.__graph = graph
+    def __init__(self, sqs):
         self.__sqs = sqs
-        self.__graph_id = graph_id
 
     def get_sequences(self):
         return self.__sqs
-
-    def get_graph(self):
-        return self.__graph
 
 
 class SequenceSpecMatcher(object):
@@ -1562,16 +1531,15 @@ class SequenceSpecMatcher(object):
         )
         self.__matched_sqs = filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), self.__matched_sqs)
 
-    def match_graph(self, graph, graph_id=None, most_complete=False):
+    def match_sentence(self, sentence, most_complete=False):
         self.__matched_sqs = set()
-        forms = graph.get_forms()
+        sent_fini = speccmn.SentanceFini()
         for sp in self.__specs:
-            sp.match(forms, graph_id)
-            sp.match([speccmn.SpecStateFiniForm()], graph_id)
+            sp.match(sentence + [sent_fini, ])
 
         if most_complete:
             self.__select_most_complete()
-        smr = SequenceMatchRes(graph, self.__matched_sqs, graph_id)
+        smr = SequenceMatchRes(self.__matched_sqs)
         self.reset()
         return smr
 
@@ -1726,8 +1694,21 @@ class RtMatchEntry(object):
         self.__owner.add_confirmed_link(RtSequenceLinkEntry(ns(rule=rule, link=l, weight=weight)))
 
     @argres()
-    def find_transitions(self, form):
-        return [t for t in self.__spec.get_transitions() if t.get_to().is_static_applicable(form)]
+    def find_transitions(self, forms):
+        return reduce(
+            lambda x, y: x + y,
+            map(
+                lambda form:
+                    filter(
+                        lambda (frm, trs): trs.get_to().is_static_applicable(frm),
+                        map(
+                            lambda trs: (form, trs),
+                            self.__spec.get_transitions()
+                        )
+                    ),
+                forms.get_forms()
+            )
+        )
 
     @argres()
     def handle_rules(self, on_entry=None):

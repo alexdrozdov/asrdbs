@@ -8,7 +8,7 @@ import parser.graph_span
 import parser.specs
 import sys
 import codecs
-import common.output
+from common.output import output as oput
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -31,7 +31,7 @@ sentence = [u'полная', u'луна', u'медленно', u'плыла', u'
 # sentence = [u'его', u'друзья', u'гуляли']
 # sentence = [u'наши', u'друзья', u'гуляли']
 # sentence = [u'их', u'друзья', u'гуляли']
-sentence = [u'его', u'и', u'ее',  u'друзья', u'гуляли']
+# sentence = [u'его', u'и', u'ее',  u'друзья', u'гуляли']
 # sentence = [u'его', u'и', u'ее',  u'друзья', u'пришли', u'на', u'его', u'день', u'рождения']
 # sentence = [u'друзья', u'быстро', u'шли', u'по', u'зеленым', u'лугам', u',', u'бескрайним', u'полям', u'огромной', u'страны']
 # sentence = [u'верные', u'друзья', u'быстро', u'шли', u'по', u'зеленым', u'лугам', u',', u'бескрайним', u'полям', u'огромной', u'страны']
@@ -59,27 +59,18 @@ sentence = [u'его', u'и', u'ее',  u'друзья', u'гуляли']
 
 
 sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
-res = sp.parse(sentence)
-
-g = parser.graph.SentGraph(img_type='svg')
-g.generate(res, common.output.output.get_output_file('imgs', 'g.svg'))
-
-gv = parser.graph_span.GraphSnakes()
-snakes = gv.build(res)
-
-for i, snake in enumerate(snakes, 1):
-    file_name = common.output.output.get_output_file('imgs', 'g-{0}.svg'.format(i))
-    g.generate(res, file_name, snake)
-
 srm = parser.specs.SequenceSpecMatcher(False)
 
-for i, gr in enumerate(gv.export_graphs(), 1):
-    print u"#" + str(i)
-    gr.print_graph()
+parsed_sentence = sp.parse(sentence)
 
-    smr = srm.match_graph(gr, graph_id='gr-{0}'.format(i), most_complete=True)
-    for j, sq in enumerate(smr.get_sequences()):
-        sq.print_sequence()
-        file_name = common.output.output.get_output_file('imgs', 'g-{0}_sq-{1}.svg'.format(i, j))
-        parser.graph.SequenceGraph(img_type='svg').generate(sq, file_name)
-    print ''
+parser.graph.SentGraph(img_type='svg').generate(
+    parsed_sentence,
+    oput.get_output_file('imgs', 'g.svg')
+)
+
+for j, sq in enumerate(srm.match_sentence(parsed_sentence, most_complete=True).get_sequences()):
+    sq.print_sequence()
+    parser.graph.SequenceGraph(img_type='svg').generate(
+        sq,
+        oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
+    )

@@ -30,7 +30,7 @@ class CommaAndOrSpec(SequenceSpec):
                     {
                         "id": "$PARENT::and",
                         "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [WordSpecs().IsWord([u'и', ]), ],
+                        "pos_type": [WordSpecs().IsWord([u'и', ]), PosSpecs().IsUnion()],
                     },
                     {
                         "id": "$PARENT::or",

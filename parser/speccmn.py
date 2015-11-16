@@ -222,6 +222,9 @@ class PosSpecs(object):
     def IsVerb(self):
         return RtRuleFactory(c__pos_check, ["verb", ])
 
+    def IsUnion(self):
+        return RtRuleFactory(c__pos_check, ["union", ])
+
     def IsSuject(self):
         return RtRuleFactory(c__pos_check, ["noun", "pronoun"])
 
@@ -564,6 +567,20 @@ class SpecStateFiniForm(object):
 
     def clone_without_links(self):
         return SpecStateIniForm()
+
+
+class SentanceFini(object):
+    def __init__(self):
+        self.__entries = [SpecStateFiniForm()]
+
+    def get_word(self):
+        return u'fini'
+
+    def get_uniq(self):
+        return 0
+
+    def get_forms(self):
+        return self.__entries
 
 
 class RtMatchString(object):
