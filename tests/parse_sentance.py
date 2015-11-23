@@ -63,10 +63,10 @@ srm = parser.specs.SequenceSpecMatcher(False)
 
 parsed_sentence = sp.parse(sentence)
 
-parser.graph.SentGraph(img_type='svg').generate(
-    parsed_sentence,
-    oput.get_output_file('imgs', 'g.svg')
-)
+# parser.graph.SentGraph(img_type='svg').generate(
+#     parsed_sentence,
+#     oput.get_output_file('imgs', 'g.svg')
+# )
 
 for j, sq in enumerate(srm.match_sentence(parsed_sentence, most_complete=True).get_sequences()):
     sq.print_sequence()

@@ -1066,9 +1066,29 @@ def argres(show_result=True, repr_result=None):
     return argres_internal
 
 
+class Link(object):
+    def __init__(self, master, slave, details):
+        self.__uniq = ue.get_uniq()
+        self.__master = master
+        self.__slave = slave
+        self.__details = details
+
+    def get_uniq(self):
+        return self.__uniq
+
+    def get_details(self):
+        return self.__details
+
+    def get_master(self):
+        return self.__master
+
+    def get_slave(self):
+        return self.__slave
+
+
 class MatchedEntry(object):
     def __init__(self, rtme):
-        self.__form = rtme.get_form().clone_without_links()
+        self.__form = rtme.get_form()
         self.__name = rtme.get_name()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
         self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
@@ -1093,7 +1113,7 @@ class MatchedEntry(object):
         return self.__is_hidden
 
     def add_link(self, link):
-        assert isinstance(link, sentparser.Link)
+        assert isinstance(link, Link)
         assert link.get_master() == self or link.get_slave() == self
         if link.get_master() == self:
             self.__slaves.append(link)
@@ -1132,14 +1152,19 @@ class MatchedSequence(object):
         for e in sq.get_entries(hidden=True):
             self.__append_entries(MatchedEntry(e))
 
-        for cl in sq.get_confirmed_links():
-            self.__mk_link(cl)
+        for master, slaves in sq.get_links().items():
+            for slave, details in slaves.items():
+                self.__mk_link(master, slave, details)
 
-    def __mk_link(self, link):
-        assert isinstance(link, RtSequenceLinkEntry)
-        me_from = self.__uid2me[link.get_master().get_uniq()]
-        me_to = self.__uid2me[link.get_slave().get_uniq()]
-        l = sentparser.Link(link.get_link().get_rule(), me_from, me_to, link.get_link().get_uniq())
+    def __mk_link(self, master, slave, details):
+        assert all((
+            isinstance(master, RtMatchEntry),
+            isinstance(slave, RtMatchEntry),
+            isinstance(details, list)
+        ))
+        me_from = self.__uid2me[master.get_form().get_uniq()]
+        me_to = self.__uid2me[slave.get_form().get_uniq()]
+        l = Link(me_from, me_to, details)
         me_from.add_link(l)
         me_to.add_link(l)
         self.__append_links(l)
@@ -1238,11 +1263,9 @@ class RtMatchSequence(object):
         self.__matcher = matcher
         self.__entries = []
         self.__all_entries = []
-        self.__unwanted_links = []
-        self.__confirmed_links = []
+        self.__links = {}
         self.__forms_csum = 0
-        self.__confirmed_csum = 0
-        self.__unwanted_csum = 0
+        self.__links_csum = 0
 
         self.__stack = RtStackCounter()
         self.__append_entries(initial_entry)
@@ -1254,13 +1277,11 @@ class RtMatchSequence(object):
         self.__all_entries = []
         self.__forms_csum = 0
         self.__confirmed_csum = 0
-        self.__unwanted_csum = 0
 
         self.__stack = RtStackCounter(stack=sq.__stack)
 
         self.__copy_all_entries(sq)
-        self.__copy_unwanted_links(sq)
-        self.__copy_confirmed_links(sq)
+        self.__copy_links(sq)
 
     def __copy_all_entries(self, sq):
         for e in sq.__all_entries:
@@ -1269,13 +1290,14 @@ class RtMatchSequence(object):
             e.resolve_matched_rtmes()
         assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
 
-    def __copy_unwanted_links(self, sq):
-        self.__unwanted_links = map(lambda s: RtSequenceLinkEntry(s), sq.__unwanted_links)
-        self.__unwanted_csum = reduce(lambda x, s: x | s.get_link().get_uniq(), self.__unwanted_links, 0)
-
-    def __copy_confirmed_links(self, sq):
-        self.__confirmed_links = map(lambda s: RtSequenceLinkEntry(s), sq.__confirmed_links)
-        self.__confirmed_csum = reduce(lambda x, s: x | s.get_link().get_uniq(), self.__confirmed_links, 0)
+    def __copy_links(self, sq):
+        self.__links = {}
+        for master, slaves in sq.__links.items():
+            my_master = self[master.get_offset()]
+            self.__links[my_master] = {}
+            for slave, details in slaves.items():
+                my_slave = self[slave.get_offset()]
+                self.__links[my_master][my_slave] = details[:]
 
     @argres()
     def handle_forms(self, forms):
@@ -1343,25 +1365,28 @@ class RtMatchSequence(object):
             print f.get_word(),
         print '>'
 
-    def get_confirmed_links(self):
-        return self.__confirmed_links
-
-    def get_unwanted_links(self):
-        return self.__unwanted_links
+    def get_links(self):
+        return self.__links
 
     @argres(show_result=False)
-    def add_confirmed_link(self, sq_link_entry):
-        assert isinstance(sq_link_entry, RtSequenceLinkEntry)
-        if sq_link_entry not in self.__confirmed_links:
-            self.__confirmed_links.append(sq_link_entry)
-            self.__confirmed_csum |= sq_link_entry.get_link().get_uniq()
+    def add_link(self, links):
+        assert isinstance(links, list)
+        for l in links:
+            assert isinstance(l, ns)
+            try:
+                self.__extend_link(l)
+            except KeyError:
+                self.__mk_link(l)
 
     @argres(show_result=False)
-    def add_unwanted_link(self, sq_link_entry):
-        assert isinstance(sq_link_entry, RtSequenceLinkEntry)
-        if sq_link_entry not in self.__unwanted_links:
-            self.__unwanted_links.append(sq_link_entry)
-            self.__unwanted_csum |= sq_link_entry.get_link().get_uniq()
+    def __mk_link(self, l):
+        if not self.__links.has_key(l.master):
+            self.__links[l.master] = {}
+        self.__links[l.master][l.slave] = [l.details, ]
+
+    @argres(show_result=False)
+    def __extend_link(self, l):
+        self.__links[l.master][l.slave].append(l.details)
 
     def get_stack(self):
         return self.__stack.get_stack()
@@ -1392,14 +1417,13 @@ class RtMatchSequence(object):
         if id(self) == id(other):
             return True
         return all((self.__forms_csum == other.__forms_csum,
-                    self.__confirmed_csum == other.__confirmed_csum,
-                    self.__unwanted_csum == other.__unwanted_csum))
+                    self.__confirmed_csum == other.__confirmed_csum))
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.__forms_csum, self.__confirmed_csum, self.__unwanted_csum))
+        return hash((self.__forms_csum, self.__confirmed_csum))
 
 
 class SpecMatcher(object):
@@ -1686,12 +1710,8 @@ class RtMatchEntry(object):
         return len(self.__pending) > 0
 
     @argres(show_result=False)
-    def add_unwanted_link(self, l, weight=None, rule=None):
-        self.__owner.add_unwanted_link(RtSequenceLinkEntry(ns(rule=rule, link=l, weight=weight)))
-
-    @argres(show_result=False)
-    def add_confirmed_link(self, l, weight=None, rule=None):
-        self.__owner.add_confirmed_link(RtSequenceLinkEntry(ns(rule=rule, link=l, weight=weight)))
+    def add_link(self, link):
+        self.__owner.add_link(link)
 
     @argres()
     def find_transitions(self, forms):

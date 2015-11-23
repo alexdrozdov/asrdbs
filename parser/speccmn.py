@@ -3,6 +3,9 @@
 
 
 import re
+import matcher
+from argparse import Namespace as ns
+from matchcmn import MatchBool
 
 
 class SequenceSpec(object):
@@ -225,9 +228,6 @@ class PosSpecs(object):
     def IsUnion(self):
         return RtRuleFactory(c__pos_check, ["union", ])
 
-    def IsSuject(self):
-        return RtRuleFactory(c__pos_check, ["noun", "pronoun"])
-
     def IsPronoun(self):
         return RtRuleFactory(c__pos_check, ["pronoun", ])
 
@@ -448,10 +448,15 @@ class c__slave_master_spec(RtDynamicRule):
     def apply_on(self, rtme, other_rtme):
         rtme_form = rtme.get_form()
         other_form = other_rtme.get_form()
-        is_slave = other_form in rtme_form.get_master_forms()
-        if is_slave:
-            rtme.add_confirmed_link(rtme_form.get_link_to(other_form), weight=self.__weight, rule=self)
-        return RtRule.res_matched if is_slave else RtRule.res_failed
+        res = matcher.matcher.match(other_form, rtme_form)
+        if res:
+            rtme.add_link(
+                [
+                    ns(master=other_rtme, slave=rtme, details=res.to_dict()),
+                    ns(master=other_rtme, slave=rtme, details=self.to_dict()),
+                ]
+            )
+        return RtRule.res_matched if res else RtRule.res_failed
 
     def get_info(self, wrap=False):
         s = u'master-slave{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
@@ -465,6 +470,16 @@ class c__slave_master_spec(RtDynamicRule):
 
     def get_bindings(self):
         return [self.__anchor, ]
+
+    def to_dict(self):
+        return {
+            'rule': 'c__slave_master_spec',
+            'res': MatchBool.defaultTrue,
+            'reliability': self.__weight,
+            'id_name': self.__anchor,
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+        }
 
     def __repr__(self):
         return "MasterSlave(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
@@ -493,13 +508,13 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
         return False
 
     def apply_on(self, rtme, other_rtme):
+        return RtRule.res_matched
+
         slave = rtme.get_form()
         master = other_rtme.get_form()
         for m, l in slave.get_masters():
             if m != master:
                 rtme.add_unwanted_link(l, weight=self.__weight, rule=self)
-
-        return RtRule.res_matched
 
     def get_info(self, wrap=False):
         s = u'unwanted-links{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')

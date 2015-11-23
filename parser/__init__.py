@@ -1,1 +1,1 @@
-__all__ = ['sentparser']
+__all__ = ['sentparser', 'matcher']

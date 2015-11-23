@@ -235,15 +235,21 @@ class GraphGen(object):
         r = u''
         if isinstance(d, unicode) or isinstance(d, str):
             d = json.loads(d)
-        for k, v in d.items():
-            r += u'  ' * offset + k + ': '
-            if isinstance(v, list):
-                r += '['
-                for vv in v:
-                    r += self.dict_to_istr(vv, offset=offset+1)
-                r += u'  ' * offset + ']\l'
-            else:
-                r += str(v) + "\l"
+        if isinstance(d, dict):
+            r += u'  ' * offset + '{\l'
+            for k, v in d.items():
+                r += u'  ' * (offset + 1) + k + ':'
+                if isinstance(v, list):
+                    r += '\l'
+                    r += self.dict_to_istr(v, offset=offset+1)
+                else:
+                    r += ' ' + str(v) + '\l'
+            r += u'  ' * offset + '}\l'
+        elif isinstance(d, list):
+            r += u'  ' * offset + '[\l'
+            for dd in d:
+                r += self.dict_to_istr(dd, offset=offset+1)
+            r += u'  ' * offset + ']\l'
         return r
 
     def __mkid(self, iid):
@@ -262,9 +268,9 @@ class SequenceGraphGen(GraphGen):
         super(SequenceGraphGen, self).__init__()
 
     def __gen_link(self, link):
-        s = u'\t{0} [label = "{1}", shape="octagon", style="filled", fillcolor="orchid"];\r\n'.format(
+        s = u'\t{0} [label = "{1}", shape="box", style="filled", fillcolor="orchid"];\r\n'.format(
             self.get_obj_id(link),
-            self.dict_to_istr(link.get_rule().explain_str()))
+            self.dict_to_istr(link.get_details()))
         return s
 
     def __gen_entry(self, entry):
