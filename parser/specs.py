@@ -227,10 +227,11 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
 
 
 class SpecCompiler(object):
-    def __init__(self, owner=None, depth=0, level=0):
+    def __init__(self, owner=None, depth=0, level=0, reliability=1.0):
         self.__owner = owner
         self.__depth = depth
         self.__level = level
+        self.__reliability = reliability
         self.__states = []
         self.__name2state = {}
         self.__containers = []
@@ -339,11 +340,19 @@ class SpecCompiler(object):
                 state.set_parent_state(parent_state)
                 if parent_state.is_anchor():
                     state.force_anchor()
+                state.inherit_parent_reliability(parent_state.get_reliability())
+            else:
+                state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_incapsulated_spec():
                 in_spec_name = state.get_incapsulated_spec_name()
                 in_spec = self.__owner.get_spec(in_spec_name)
-                compiler = SpecCompiler(owner=self.__owner, depth=self.__depth + 1, level=state.get_glevel() + 1)
+                compiler = SpecCompiler(
+                    owner=self.__owner,
+                    depth=self.__depth + 1,
+                    level=state.get_glevel() + 1,
+                    reliability=state.get_reliability()
+                )
                 compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
                 state.set_incapsulated_spec(compiled_in_spec)
 
@@ -557,6 +566,9 @@ class SpecCompiler(object):
     def get_level(self):
         return self.__level
 
+    def get_reliability(self):
+        return self.__reliability
+
 
 class TrsDef(object):
     def __init__(self, compiler, st_from, restrict_default=None, st_to=None, trs_to=None, with_trs=None):
@@ -672,6 +684,7 @@ class SpecStateDef(object):
         self.__is_local_anchor = spec_dict.has_key('anchor')
         self.__transitions_merged = False
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
+        self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
 
     def get_name(self):
         return self.__name
@@ -684,6 +697,9 @@ class SpecStateDef(object):
 
     def get_glevel(self):
         return self.__glevel
+
+    def get_reliability(self):
+        return self.__reliability
 
     def get_uid(self):
         return self.__uid
@@ -717,6 +733,9 @@ class SpecStateDef(object):
 
     def force_anchor(self):
         self.__is_local_anchor = True
+
+    def inherit_parent_reliability(self, reliability):
+        self.__reliability *= reliability
 
     def get_parent_state(self):
         return self.__parent
@@ -1090,6 +1109,7 @@ class MatchedEntry(object):
     def __init__(self, rtme):
         self.__form = rtme.get_form()
         self.__name = rtme.get_name()
+        self.__reliability = rtme.get_reliability()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
         self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
         self.__masters = []
@@ -1111,6 +1131,9 @@ class MatchedEntry(object):
 
     def is_hidden(self):
         return self.__is_hidden
+
+    def get_reliability(self):
+        return self.__reliability
 
     def add_link(self, link):
         assert isinstance(link, Link)
@@ -1148,9 +1171,12 @@ class MatchedSequence(object):
         self.__entries_csum = 0
         self.__links_csum = 0
         self.__uid2me = {}
+        self.__reliability = 1.0
 
         for e in sq.get_entries(hidden=True):
-            self.__append_entries(MatchedEntry(e))
+            me = MatchedEntry(e)
+            self.__append_entries(me)
+            self.__reliability *= me.get_reliability()
 
         for master, slaves in sq.get_links().items():
             for slave, details in slaves.items():
@@ -1194,6 +1220,9 @@ class MatchedSequence(object):
     def get_entry_count(self, hidden=False):
         return len(self.get_entries(hidden=hidden))
 
+    def get_reliability(self):
+        return self.__reliability
+
     def print_sequence(self):
         print self.get_name(), '<',
         for e in self.__all_entries:
@@ -1202,7 +1231,7 @@ class MatchedSequence(object):
                 print f.get_word(),
             else:
                 print '<', f.get_word(), '>',
-        print '>'
+        print 'reliability={0}>'.format(self.get_reliability())
 
     def __repr__(self):
         r = u"MatchedSequence(objid={0}, entries=[{1}])".format(
@@ -1595,6 +1624,7 @@ class RtMatchEntry(object):
         self.__form = form
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
+        self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
 
         self.__create_name(self.__spec.get_name())
         self.__create_rules()
@@ -1607,6 +1637,7 @@ class RtMatchEntry(object):
         self.__form = rtme.__form
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
+        self.__reliability = rtme.__reliability
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
@@ -1702,6 +1733,9 @@ class RtMatchEntry(object):
 
     def get_offset(self, base=None):
         return self.__rtms_offset
+
+    def get_reliability(self):
+        return self.__reliability
 
     @argres()
     def has_pending(self, required_only=False):

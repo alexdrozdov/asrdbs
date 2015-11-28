@@ -475,7 +475,7 @@ class c__slave_master_spec(RtDynamicRule):
         return {
             'rule': 'c__slave_master_spec',
             'res': MatchBool.defaultTrue,
-            'reliability': self.__weight,
+            'reliability': self.__weight if self.__weight is not None else 1.0,
             'id_name': self.__anchor,
             'is_persistent': self.is_persistent(),
             'is_optional': self.is_optional(),
@@ -563,6 +563,9 @@ class SpecStateIniForm(object):
     def clone_without_links(self):
         return SpecStateIniForm()
 
+    def get_reliability(self):
+        return 1.0
+
 
 class SpecStateFiniForm(object):
     def __init__(self):
@@ -582,6 +585,9 @@ class SpecStateFiniForm(object):
 
     def clone_without_links(self):
         return SpecStateIniForm()
+
+    def get_reliability(self):
+        return 1.0
 
 
 class SentanceFini(object):

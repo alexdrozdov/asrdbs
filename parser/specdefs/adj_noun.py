@@ -31,6 +31,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                "reliability": 1,
             },
             {
                 "id": "$PARENT::pronoun-seq",
@@ -52,6 +53,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                "reliability": 0.9,
             },
             {
                 "id": "$SPEC::fini",

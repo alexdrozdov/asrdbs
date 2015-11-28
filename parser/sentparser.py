@@ -75,6 +75,9 @@ class SyntaxEntry(SentenceEntry):
     def format_info(self, crlf=True):
         return self.__symbol
 
+    def get_reliability(self):
+        return 1.0
+
 
 class WordFormInfo(object):
     def __init__(self, word, info):
@@ -209,6 +212,9 @@ class WordForm(WordFormInfo, SentenceEntry):
 
     def get_uniq(self):
         return self.__uniq
+
+    def get_reliability(self):
+        return 1.0
 
     def __repr__(self):
         return "WordForm(word='{0}')".format(self.get_word().encode('utf8'))
