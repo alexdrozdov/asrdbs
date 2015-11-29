@@ -16,7 +16,7 @@ class Forms:
             "adjective": u"прл",
             "verb": u"гл",
             "participal": u"прч",
-            "dparticipal": u"дееп",
+            "transgressive": u"дееп",
             "union": [u"союз", u"межд", u"предик"],
             "particle": u"част",
             "numeral": u"числ",
@@ -305,7 +305,7 @@ class WorddbBuilder(base.Worddb):
             pos = word_group.primary[1]['parts_of_speech']
         except:
             print traceback.format_exc()
-            print word_group.primary[0]
+            print word_group.primary[0], word_group.primary[1]
             return
         info = {'word': word}
         info['pos_info'] = word_group.primary[1]
