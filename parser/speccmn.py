@@ -234,6 +234,9 @@ class PosSpecs(object):
     def IsPreposition(self):
         return RtRuleFactory(c__pos_check, ["preposition", ])
 
+    def IsParticipal(self):
+        return RtRuleFactory(c__pos_check, ["participal", ])
+
     def IsComma(self):
         return RtRuleFactory(c__pos_syntax_check, "comma")
 

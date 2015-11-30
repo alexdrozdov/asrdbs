@@ -4,6 +4,7 @@
 
 import matchcmn
 import linkdefs.noun_adj
+import linkdefs.noun_participal
 import linkdefs.noun_noun
 import linkdefs.noun_pronoun
 import linkdefs.preposition_noun
@@ -18,6 +19,7 @@ class WordMatcher(object):
     def __init__(self):
         self.match_dict = {}
         self.add_matcher(linkdefs.noun_adj.NounAdjectiveMatcher())
+        self.add_matcher(linkdefs.noun_participal.NounParticipalMatcher())
         self.add_matcher(linkdefs.noun_noun.NounNounMatcher())
         self.add_matcher(linkdefs.noun_pronoun.NounPronounMatcher())
         self.add_matcher(linkdefs.preposition_noun.PrepositionNounMatcher())

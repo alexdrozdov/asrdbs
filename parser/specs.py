@@ -19,6 +19,7 @@ import specdefs.subj_predicate
 import specdefs.noun_noun
 import specdefs.verb_group
 import specdefs.noun_group
+import specdefs.participal_group
 import specdefs.sentance
 from speccmn import RtRule, RtMatchString
 import graph
@@ -1543,6 +1544,7 @@ class SequenceSpecMatcher(object):
         self.add_spec(specdefs.noun_group.NounGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.noun_group.NounGroupAuxSpec(), independent_compile=False)
         self.add_spec(specdefs.noun_group.NounCtrlNounSpec(), independent_compile=False)
+        self.add_spec(specdefs.participal_group.ParticipalGroupSpec(), independent_compile=False)
         self.add_spec(specdefs.sentance.SentanceSpec(), independent_compile=True)
         self.build_specs()
 

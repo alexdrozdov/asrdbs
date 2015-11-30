@@ -26,6 +26,13 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
+                "id": "$PARENT::participal",
+                "repeatable": RepeatableSpecs().Any(),
+                "incapsulate": ["participal-group", ],
+                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                "reliability": 1,
+            },
+            {
                 "id": "$PARENT::adj-pre",
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
