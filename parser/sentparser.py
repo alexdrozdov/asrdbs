@@ -128,7 +128,7 @@ class WordFormInfo(object):
     def get_word(self):
         return self.word
 
-    def __format_info(self, sep):
+    def __format_info(self, sep=None, head='', tail=''):
         short_names = {
             'parts_of_speech': 'pos',
             'case': 'case',
@@ -136,7 +136,9 @@ class WordFormInfo(object):
             'count': 'count',
             'time': 'time',
         }
-        return sep.join(
+        if sep is None:
+            sep = tail + head
+        return head + sep.join(
             map(
                 lambda (k, v): '{0}: {1}'.format(short_names[k], v),
                 filter(
@@ -144,11 +146,17 @@ class WordFormInfo(object):
                     self.info.items()
                 )
             )
-        )
+        ) + tail
 
     def format_info(self, crlf=False):
         sep = '\r\n' if crlf else ' '
-        return self.__format_info(sep)
+        return self.__format_info(sep=sep)
+
+    def format_table(self, align=u'LEFT', bgcolor=u'white'):
+        return self.__format_info(
+            head=u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">'.format(align, bgcolor),
+            tail='</TD></TR>'
+        )
 
     def get_info(self, crlf=False):
         return self.info
