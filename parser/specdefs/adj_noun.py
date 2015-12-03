@@ -63,6 +63,24 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "reliability": 0.9,
             },
             {
+                "id": "$PARENT::participal-post",
+                "repeatable": RepeatableSpecs().Any(),
+                "reliability": 1,
+                "entries": [
+                    {
+                        "id": "$PARENT::comma",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "pos_type": [PosSpecs().IsComma(), ],
+                    },
+                    {
+                        "id": "$PARENT::participal",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "incapsulate": ["participal-group", ],
+                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                    }
+                ]
+            },
+            {
                 "id": "$SPEC::fini",
                 "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsFini(),

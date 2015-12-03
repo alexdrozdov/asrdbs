@@ -228,9 +228,9 @@ class IterableSequenceSpec(speccmn.SequenceSpec):
 
 
 class SpecCompiler(object):
-    def __init__(self, owner=None, depth=0, level=0, reliability=1.0):
+    def __init__(self, owner=None, stack=None, level=0, reliability=1.0):
         self.__owner = owner
-        self.__depth = depth
+        self.__stack = stack if stack is not None else []
         self.__level = level
         self.__reliability = reliability
         self.__states = []
@@ -346,11 +346,11 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_incapsulated_spec():
-                in_spec_name = state.get_incapsulated_spec_name()
+                in_spec_name = state.get_incapsulated_spec_name(overflow=(self.__spec_depth > 2))
                 in_spec = self.__owner.get_spec(in_spec_name)
                 compiler = SpecCompiler(
                     owner=self.__owner,
-                    depth=self.__depth + 1,
+                    stack=self.__stack,
                     level=state.get_glevel() + 1,
                     reliability=state.get_reliability()
                 )
@@ -546,6 +546,8 @@ class SpecCompiler(object):
     def compile(self, spec, parent_spec_name=''):
         self.__parent_spec_name = parent_spec_name
         self.__spec_name = spec.get_name()
+        self.__stack.append(self.__spec_name)
+        self.__spec_depth = self.__stack.count(self.__spec_name)
 
         spec = IterableSequenceSpec(spec)
         self.__spec = spec
@@ -562,6 +564,7 @@ class SpecCompiler(object):
         self.__create_state_rules()
 
         cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchors, spec.get_validate() if self.__level == 0 else None)
+        self.__stack.pop()
         return cs
 
     def get_level(self):
@@ -676,6 +679,8 @@ class SpecStateDef(object):
         self.__uid = ue.get_uniq()
         self.__incapsulate_spec_name = spec_dict['incapsulate'] if spec_dict.has_key('incapsulate') else None
         assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
+        self.__incapsulate_ovf_spec_name = spec_dict['incapsulate-on-overflow'] if spec_dict.has_key('incapsulate-on-overflow') else None
+        assert self.__incapsulate_ovf_spec_name is None or len(self.__incapsulate_ovf_spec_name) == 1
         self.__incapsulate_spec = None
         self.__incapsulate_binding = spec_dict['incapsulate-binding'] if spec_dict.has_key('incapsulate-binding') else None
         self.__stateless_rules = []
@@ -928,9 +933,12 @@ class SpecStateDef(object):
     def get_rt_rules_list(self):
         return {r: self.__spec_dict[r] for r in ['same_as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
-    def get_incapsulated_spec_name(self):
-        assert self.__incapsulate_spec_name is not None
-        return self.__incapsulate_spec_name[0]
+    def get_incapsulated_spec_name(self, overflow=False):
+        if not overflow:
+            assert self.__incapsulate_spec_name is not None
+            return self.__incapsulate_spec_name[0]
+        assert self.__incapsulate_ovf_spec_name is not None, '{0}, {1}'.format(self.get_name(), self.__spec_dict)
+        return self.__incapsulate_ovf_spec_name[0]
 
     def set_incapsulated_spec(self, spec):
         assert self.__incapsulate_spec is None
@@ -1096,6 +1104,9 @@ class Link(object):
     def get_uniq(self):
         return self.__uniq
 
+    def get_csum(self):
+        return self.__master.get_uniq() + self.__slave.get_uniq()
+
     def get_details(self):
         return self.__details
 
@@ -1207,7 +1218,7 @@ class MatchedSequence(object):
         if not link.get_master().is_hidden() and not link.get_slave().is_hidden():
             self.__links.append(link)
         self.__all_links.append(link)
-        self.__links_csum += link.get_uniq()
+        self.__links_csum += link.get_csum()
 
     def get_name(self):
         return self.__name
@@ -1232,7 +1243,11 @@ class MatchedSequence(object):
                 print f.get_word(),
             else:
                 print '<', f.get_word(), '>',
-        print 'reliability={0}>'.format(self.get_reliability())
+        print 'reliability={0}, entries_csum={1}, links_csum={2}>'.format(
+            self.get_reliability(),
+            self.__entries_csum,
+            self.__links_csum
+        )
 
     def __repr__(self):
         r = u"MatchedSequence(objid={0}, entries=[{1}])".format(

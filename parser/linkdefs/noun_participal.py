@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import traceback
 from parser.matchcmn import independentFalse, defaultTrue, possibleTrue, reliableTrue, PosMatchRule, PosMatcher
 
 
@@ -68,3 +69,23 @@ class NounParticipalMatcher(PosMatcher):
         self.add_rule(RuleCount())
         self.add_rule(RuleCase())
         self.add_rule(RuleFinal())
+
+
+class RuleDependentCase(PosMatchRule):
+    def __init__(self):
+        super(RuleDependentCase, self).__init__('participal-noun_notnom', false_is_final=True, true_is_final=True)
+
+    def apply_cb(self, mt, participal, noun):
+        try:
+            if noun.get_case() == 'nominative':
+                return independentFalse(self.get_name())
+            return reliableTrue(self.get_name())
+        except:
+            print traceback.format_exc()
+        return possibleTrue(self.get_name())
+
+
+class ParticipalNounMatcher(PosMatcher):
+    def __init__(self):
+        super(ParticipalNounMatcher, self).__init__('participal', 'noun', default_res=defaultTrue())
+        self.add_rule(RuleDependentCase())

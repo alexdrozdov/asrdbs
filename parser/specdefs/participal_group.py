@@ -24,8 +24,10 @@ class ParticipalGroupSpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::noun",
-                "repeatable": RepeatableSpecs().Any(),
-                "pos_type": [PosSpecs().IsNoun(), ],
+                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
+                "incapsulate": ["noun-group", ],
+                "incapsulate-on-overflow": ["basic-noun", ],
+                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
             {
                 "id": "$SPEC::fini",

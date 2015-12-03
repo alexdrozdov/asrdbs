@@ -20,6 +20,7 @@ class WordMatcher(object):
         self.match_dict = {}
         self.add_matcher(linkdefs.noun_adj.NounAdjectiveMatcher())
         self.add_matcher(linkdefs.noun_participal.NounParticipalMatcher())
+        self.add_matcher(linkdefs.noun_participal.ParticipalNounMatcher())
         self.add_matcher(linkdefs.noun_noun.NounNounMatcher())
         self.add_matcher(linkdefs.noun_pronoun.NounPronounMatcher())
         self.add_matcher(linkdefs.preposition_noun.PrepositionNounMatcher())
