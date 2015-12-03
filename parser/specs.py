@@ -29,6 +29,9 @@ import logging
 import sentparser
 
 
+logs_enabled = False
+
+
 class UniqEnum(object):
     def __init__(self):
         self.__uniq = 1
@@ -1090,7 +1093,9 @@ def argres(show_result=True, repr_result=None):
             argres_level -= 1
             return res
 
-        return argres_fcn
+        if logs_enabled:
+            return argres_fcn
+        return func
     return argres_internal
 
 
@@ -1276,7 +1281,10 @@ class MatchedSequence(object):
 class RtMatchSequence(object):
     def __new__(cls, *args, **kwargs):
         obj = super(RtMatchSequence, cls).__new__(cls)
-        obj.logger = RtMatchSequence.__create_logger(str(obj), hex(id(obj)) + '.log')
+        if logs_enabled:
+            obj.logger = RtMatchSequence.__create_logger(str(obj), hex(id(obj)) + '.log')
+        else:
+            obj.logger = None
         return obj
 
     @staticmethod
