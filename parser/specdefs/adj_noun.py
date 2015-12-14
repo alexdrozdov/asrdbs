@@ -68,7 +68,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "reliability": 1,
                 "entries": [
                     {
-                        "id": "$PARENT::comma",
+                        "id": "$PARENT::comma-open",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsComma(), ],
                     },
@@ -77,7 +77,12 @@ class AdjNounSequenceSpec(SequenceSpec):
                         "repeatable": RepeatableSpecs().Once(),
                         "incapsulate": ["participal-group", ],
                         "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                    }
+                    },
+                    {
+                        "id": "$PARENT::comma-close",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "pos_type": [PosSpecs().IsComma(), ],
+                    },
                 ]
             },
             {

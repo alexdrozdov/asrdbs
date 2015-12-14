@@ -26,6 +26,7 @@ class CommaAndOrSpec(SequenceSpec):
                         "id": "$PARENT::comma",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsComma(), ],
+                        "merges_with": ["comma", ],
                     },
                     {
                         "id": "$PARENT::and",

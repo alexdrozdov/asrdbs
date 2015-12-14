@@ -378,7 +378,11 @@ class SpecCompiler(object):
                 child_iter = spec.get_child_iter(st)
                 for c_st in child_iter.get_all_entries():
                     c_state = self.__name2state[str(self.gen_state_name(c_st))]
-                    if c_state.is_container() or c_state.is_uniq_container():
+                    if any((
+                        c_state.is_container(),
+                        c_state.is_uniq_container(),
+                        state.can_merge(c_state))
+                    ):
                         state.add_trs_to_child_child(c_state)
                     state.add_trs_to_child(c_state)
                     if c_state.is_required() and state.is_container():
@@ -525,8 +529,6 @@ class SpecCompiler(object):
             if not state.is_container() and not state.is_uniq_container() and not state.has_incapsulated_spec():
                 return False
             return True
-        print str(binding)
-        print self.__name2state.keys()
         raise RuntimeError('state name matching not implemented')
 
     def resolve_binding(self, binding):
@@ -694,6 +696,7 @@ class SpecStateDef(object):
         self.__transitions_merged = False
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
         self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
+        self.__merges_with = set(spec_dict['merges_with']) if spec_dict.has_key('merges_with') else set()
 
     def get_name(self):
         return self.__name
@@ -743,6 +746,9 @@ class SpecStateDef(object):
     def force_anchor(self):
         self.__is_local_anchor = True
 
+    def can_merge(self, other):
+        return bool(self.__merges_with & other.__merges_with)
+
     def inherit_parent_reliability(self, reliability):
         self.__reliability *= reliability
 
@@ -764,18 +770,35 @@ class SpecStateDef(object):
         if trs not in self.__neighbour_transitions:
             self.__neighbour_transitions.append(trs)
             trs.get_to().__add_trs_from(trs)
+            if self.can_merge(trs.get_to()):
+                for ntrs in trs.get_to().__child_transitions:
+                    self.__append_neighbour_trs(TrsDef(None, self, trs_to=ntrs))
+                for ntrs in trs.get_to().__neighbour_transitions:
+                    self.__append_neighbour_trs(TrsDef(None, self, trs_to=ntrs))
 
     def __append_child_trs(self, trs):
         assert isinstance(trs, TrsDef)
         if trs not in self.__child_transitions:
             self.__child_transitions.append(trs)
             trs.get_to().__add_trs_from(trs)
+            if self.can_merge(trs.get_to()):
+                for ntrs in trs.get_to().__child_transitions:
+                    self.__append_child_trs(TrsDef(None, self, trs_to=ntrs))
+                for ntrs in trs.get_to().__neighbour_transitions:
+                    self.__append_child_trs(TrsDef(None, self, trs_to=ntrs))
 
     def __append_trs(self, trs):
         assert isinstance(trs, TrsDef)
         if trs not in self.__transitions:
             self.__transitions.append(trs)
             trs.get_to().__add_trs_from(trs)
+            if self.can_merge(trs.get_to()):
+                for ntrs in trs.get_to().__child_transitions:
+                    self.__append_trs(TrsDef(None, self, trs_to=ntrs))
+                for ntrs in trs.get_to().__neighbour_transitions:
+                    self.__append_trs(TrsDef(None, self, trs_to=ntrs))
+                for ntrs in trs.get_to().__transitions:
+                    self.__append_trs(TrsDef(None, self, trs_to=ntrs))
 
     def add_trs_to(self, trs, with_trs=None):
         self.__append_trs(TrsDef(None, self, trs_to=trs, with_trs=with_trs))

@@ -75,6 +75,13 @@ class SyntaxEntry(SentenceEntry):
     def format_info(self, crlf=True):
         return self.__symbol
 
+    def format_table(self, align=u'LEFT', bgcolor=u'white'):
+        return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
+            align,
+            bgcolor,
+            self.__symbol
+        )
+
     def get_reliability(self):
         return 1.0
 
