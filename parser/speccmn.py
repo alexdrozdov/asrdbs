@@ -835,3 +835,29 @@ class ValidateOne(object):
 class LinkWeight(object):
     def __init__(self, ref_name):
         self.__ref_name = ref_name
+
+
+class TemplateSpec(object):
+    def __init__(self):
+        pass
+
+    def __call__(self, d):
+        return [
+            {
+                "id": "$SPEC::init",
+                "required": RequiredSpecs().IsNecessary(),
+                "fsm": FsmSpecs().IsInit(),
+                "add-to-seq": False,
+            },
+            d,
+            {
+                "id": "$SPEC::fini",
+                "required": RequiredSpecs().IsNecessary(),
+                "fsm": FsmSpecs().IsFini(),
+                "add-to-seq": False,
+            },
+        ]
+
+
+def template(name):
+    return TemplateSpec()

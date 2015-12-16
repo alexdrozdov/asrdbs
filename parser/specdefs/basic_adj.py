@@ -10,23 +10,11 @@ class BasicAdjSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'basic-adj')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
-            },
+        self.spec = template("spec")(
             {
                 "id": "$PARENT::adj",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsAdjective(), ],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
-            },
-        ]
+        )
