@@ -4,23 +4,7 @@
 
 import copy
 import speccmn
-import specdefs.basic_adj
-import specdefs.basic_adv
-import specdefs.basic_noun
-import specdefs.basic_verb
-import specdefs.basic_subject
-import specdefs.pronoun_group
-import specdefs.subject_group
-import specdefs.comma_and_or
-import specdefs.adj_noun
-import specdefs.adv_adj
-import specdefs.adv_verb
-import specdefs.subj_predicate
-import specdefs.noun_noun
-import specdefs.verb_group
-import specdefs.noun_group
-import specdefs.participal_group
-import specdefs.sentance
+import specdefs
 from speccmn import RtRule, RtMatchString
 import graph
 import common.output
@@ -1574,25 +1558,14 @@ class SequenceSpecMatcher(object):
             self.__export_svg()
 
     def __create_specs(self):
-        self.add_spec(specdefs.basic_adj.BasicAdjSpec(), independent_compile=False)
-        self.add_spec(specdefs.basic_adv.BasicAdvSpec(), independent_compile=False)
-        self.add_spec(specdefs.basic_noun.BasicNounSpec(), independent_compile=False)
-        self.add_spec(specdefs.basic_verb.BasicVerbSpec(), independent_compile=False)
-        self.add_spec(specdefs.basic_subject.BasicSubjectSpec(), independent_compile=False)
-        self.add_spec(specdefs.pronoun_group.PronounGroupSpec(), independent_compile=False)
-        self.add_spec(specdefs.subject_group.SubjectGroupSpec(), independent_compile=False)
-        self.add_spec(specdefs.comma_and_or.CommaAndOrSpec(), independent_compile=False)
-        self.add_spec(specdefs.adj_noun.AdjNounSequenceSpec(), independent_compile=False)
-        self.add_spec(specdefs.adv_adj.AdvAdjSequenceSpec(), independent_compile=False)
-        self.add_spec(specdefs.adv_verb.AdvVerbSequenceSpec(), independent_compile=False)
-        self.add_spec(specdefs.subj_predicate.SubjectPredicateSequenceSpec(), independent_compile=False)
-        self.add_spec(specdefs.verb_group.VerbGroupSpec(), independent_compile=False)
-        self.add_spec(specdefs.noun_group.NounGroupSpec(), independent_compile=False)
-        self.add_spec(specdefs.noun_group.NounGroupAuxSpec(), independent_compile=False)
-        self.add_spec(specdefs.noun_group.NounCtrlNounSpec(), independent_compile=False)
-        self.add_spec(specdefs.participal_group.ParticipalGroupSpec(), independent_compile=False)
-        self.add_spec(specdefs.sentance.SentanceSpec(), independent_compile=True)
+        for sd in specdefs.load_specdefs():
+            sd_inst = sd()
+            independent_compile = self.__is_independent(sd_inst)
+            self.add_spec(sd_inst, independent_compile=independent_compile)
         self.build_specs()
+
+    def __is_independent(self, specdef):
+        return specdef.get_name() == 'sentance'
 
     def add_spec(self, base_spec_class, independent_compile=False):
         assert base_spec_class.get_name() not in self.__spec_by_name
