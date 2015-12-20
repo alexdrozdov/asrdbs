@@ -3,6 +3,7 @@
 
 
 import traceback
+import named
 import worddb.worddb
 from argparse import Namespace as ns
 
@@ -18,6 +19,7 @@ class UniqEnum(object):
 
 
 ue = UniqEnum()
+named.load_named_instances()
 
 
 class SentenceEntry(object):

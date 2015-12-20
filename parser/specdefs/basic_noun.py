@@ -2,7 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.speccmn import *
+from parser.specdefs.common import SequenceSpec
+from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs
 
 
 class BasicNounSpec(SequenceSpec):

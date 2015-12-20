@@ -2,7 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.speccmn import *
+from parser.specdefs.common import SequenceSpec
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.named import template
 
 
 class BasicAdjSpec(SequenceSpec):

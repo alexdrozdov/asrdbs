@@ -3,9 +3,10 @@
 
 
 import copy
-import speccmn
+import parser.specdefs.common
+from parser.specdefs.common import RtRule, RtMatchString
+import parser.specdefs.defs
 import specdefs
-from speccmn import RtRule, RtMatchString
 import graph
 import common.output
 from argparse import Namespace as ns
@@ -44,9 +45,9 @@ class SequenceSpecIter(object):
             return None
 
 
-class IterableSequenceSpec(speccmn.SequenceSpec):
+class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
     def __init__(self, spec):
-        speccmn.SequenceSpec.__init__(self, spec.get_name())
+        parser.specdefs.common.SequenceSpec.__init__(self, spec.get_name())
         spec = copy.deepcopy(spec)
         self.__unroll_repeatable_entries(spec.get_spec())
         self.__index_all_entries()
@@ -663,8 +664,8 @@ class SpecStateDef(object):
         self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
         self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
         self.__is_local_final = False
-        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.init
-        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == speccmn.FsmSpecs.fini
+        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.init
+        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.fini
         self.__uid = ue.get_uniq()
         self.__incapsulate_spec_name = spec_dict['incapsulate'] if spec_dict.has_key('incapsulate') else None
         assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
@@ -904,7 +905,7 @@ class SpecStateDef(object):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [speccmn.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
+            rule_def = [parser.specdefs.common.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
             if not self.__spec_dict.has_key(r):
@@ -1381,7 +1382,7 @@ class RtMatchSequence(object):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
-        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else speccmn.SpecStateFiniForm(),
+        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else parser.specdefs.common.SpecStateFiniForm(),
                                      spec_state_def=to,
                                      rtms_offset=len(self.__all_entries)
                                      )
@@ -1508,7 +1509,7 @@ class SpecMatcher(object):
             RtMatchSequence(
                 ns(
                     matcher=self,
-                    initial_entry=RtMatchEntry(None, ns(form=speccmn.SpecStateIniForm(), spec_state_def=ini_spec, rtms_offset=0)),
+                    initial_entry=RtMatchEntry(None, ns(form=parser.specdefs.common.SpecStateIniForm(), spec_state_def=ini_spec, rtms_offset=0)),
                 )
             )
         )
@@ -1607,7 +1608,7 @@ class SequenceSpecMatcher(object):
 
     def match_sentence(self, sentence, most_complete=False):
         self.__matched_sqs = set()
-        sent_fini = speccmn.SentanceFini()
+        sent_fini = parser.specdefs.common.SentanceFini()
         for sp in self.__specs:
             sp.match(sentence + [sent_fini, ])
 

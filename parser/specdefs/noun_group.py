@@ -2,7 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.speccmn import *
+from parser.specdefs.common import SequenceSpec
+from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs, LinkSpecs, SameAsSpecs, CaseSpecs
+from parser.specdefs.validate import ValidatePresence
 
 
 class NounGroupSpec(SequenceSpec):

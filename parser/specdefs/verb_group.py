@@ -2,7 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.speccmn import *
+from parser.specdefs.common import SequenceSpec
+from parser.specdefs.defs import LinkSpecs, FsmSpecs, RequiredSpecs, RepeatableSpecs, AnchorSpecs
 
 
 class VerbGroupSpec(SequenceSpec):

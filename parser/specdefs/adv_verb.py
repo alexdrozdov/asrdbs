@@ -2,7 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.speccmn import *
+from parser.specdefs.common import SequenceSpec, LinkWeight
+from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, LinkSpecs, AnchorSpecs
+from parser.specdefs.validate import ValidatePresence
 
 
 class AdvVerbSequenceSpec(SequenceSpec):
