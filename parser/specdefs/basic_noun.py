@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.named import template
 
 
 class BasicNounSpec(SequenceSpec):
@@ -11,23 +12,11 @@ class BasicNounSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'basic-noun')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
-            },
+        self.spec = template("spec")(
             {
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsNoun(), ],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
-            },
-        ]
+            }
+        )

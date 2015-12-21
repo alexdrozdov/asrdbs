@@ -3,8 +3,9 @@
 
 
 from parser.specdefs.common import SequenceSpec, LinkWeight
-from parser.specdefs.defs import RequiredSpecs, FsmSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs, LinkSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs, LinkSpecs
 from parser.specdefs.validate import ValidatePresence
+from parser.named import template
 
 
 class AdjNounSequenceSpec(SequenceSpec):
@@ -12,13 +13,7 @@ class AdjNounSequenceSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'adj+-noun')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::pronoun",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
@@ -86,14 +81,8 @@ class AdjNounSequenceSpec(SequenceSpec):
                         "pos_type": [PosSpecs().IsComma(), ],
                     },
                 ]
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])
 
     def get_validate(self):
         return ValidatePresence(self, ['$SPEC::noun', '$SPEC::adj'])

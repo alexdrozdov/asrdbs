@@ -3,8 +3,9 @@
 
 
 from parser.specdefs.common import SequenceSpec, LinkWeight
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, LinkSpecs, AnchorSpecs
+from parser.specdefs.defs import RepeatableSpecs, LinkSpecs, AnchorSpecs
 from parser.specdefs.validate import ValidatePresence
+from parser.named import template
 
 
 class SentanceSpec(SequenceSpec):
@@ -12,13 +13,7 @@ class SentanceSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'sentance')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::subject-pre",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
@@ -37,14 +32,8 @@ class SentanceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "incapsulate": ["subject-group", ],
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])
 
     def get_validate(self):
         return ValidatePresence(self, ['$SPEC::subject', '$SPEC::predicate'])

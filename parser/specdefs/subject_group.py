@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, AnchorSpecs
+from parser.specdefs.defs import RepeatableSpecs, AnchorSpecs
+from parser.named import template
 
 
 class SubjectGroupSpec(SequenceSpec):
@@ -11,23 +12,11 @@ class SubjectGroupSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'subject-group')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")(
             {
                 "id": "$PARENT::subject",
                 "repeatable": RepeatableSpecs().Once(),
                 "incapsulate": ["basic-subject", ],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        )

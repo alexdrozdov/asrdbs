@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.named import template
 
 
 class MrgSpec(SequenceSpec):
@@ -11,13 +12,7 @@ class MrgSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'mrg')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::s1",
                 "repeatable": RepeatableSpecs().Once(),
@@ -38,14 +33,8 @@ class MrgSpec(SequenceSpec):
                 "id": "$PARENT::s4",
                 "pos_type": [PosSpecs().IsNoun(), ],
                 "repeatable": RepeatableSpecs().Once(),
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])
 
 
 class IncSpec(SequenceSpec):
@@ -53,13 +42,7 @@ class IncSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'inc')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::p1",
                 "repeatable": RepeatableSpecs().Once(),
@@ -87,11 +70,5 @@ class IncSpec(SequenceSpec):
                         "incapsulate": ["comma-and-or", ],
                     },
                 ]
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])

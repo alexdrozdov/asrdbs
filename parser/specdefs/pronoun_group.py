@@ -3,8 +3,9 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
 from parser.specdefs.validate import ValidatePresence
+from parser.named import template
 
 
 class PronounGroupSpec(SequenceSpec):
@@ -12,12 +13,7 @@ class PronounGroupSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'pronoun-group')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::pronoun",
                 "repeatable": RepeatableSpecs().Once(),
@@ -41,13 +37,8 @@ class PronounGroupSpec(SequenceSpec):
                         "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
                     },
                 ]
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-            },
-        ]
+            }
+        ])
 
     def get_validate(self):
         return ValidatePresence(self, ['$SPEC::pronoun', ])

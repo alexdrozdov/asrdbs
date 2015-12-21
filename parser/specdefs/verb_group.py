@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import LinkSpecs, FsmSpecs, RequiredSpecs, RepeatableSpecs, AnchorSpecs
+from parser.specdefs.defs import LinkSpecs, RepeatableSpecs, AnchorSpecs
+from parser.named import template
 
 
 class VerbGroupSpec(SequenceSpec):
@@ -11,13 +12,7 @@ class VerbGroupSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'verb-group')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT::noun-group-pre",
@@ -35,11 +30,5 @@ class VerbGroupSpec(SequenceSpec):
                 "id": "$PARENT::noun-group-post",
                 "incapsulate": ["noun-group", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])

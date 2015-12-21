@@ -3,8 +3,9 @@
 
 
 from parser.specdefs.common import SequenceSpec, LinkWeight
-from parser.specdefs.defs import RequiredSpecs, FsmSpecs, RepeatableSpecs, AnchorSpecs, LinkSpecs
+from parser.specdefs.defs import RepeatableSpecs, AnchorSpecs, LinkSpecs
 from parser.specdefs.validate import ValidatePresence
+from parser.named import template
 
 
 class AdvAdjSequenceSpec(SequenceSpec):
@@ -12,12 +13,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'adv-adj')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::adv",
                 "repeatable": RepeatableSpecs().Any(),
@@ -56,13 +52,8 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Once(),
                 "incapsulate": ["basic-adj", ],
                 "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-            },
-        ]
+            }
+        ])
 
     def get_validate(self):
         return ValidatePresence(self, ['$SPEC::adv', '$SPEC::adj'])

@@ -11,18 +11,19 @@ class TemplateSpec(parser.templates.common.SpecTemplate):
         super(TemplateSpec, self).__init__('spec')
 
     def __call__(self, d):
-        return [
-            {
+        if isinstance(d, dict):
+            d = [d, ]
+        return \
+            [{
                 "id": "$SPEC::init",
                 "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsInit(),
                 "add-to-seq": False,
-            },
-            d,
-            {
+            }] + \
+            d + \
+            [{
                 "id": "$SPEC::fini",
                 "required": RequiredSpecs().IsNecessary(),
                 "fsm": FsmSpecs().IsFini(),
                 "add-to-seq": False,
-            },
-        ]
+            }]

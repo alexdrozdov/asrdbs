@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs, WordSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, WordSpecs
+from parser.named import template
 
 
 class CommaAndOrSpec(SequenceSpec):
@@ -11,13 +12,7 @@ class CommaAndOrSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'comma-and-or')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
-            },
+        self.spec = template("spec")(
             {
                 "repeatable": RepeatableSpecs().Once(),
                 "id": "$PARENT:or",
@@ -40,11 +35,5 @@ class CommaAndOrSpec(SequenceSpec):
                         "pos_type": [WordSpecs().IsWord([u'или', ]), ],
                     }
                 ]
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
-            },
-        ]
+            }
+        )

@@ -3,8 +3,9 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, PosSpecs, AnchorSpecs, LinkSpecs, SameAsSpecs, CaseSpecs
+from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, LinkSpecs, SameAsSpecs, CaseSpecs
 from parser.specdefs.validate import ValidatePresence
+from parser.named import template
 
 
 class NounGroupSpec(SequenceSpec):
@@ -12,13 +13,7 @@ class NounGroupSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'noun-group')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::preposition",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
@@ -40,14 +35,8 @@ class NounGroupSpec(SequenceSpec):
                 "incapsulate": ["noun-group-aux", ],
                 "incapsulate-on-overflow": ["basic-noun", ],
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::preposition"), ],
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])
 
     def get_validate(self):
         return ValidatePresence(self, ['$SPEC::noun', ])
@@ -58,13 +47,7 @@ class NounGroupAuxSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'noun-group-aux')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::comma-and-or",
                 "repeatable": RepeatableSpecs().Once(),
@@ -75,14 +58,8 @@ class NounGroupAuxSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "incapsulate": ["noun-ctrl-noun", ],
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])
 
 
 class NounCtrlNounSpec(SequenceSpec):
@@ -90,13 +67,7 @@ class NounCtrlNounSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'noun-ctrl-noun')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "id": "$SPEC::init",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False,
-            },
+        self.spec = template("spec")([
             {
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
@@ -123,11 +94,5 @@ class NounCtrlNounSpec(SequenceSpec):
                         "incapsulate": ["adj+-noun", ],
                     }
                 ]
-            },
-            {
-                "id": "$SPEC::fini",
-                "required": RequiredSpecs().IsNecessary(),
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False,
-            },
-        ]
+            }
+        ])

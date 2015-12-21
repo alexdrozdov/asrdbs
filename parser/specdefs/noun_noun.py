@@ -3,7 +3,8 @@
 
 
 from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import FsmSpecs, RequiredSpecs, RepeatableSpecs, LinkSpecs
+from parser.specdefs.defs import RepeatableSpecs, LinkSpecs
+from parser.named import template
 
 
 class NounNounSequenceSpec(SequenceSpec):
@@ -11,24 +12,12 @@ class NounNounSequenceSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'noun-noun')
         self.__compared_with = {}
 
-        self.spec = [
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::init",
-                "fsm": FsmSpecs().IsInit(),
-                "add-to-seq": False
-            },
+        self.spec = template("spec")(
             {
                 "id": "$SPEC::noun",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
                 "incapsulate": ["adj+-noun", ],
                 "incapsulate-binding": "$THIS::$INCAPSULATED::noun",
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX(0)-1]"), ],
-            },
-            {
-                "required": RequiredSpecs().IsNecessary(),
-                "id": "$SPEC::fini",
-                "fsm": FsmSpecs().IsFini(),
-                "add-to-seq": False
-            },
-        ]
+            }
+        )
