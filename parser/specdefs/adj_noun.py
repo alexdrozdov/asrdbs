@@ -20,7 +20,6 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "incapsulate": ["pronoun-group", ],
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$PARENT::participal",
@@ -34,7 +33,6 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                 "reliability": 1,
             },
             {
@@ -43,7 +41,6 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "incapsulate": ["pronoun-group", ],
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$SPEC::noun",
@@ -56,34 +53,21 @@ class AdjNounSequenceSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Any(),
                 "incapsulate": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                 "reliability": 0.9,
             },
-            {
-                "id": "$PARENT::participal-post",
-                "repeatable": RepeatableSpecs().Any(),
-                "reliability": 1,
-                "entries": [
-                    {
-                        "id": "$PARENT::comma-open",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "merges_with": ["comma", ],
-                    },
-                    {
-                        "id": "$PARENT::participal",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["participal-group", ],
-                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                    },
-                    {
-                        "id": "$PARENT::comma-close",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [PosSpecs().IsComma(), ],
-                        "merges_with": ["comma", ],
-                    },
-                ]
-            }
+            template("wrap")(
+                "$PARENT::participal-post",
+                repeatable=RepeatableSpecs().Any(),
+                body={
+                    "id": "$PARENT::participal",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "incapsulate": ["participal-group", ],
+                    "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
+                },
+                attrs={
+                    "reliability": 1.0,
+                }
+            ),
         ])
 
     def get_validate(self):
