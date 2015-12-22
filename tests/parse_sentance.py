@@ -8,9 +8,19 @@ import parser.graph_span
 import parser.specs
 import sys
 import codecs
+import time
+from contextlib import contextmanager
 from common.output import output as oput
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+
+
+@contextmanager
+def timeit_ctx(name):
+    startTime = time.time()
+    yield
+    elapsedTime = time.time() - startTime
+    print('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
 
 
 sentence = [u'падал', u'прошлогодний', u'снег', u'на', u'теплую', u'землю', u'поля']
@@ -63,19 +73,21 @@ sentence = [u'мама', u'мыла', u'покрашенную', u'белой', 
 # sentence = [u'косой', u'косой', u'косил', u'косой', u'косой']
 
 
-sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
-srm = parser.specs.SequenceSpecMatcher(False)
+with timeit_ctx('total'):
+    with timeit_ctx('loading database'):
+        sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
+    with timeit_ctx('building parser'):
+        srm = parser.specs.SequenceSpecMatcher(False)
 
-parsed_sentence = sp.parse(sentence)
+    with timeit_ctx('loading word forms'):
+        parsed_sentence = sp.parse(sentence)
 
-# parser.graph.SentGraph(img_type='svg').generate(
-#     parsed_sentence,
-#     oput.get_output_file('imgs', 'g.svg')
-# )
+    with timeit_ctx('matching sentences'):
+        matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
 
-for j, sq in enumerate(srm.match_sentence(parsed_sentence, most_complete=True).get_sequences()):
-    sq.print_sequence()
-    parser.graph.SequenceGraph(img_type='svg').generate(
-        sq,
-        oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
-    )
+    for j, sq in enumerate(matched_sentences.get_sequences()):
+        sq.print_sequence()
+        parser.graph.SequenceGraph(img_type='svg').generate(
+            sq,
+            oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
+        )
