@@ -14,78 +14,34 @@ class AdvVerbSequenceSpec(SequenceSpec):
         self.__compared_with = {}
 
         self.spec = template("spec")([
-            {
-                "id": "$PARENT::adv-pre",
-                "repeatable": RepeatableSpecs().Any(),
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Any(),
-                        "entries":
-                        [
-                            {
-                                "id": "$PARENT::adv",
-                                "repeatable": RepeatableSpecs().Once(),
-                                "incapsulate": ["basic-adv", ],
-                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                            },
-                            {
-                                "id": "$PARENT::comma-and-or",
-                                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                                "incapsulate": ["comma-and-or", ],
-                            }
-                        ]
-                    },
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["basic-adv", ],
-                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                    },
-                ]
-            },
+            template("repeat")(
+                "$PARENT::adv-pre",
+                repeatable=RepeatableSpecs().Any(),
+                body={
+                    "id": "$PARENT::adv",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "incapsulate": ["basic-adv", ],
+                    "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                },
+                separator={'always': False}
+            ),
             {
                 "id": "$PARENT::verb",
                 "repeatable": RepeatableSpecs().Once(),
                 "incapsulate": ["basic-verb", ],
                 "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
             },
-            {
-                "id": "$PARENT::adv-post",
-                "repeatable": RepeatableSpecs().Any(),
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Any(),
-                        "entries":
-                        [
-                            {
-                                "id": "$PARENT::adv",
-                                "repeatable": RepeatableSpecs().Once(),
-                                "incapsulate": ["basic-adv", ],
-                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                            },
-                            {
-                                "id": "$PARENT::comma-and-or",
-                                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                                "incapsulate": ["comma-and-or", ],
-                            }
-                        ]
-                    },
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["basic-adv", ],
-                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                    },
-                ]
-            }
+            template("repeat")(
+                "$PARENT::adv-post",
+                repeatable=RepeatableSpecs().Any(),
+                body={
+                    "id": "$PARENT::adv",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "incapsulate": ["basic-adv", ],
+                    "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                },
+                separator={'always': False}
+            ),
         ])
 
     def get_validate(self):
