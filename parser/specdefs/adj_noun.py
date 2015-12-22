@@ -68,6 +68,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                         "id": "$PARENT::comma-open",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsComma(), ],
+                        "merges_with": ["comma", ],
                     },
                     {
                         "id": "$PARENT::participal",
@@ -79,6 +80,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                         "id": "$PARENT::comma-close",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsComma(), ],
+                        "merges_with": ["comma", ],
                     },
                 ]
             }
