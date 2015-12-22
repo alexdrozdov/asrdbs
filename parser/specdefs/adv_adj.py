@@ -14,39 +14,17 @@ class AdvAdjSequenceSpec(SequenceSpec):
         self.__compared_with = {}
 
         self.spec = template("spec")([
-            {
-                "id": "$PARENT::adv",
-                "repeatable": RepeatableSpecs().Any(),
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Any(),
-                        "entries":
-                        [
-                            {
-                                "id": "$PARENT::adv",
-                                "repeatable": RepeatableSpecs().Once(),
-                                "incapsulate": ["basic-adv", ],
-                                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                            },
-                            {
-                                "id": "$PARENT::comma-and-or",
-                                "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                                "incapsulate": ["comma-and-or", ],
-                            }
-                        ]
-                    },
-                    {
-                        "id": "$PARENT::adv",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["basic-adv", ],
-                        "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                        "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
-                    },
-                ]
-            },
+            template("repeat")(
+                "$PARENT::adv",
+                repeatable=RepeatableSpecs().Any(),
+                body={
+                    "id": "$PARENT::adv",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "incapsulate": ["basic-adv", ],
+                    "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
+                },
+                separator={'always': False}
+            ),
             {
                 "id": "$PARENT::adj",
                 "repeatable": RepeatableSpecs().Once(),
