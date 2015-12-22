@@ -1498,12 +1498,16 @@ class SpecMatcher(object):
 
     def reset(self):
         self.__sequences = []
+        self.__sequence_created = False
 
     def match(self, sentence):
         for forms in sentence:
             self.__handle_sequences(forms)
 
     def __create_new_sequence(self):
+        if self.__sequence_created and False:
+            return
+        self.__sequence_create = True
         ini_spec = self.__compiled_spec.get_inis()[0]
         self.__sequences.append(
             RtMatchSequence(
