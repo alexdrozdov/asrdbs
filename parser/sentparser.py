@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import re
 import traceback
 import named
 import worddb.worddb
@@ -317,6 +318,35 @@ class WordFormFabric(object):
         wf = WordForms(word, res, self.__group_uniq)
         self.__group_uniq *= 2
         return wf
+
+
+class Tokenizer(object):
+    def __init__(self):
+        pass
+
+    def tokenize(self, string):
+        if isinstance(string, list):
+            return string
+        return filter(
+            lambda s:
+                s,
+            re.sub(
+                r'\.\s*$',
+                r' . ',
+                re.sub(
+                    r"(,\s)",
+                    r' \1',
+                    re.sub(
+                        r"([^\w\.\-\/,])",
+                        r' \1 ',
+                        string,
+                        flags=re.U
+                    ),
+                    flags=re.U
+                ),
+                flags=re.U
+            ).split()
+        )
 
 
 class SentenceParser(object):
