@@ -75,15 +75,15 @@ sentence = u'мама мыла покрашенную раму'
 
 with timeit_ctx('total'):
     with timeit_ctx('loading database'):
-        sp = parser.sentparser.SentenceParser('./dbs/worddb.db')
+        tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
     with timeit_ctx('building parser'):
         srm = parser.specs.SequenceSpecMatcher(False)
 
     with timeit_ctx('tokenizing'):
         tokens = parser.sentparser.Tokenizer().tokenize(sentence)
 
-    with timeit_ctx('loading word forms'):
-        parsed_sentence = sp.parse(tokens)
+    with timeit_ctx('mapping word forms'):
+        parsed_sentence = tm.map(tokens)
 
     with timeit_ctx('matching sentences'):
         matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)

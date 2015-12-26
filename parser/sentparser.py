@@ -349,12 +349,12 @@ class Tokenizer(object):
         )
 
 
-class SentenceParser(object):
+class TokenMapper(object):
     def __init__(self, worddb_file):
         self.__wff = WordFormFabric(worddb_file)
 
-    def parse(self, sentence):
+    def map(self, tokens):
         return map(
             lambda (word_pos, word): self.__wff.create(word, word_pos),
-            enumerate(sentence)
+            enumerate(tokens)
         )
