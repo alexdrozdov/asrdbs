@@ -2,7 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec, LinkWeight
+from parser.specdefs.common import SequenceSpec
 from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs, LinkSpecs
 from parser.specdefs.validate import ValidatePresence
 from parser.named import template
@@ -17,28 +17,28 @@ class AdjNounSequenceSpec(SequenceSpec):
             {
                 "id": "$PARENT::pronoun",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                "incapsulate": ["pronoun-group", ],
+                "include": ["pronoun-group", ],
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
             {
                 "id": "$PARENT::participal",
                 "repeatable": RepeatableSpecs().Any(),
-                "incapsulate": ["participal-group", ],
+                "include": ["participal-group", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "reliability": 1,
             },
             {
                 "id": "$PARENT::adj-pre",
                 "repeatable": RepeatableSpecs().Any(),
-                "incapsulate": ["adv-adj", ],
+                "include": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "reliability": 1,
             },
             {
                 "id": "$PARENT::pronoun-seq",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                "incapsulate": ["pronoun-group", ],
+                "include": ["pronoun-group", ],
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
@@ -51,7 +51,7 @@ class AdjNounSequenceSpec(SequenceSpec):
             {
                 "id": "$PARENT::adj-post",
                 "repeatable": RepeatableSpecs().Any(),
-                "incapsulate": ["adv-adj", ],
+                "include": ["adv-adj", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "reliability": 0.9,
             },
@@ -61,7 +61,7 @@ class AdjNounSequenceSpec(SequenceSpec):
                 body={
                     "id": "$PARENT::participal",
                     "repeatable": RepeatableSpecs().Once(),
-                    "incapsulate": ["participal-group", ],
+                    "include": ["participal-group", ],
                     "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 },
                 attrs={

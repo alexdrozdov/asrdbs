@@ -20,7 +20,7 @@ class AdvVerbSequenceSpec(SequenceSpec):
                 body={
                     "id": "$PARENT::adv",
                     "repeatable": RepeatableSpecs().Once(),
-                    "incapsulate": ["basic-adv", ],
+                    "include": ["basic-adv", ],
                     "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                 },
                 separator={'always': False}
@@ -28,7 +28,7 @@ class AdvVerbSequenceSpec(SequenceSpec):
             {
                 "id": "$PARENT::verb",
                 "repeatable": RepeatableSpecs().Once(),
-                "incapsulate": ["basic-verb", ],
+                "include": ["basic-verb", ],
                 "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
             },
             template("repeat")(
@@ -37,7 +37,7 @@ class AdvVerbSequenceSpec(SequenceSpec):
                 body={
                     "id": "$PARENT::adv",
                     "repeatable": RepeatableSpecs().Once(),
-                    "incapsulate": ["basic-adv", ],
+                    "include": ["basic-adv", ],
                     "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                 },
                 separator={'always': False}

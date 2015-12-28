@@ -18,12 +18,12 @@ class SentanceSpec(SequenceSpec):
                 "id": "$PARENT::subject-pre",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "incapsulate": ["subject-group", ],
+                "include": ["subject-group", ],
             },
             {
                 "id": "$PARENT::predicate",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(1),
-                "incapsulate": ["verb-group", ],
+                "include": ["verb-group", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
                 "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
@@ -31,7 +31,7 @@ class SentanceSpec(SequenceSpec):
                 "id": "$PARENT::subject-post",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "incapsulate": ["subject-group", ],
+                "include": ["subject-group", ],
             }
         ])
 

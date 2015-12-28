@@ -274,8 +274,8 @@ class SpecCompiler(object):
             else:
                 name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[var_num].get_name()))
         if '$INCAPSULATED' in name:
-            assert ref_state.has_key('incapsulate') and len(ref_state['incapsulate']) == 1
-            name = name.replace('$INCAPSULATED', ref_state['incapsulate'][0])
+            assert ref_state.has_key('include') and len(ref_state['include']) == 1
+            name = name.replace('$INCAPSULATED', ref_state['include'][0])
         if '$THIS' in name:
             assert '$THIS' not in ref_state['id'], 'Recursive name with $THIS spec'
             this_path = self.gen_state_name(ref_state)
@@ -301,15 +301,15 @@ class SpecCompiler(object):
             self.__inis.append(state)
         if state.is_fini():
             self.__finis.append(state)
-        if state.has_incapsulated_spec():
+        if state.includes_spec():
             self.__incapsulate_in.append(state)
 
     def __handle_anchor_state(self, state):
         if state.is_container() or state.is_uniq_container():
             return
 
-        if state.has_incapsulated_spec():
-            in_spec = state.get_incapsulated_spec()
+        if state.includes_spec():
+            in_spec = state.get_included()
             in_spec_anchors = in_spec.get_local_spec_anchors()
             if in_spec_anchors:
                 self.__local_spec_anchors.extend(in_spec_anchors)
@@ -333,7 +333,7 @@ class SpecCompiler(object):
             else:
                 state.inherit_parent_reliability(self.get_reliability())
 
-            if state.has_incapsulated_spec():
+            if state.includes_spec():
                 in_spec_name = state.get_incapsulated_spec_name(overflow=(self.__spec_depth > 2))
                 in_spec = self.__owner.get_spec(in_spec_name)
                 compiler = SpecCompiler(
@@ -460,20 +460,11 @@ class SpecCompiler(object):
             if state.has_noncreated_rules():
                 state.create_rules(self)
 
-    def __resolve_rule_bindings(self, state):
-        new_binding = self.resolve_name(state.get_spec(), state.get_incapsulate_binding())
-        original_binding = state.get_name()
-        if not self.__rule_bindins.has_key(original_binding):
-            return
-        rule_list = self.__rule_bindins[original_binding]
-        for rule in rule_list:
-            rule.rewrite_binding(original_binding, new_binding)
-
     def __incapsulate_rules(self):
         for state in self.__incapsulate_in:
             if not state.has_rules():
                 continue
-            in_spec = state.get_incapsulated_spec()
+            in_spec = state.get_included()
             for in_spec_anchor in in_spec.get_local_spec_anchors():
                 assert in_spec_anchor is not None
                 rules_to_incapsulate = state.get_rules_list()
@@ -481,7 +472,7 @@ class SpecCompiler(object):
 
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
-            compiled_in_spec = state.get_incapsulated_spec()
+            compiled_in_spec = state.get_included()
             ini = compiled_in_spec.get_inis()
             assert len(ini) == 1
             fini = compiled_in_spec.get_finis()
@@ -511,7 +502,7 @@ class SpecCompiler(object):
         assert isinstance(binding, RtMatchString)
         if self.__name2state.has_key(str(binding)):
             state = self.__name2state[str(binding)]
-            if not state.is_container() and not state.is_uniq_container() and not state.has_incapsulated_spec():
+            if not state.is_container() and not state.is_uniq_container() and not state.includes_spec():
                 return False
             return True
         raise RuntimeError('state name matching not implemented')
@@ -526,8 +517,8 @@ class SpecCompiler(object):
             if state.is_uniq_container():
                 raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for uniq containers')
                 return
-            if state.has_incapsulated_spec():
-                in_spec = state.get_incapsulated_spec()
+            if state.includes_spec():
+                in_spec = state.get_included()
                 in_spec_anchors = in_spec.get_local_spec_anchors()
                 assert in_spec_anchors is not None and len(in_spec_anchors) == 1
                 return in_spec_anchors[0].get_name()
@@ -667,12 +658,11 @@ class SpecStateDef(object):
         self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.init
         self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.fini
         self.__uid = ue.get_uniq()
-        self.__incapsulate_spec_name = spec_dict['incapsulate'] if spec_dict.has_key('incapsulate') else None
+        self.__incapsulate_spec_name = spec_dict['include'] if spec_dict.has_key('include') else None
         assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
         self.__incapsulate_ovf_spec_name = spec_dict['incapsulate-on-overflow'] if spec_dict.has_key('incapsulate-on-overflow') else None
         assert self.__incapsulate_ovf_spec_name is None or len(self.__incapsulate_ovf_spec_name) == 1
         self.__incapsulate_spec = None
-        self.__incapsulate_binding = spec_dict['incapsulate-binding'] if spec_dict.has_key('incapsulate-binding') else None
         self.__stateless_rules = []
         self.__rt_rules = []
         self.__level = spec_dict['level']
@@ -929,7 +919,7 @@ class SpecStateDef(object):
     def get_stateless_rules(self):
         return [r.new_copy() for r in self.__stateless_rules]
 
-    def has_incapsulated_spec(self):
+    def includes_spec(self):
         return self.__incapsulate_spec_name is not None
 
     def has_rules(self):
@@ -955,14 +945,8 @@ class SpecStateDef(object):
         assert self.__incapsulate_spec is None
         self.__incapsulate_spec = spec
 
-    def get_incapsulated_spec(self):
+    def get_included(self):
         return self.__incapsulate_spec
-
-    def has_incapsulate_binding(self):
-        return self.__incapsulate_binding is not None
-
-    def get_incapsulate_binding(self):
-        return self.__incapsulate_binding
 
     def __repr__(self):
         return "SpecStateDef(name='{0}')".format(self.get_name())

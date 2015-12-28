@@ -28,7 +28,7 @@ class PronounGroupSpec(SequenceSpec):
                     {
                         "id": "$PARENT::comma-and-or",
                         "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["comma-and-or", ],
+                        "include": ["comma-and-or", ],
                     },
                     {
                         "id": "$PARENT::pronoun",

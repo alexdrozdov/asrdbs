@@ -22,12 +22,12 @@ class MrgSpec(SequenceSpec):
                 "id": "$PARENT::s2",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "incapsulate": ["inc", ],
+                "include": ["inc", ],
             },
             {
                 "id": "$PARENT::s3",
                 "repeatable": RepeatableSpecs().Once(),
-                "incapsulate": ["comma-and-or", ],
+                "include": ["comma-and-or", ],
             },
             {
                 "id": "$PARENT::s4",
@@ -56,7 +56,7 @@ class IncSpec(SequenceSpec):
                     {
                         "id": "$PARENT::n1",
                         "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["comma-and-or", ],
+                        "include": ["comma-and-or", ],
                     },
                     {
                         "id": "$PARENT::n2",
@@ -67,7 +67,7 @@ class IncSpec(SequenceSpec):
                     {
                         "id": "$PARENT::n3",
                         "repeatable": RepeatableSpecs().Once(),
-                        "incapsulate": ["comma-and-or", ],
+                        "include": ["comma-and-or", ],
                     },
                 ]
             }

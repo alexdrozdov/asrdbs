@@ -28,7 +28,7 @@ class BasicSubjectSpec(SequenceSpec):
                         "id": "$PARENT::noun",
                         "repeatable": RepeatableSpecs().Once(),
                         "case": [CaseSpecs().IsCase(["nominative", ]), ],
-                        "incapsulate": ["noun-group", ],
+                        "include": ["noun-group", ],
                     },
                 ],
             }
