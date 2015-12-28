@@ -28,7 +28,9 @@ class SentenceEntry(object):
     word = 1
     syntax = 2
 
-    def __init__(self, is_word=False, is_syntax=False):
+    def __init__(self, original_word, is_word=False, is_syntax=False):
+        assert original_word is not None
+        self.__original = original_word
         if not is_word and not is_syntax:
             raise ValueError("Undefined entry type")
         if is_word and is_syntax:
@@ -46,10 +48,13 @@ class SentenceEntry(object):
     def is_syntax(self):
         return self.__type == SentenceEntry.syntax
 
+    def get_original(self):
+        return self.__original
+
 
 class SyntaxEntry(SentenceEntry):
-    def __init__(self, symbol, position, uniq):
-        SentenceEntry.__init__(self, is_syntax=True)
+    def __init__(self, symbol, original_symbol, position, uniq):
+        SentenceEntry.__init__(self, original_word=original_symbol, is_syntax=True)
         self.__symbol = symbol
         self.__pos = position
         self.__uniq = uniq
@@ -209,19 +214,19 @@ class WordForm(WordFormInfo, SentenceEntry):
     def __init__(self, based_on):
         assert isinstance(based_on, ns) or isinstance(based_on, WordForm)
         if isinstance(based_on, ns):
-            self.__init_from_params(based_on.word, based_on.info, based_on.pos, based_on.uniq)
+            self.__init_from_params(based_on.word, based_on.original_word, based_on.info, based_on.pos, based_on.uniq)
         else:
             self.__init_from_wordform(based_on)
 
-    def __init_from_params(self, word, info, pos, uniq):
+    def __init_from_params(self, word, original_word, info, pos, uniq):
         WordFormInfo.__init__(self, word, info)
-        SentenceEntry.__init__(self, is_word=True)
+        SentenceEntry.__init__(self, original_word=original_word, is_word=True)
         self.__pos = pos
         self.__uniq = uniq
 
     def __init_from_wordform(self, wf):
         WordFormInfo.__init__(self, wf.get_word(), wf.get_info())
-        SentenceEntry.__init__(self, is_word=wf.is_word())
+        SentenceEntry.__init__(self, original_word=wf.get_original(), is_word=wf.is_word())
         self.__pos = wf.pos
         self.__uniq = wf.__uniq
 
@@ -284,7 +289,7 @@ class WordFormFabric(object):
             return False
 
     def __create_syntax_entry(self, symbol, position):
-        se = SyntaxEntry(symbol, position, self.__form_uniq)
+        se = SyntaxEntry(symbol, symbol, position, self.__form_uniq)
         wf = WordForms(symbol, [se, ], self.__group_uniq)
         self.__form_uniq *= 2
         self.__group_uniq *= 2
@@ -292,6 +297,7 @@ class WordFormFabric(object):
 
     def __create_word_entry(self, word, position):
         res = []
+        word = word.lower()
         info = self.__wdb.get_word_info(word)
         assert isinstance(info, list), u"No info avaible for {0}".format(word)
         for form in filter(
@@ -308,6 +314,7 @@ class WordFormFabric(object):
                 WordForm(
                     ns(
                         word=form['word'],
+                        original_word=word,
                         info=eval(form['info']),
                         pos=position,
                         uniq=self.__form_uniq
