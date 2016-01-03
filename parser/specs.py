@@ -718,6 +718,9 @@ class SpecStateDef(object):
     def is_anchor(self):
         return self.__is_local_anchor
 
+    def fixed(self):
+        return True
+
     def force_anchor(self):
         self.__is_local_anchor = True
 
@@ -1270,6 +1273,24 @@ class MatchedSequence(object):
         return hash((self.__entries_csum, self.__links_csum))
 
 
+class MatcherContext(object):
+    def __init__(self, owner=None, fork_fcn=None, end_fcn=None, matched_fcn=None):
+        self.owner = owner
+        self.fork_fcn = fork_fcn
+        self.end_fcn = end_fcn
+        self.matched_fcn = matched_fcn
+        self.sequences = []
+
+    def set_sequences(self, sequences):
+        self.sequences = sequences
+
+    def get_sequences(self):
+        return self.sequences
+
+    def add_sequence(self, sq):
+        self.sequences.append(sq)
+
+
 class RtMatchSequence(object):
     def __new__(cls, *args, **kwargs):
         obj = super(RtMatchSequence, cls).__new__(cls)
@@ -1299,13 +1320,14 @@ class RtMatchSequence(object):
         if isinstance(based_on, RtMatchSequence):
             self.__init_from_sq(based_on)
         elif isinstance(based_on, ns):
-            self.__init_new(based_on.matcher, based_on.initial_entry)
+            self.__init_new(based_on.matcher, based_on.initial_entry, based_on.ctx)
         else:
             raise ValueError('unsupported source for RtMatchSequence contruction {0}'.format(type(based_on)))
 
     @argres(show_result=False)
-    def __init_new(self, matcher, initial_entry):
+    def __init_new(self, matcher, initial_entry, ctx):
         self.__matcher = matcher
+        self.__ctx = ctx
         self.__entries = []
         self.__all_entries = []
         self.__links = {}
@@ -1318,6 +1340,7 @@ class RtMatchSequence(object):
     @argres(show_result=True)
     def __init_from_sq(self, sq):
         self.__matcher = sq.__matcher
+        self.__ctx = sq.__ctx
         self.__entries = []
         self.__all_entries = []
         self.__forms_csum = 0
@@ -1356,13 +1379,22 @@ class RtMatchSequence(object):
         trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
-            if res.valid:
-                new_sq.append(res)
+            for r in res:
+                if r.valid:
+                    new_sq.append(r)
 
         return new_sq
 
     @argres()
     def __handle_trs(self, trs, form):
+        to = trs.get_to()
+        if to.fixed():
+            return self.__handle_fixed_trs(trs, form)
+        else:
+            return self.__handle_dynamic_trs(trs, form)
+
+    @argres()
+    def __handle_fixed_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
@@ -1374,15 +1406,34 @@ class RtMatchSequence(object):
         self.__append_entries(rtme)
 
         if not rtme.handle_rules():
-            return ns(sq=self, valid=False, fini=False)
+            return [ns(sq=self, valid=False, fini=False), ]
 
         for e in self.get_entries(hidden=True, exclude=rtme):
             if not e.handle_rules(on_entry=rtme):
-                return ns(sq=self, valid=False, fini=False)
+                return [ns(sq=self, valid=False, fini=False), ]
 
         if to.is_fini():
-            return ns(sq=self, valid=self.__on_fini(), fini=True)
-        return ns(sq=self, valid=True, fini=False)
+            return [ns(sq=self, valid=self.__on_fini(), fini=True), ]
+        return [ns(sq=self, valid=True, fini=False), ]
+
+    @argres()
+    def __handle_dynamic_trs(self, trs, form):
+        to = trs.get_to()
+        self.__stack.handle_trs(trs)
+
+        # Create virtual entry, awaiting for subsequence
+        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else parser.specdefs.common.SpecStateFiniForm(),
+                                     spec_state_def=to,
+                                     rtms_offset=len(self.__all_entries)
+                                     )
+                            )
+
+        self.__append_entries(rtme)
+        self.__ctx.add_matcher(
+            to.get_include_name(),
+            end_fcn=lambda res: self.__submatcher_end(rtme, res)
+        )
+        return [ns(sq=self, valid=True, fini=False), ]
 
     @argres()
     def __on_fini(self):
@@ -1472,55 +1523,51 @@ class RtMatchSequence(object):
 
 
 class SpecMatcher(object):
-    def __init__(self, owner, compiled_spec, matched_cb):
-        assert owner is not None and isinstance(compiled_spec, CompiledSpec) and matched_cb is not None
+    def __init__(self, owner, compiled_spec):
+        assert owner is not None and isinstance(compiled_spec, CompiledSpec)
         self.__owner = owner
         self.__compiled_spec = compiled_spec
-        self.__matched_cb = matched_cb
         self.__name = self.__compiled_spec.get_name()
-        self.reset()
 
-    def reset(self):
-        self.__sequences = []
-        self.__sequence_created = False
-
-    def match(self, sentence):
+    def match(self, ctx, sentence):
         for forms in sentence:
-            self.__handle_sequences(forms)
+            self.__handle_sequences(ctx, forms)
 
-    def __create_new_sequence(self):
-        if self.__sequence_created and False:
-            return
-        self.__sequence_create = True
+    def __create_new_sequence(self, ctx):
         ini_spec = self.__compiled_spec.get_inis()[0]
-        self.__sequences.append(
+        ctx.add_sequence(
             RtMatchSequence(
                 ns(
                     matcher=self,
-                    initial_entry=RtMatchEntry(None, ns(form=parser.specdefs.common.SpecStateIniForm(), spec_state_def=ini_spec, rtms_offset=0)),
+                    initial_entry=RtMatchEntry(None, ns(
+                        form=parser.specdefs.common.SpecStateIniForm(),
+                        spec_state_def=ini_spec,
+                        rtms_offset=0)
+                    ),
+                    ctx=ctx,
                 )
             )
         )
 
-    def __handle_forms_result(self, res, next_sequences):
+    def __handle_forms_result(self, ctx, res, next_sequences):
         if not res.fini:
             next_sequences.append(res.sq)
         else:
             if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
                 ms = MatchedSequence(res.sq)
-                self.__matched_cb(ms)
+                ctx.matched_fcn(ms)
 
-    def __handle_sequences(self, forms):
-        self.__create_new_sequence()
+    def __handle_sequences(self, ctx, forms):
+        self.__create_new_sequence(ctx)
 
         next_sequences = []
-        for sq in self.__sequences:
+        for sq in ctx.get_sequences():
             for res in sq.handle_forms(forms):
-                self.__handle_forms_result(res, next_sequences)
-        self.__sequences = next_sequences
+                self.__handle_forms_result(ctx, res, next_sequences)
+        ctx.set_sequences(next_sequences)
 
-    def __print_sequences(self):
-        for sq in self.__sequences:
+    def __print_sequences(self, ctx):
+        for sq in ctx.get_sequences:
             sq.print_sequence()
 
     def get_name(self):
@@ -1540,7 +1587,7 @@ class SequenceMatchRes(object):
 
 class SequenceSpecMatcher(object):
     def __init__(self, export_svg=False):
-        self.__specs = []
+        self.__matchers = []
         self.__spec_by_name = {}
         self.__create_specs()
         if export_svg:
@@ -1570,44 +1617,58 @@ class SequenceSpecMatcher(object):
                 continue
             sc = SpecCompiler(self)
             spec = sc.compile(spec_class_defs[0])
-            spec_matcher = SpecMatcher(self, spec, self.add_matched)
+            spec_matcher = SpecMatcher(self, spec)
             spec_class_defs[1] = spec_matcher
-            self.__specs.append(spec_matcher)
+            self.__matchers.append(spec_matcher)
 
     def __export_svg(self):
-        for sp in self.__specs:
+        for sp in self.__matchers:
             g = graph.SpecGraph(img_type='svg')
             spec_name = sp.get_name()
             file_name = common.output.output.get_output_file('specs', '{0}.svg'.format(spec_name))
             g.generate(sp.get_compiled_spec().get_states(), file_name)
 
-    def reset(self):
-        for sp in self.__specs:
-            sp.reset()
-
-    def __select_most_complete(self):
+    def __select_most_complete(self, ctx):
         max_entries = reduce(
             lambda prev_max, msq:
                 msq.get_entry_count(hidden=False) if prev_max < msq.get_entry_count(hidden=False) else prev_max,
-            self.__matched_sqs,
+            ctx.matched_sqs,
             0
         )
-        self.__matched_sqs = filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), self.__matched_sqs)
+        ctx.matched_sqs = filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), ctx.matched_sqs)
 
-    def match_sentence(self, sentence, most_complete=False):
-        self.__matched_sqs = set()
-        sent_fini = parser.specdefs.common.SentanceFini()
-        for sp in self.__specs:
-            sp.match(sentence + [sent_fini, ])
+    def __create_initial_ctxs(self, ctx):
+        ctx.ctxs = map(
+            lambda m: (
+                m,
+                MatcherContext(
+                    ctx,
+                    matched_fcn=lambda sq: ctx.matched_sqs.add(sq),
+                )
+            ),
+            self.__matchers
+        )
+
+    def __create_ctx(self):
+        return ns(
+            matched_sqs=set()
+        )
+
+    def match_sentence(self, sentence, ctx=None, most_complete=False):
+        if ctx is None:
+            ctx = self.__create_ctx()
+            self.__create_initial_ctxs(ctx)
+
+        sentence += [parser.specdefs.common.SentanceFini(), ]
+
+        for s in sentence:
+            for matcher, m_ctx in ctx.ctxs:
+                matcher.match(m_ctx, [s, ])
 
         if most_complete:
-            self.__select_most_complete()
-        smr = SequenceMatchRes(self.__matched_sqs)
-        self.reset()
+            self.__select_most_complete(ctx)
+        smr = SequenceMatchRes(ctx.matched_sqs)
         return smr
-
-    def add_matched(self, sq):
-        self.__matched_sqs.add(sq)
 
 
 class RtMatchEntry(object):
