@@ -1317,8 +1317,8 @@ class MatcherContext(object):
     def sequence_forked(self, sq, new_sq):
         self.__fcns['sequence_forked_fcn']((self, sq, new_sq))
 
-    def sequence_forking(self, sq, new_sq):
-        self.__fcns['sequence_forking_fcn']((self, sq, new_sq))
+    def sequence_forking(self, sq):
+        self.__fcns['sequence_forking_fcn']((self, sq))
 
     def sequence_matched(self, sq):
         self.__fcns['sequence_matched_fcn']((self, sq))
@@ -1410,6 +1410,13 @@ class RtMatchSequence(object):
                 self.__links[my_master][my_slave] = details[:]
 
     @argres()
+    def __fork(self):
+        self.__ctx.sequence_forking(self)
+        rtms = RtMatchSequence(self)
+        self.__ctx.sequence_forked(self, rtms)
+        return rtms
+
+    @argres()
     def handle_forms(self, forms):
         head = self.__all_entries[-1]
         trs = head.find_transitions(forms)
@@ -1418,12 +1425,16 @@ class RtMatchSequence(object):
 
         new_sq = []
 
-        trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
+        trs_sqs = [self, ] + map(lambda x: self.__fork(), trs[0:-1])
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             for r in res:
                 if r.valid:
                     new_sq.append(r)
+                else:
+                    self.__ctx.sequence_failed(r.sq)
+                if r.fini:
+                    self.__ctx.sequence_res(r)
 
         return new_sq
 
@@ -1607,6 +1618,8 @@ class SpecMatcher(object):
             if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
                 ms = MatchedSequence(res.sq)
                 ctx.sequence_matched(ms)
+            else:
+                ctx.sequence_failed(res.sq)
 
     def __handle_sequences(self, ctx, forms):
         self.__create_new_sequence(ctx)
@@ -1616,6 +1629,8 @@ class SpecMatcher(object):
             for res in sq.handle_forms(forms):
                 self.__handle_forms_result(ctx, res, next_sequences)
         ctx.set_sequences(next_sequences)
+        if not next_sequences:
+            ctx.ctx_complete()
 
     def __print_sequences(self, ctx):
         for sq in ctx.get_sequences:
