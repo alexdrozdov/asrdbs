@@ -333,17 +333,18 @@ class SpecCompiler(object):
             else:
                 state.inherit_parent_reliability(self.get_reliability())
 
-            if state.includes_spec():
-                in_spec_name = state.get_incapsulated_spec_name(overflow=(self.__spec_depth > 2))
-                in_spec = self.__owner.get_spec(in_spec_name)
-                compiler = SpecCompiler(
-                    owner=self.__owner,
-                    stack=self.__stack,
-                    level=state.get_glevel() + 1,
-                    reliability=state.get_reliability()
-                )
-                compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
-                state.set_incapsulated_spec(compiled_in_spec)
+            if state.has_include():
+                # in_spec_name = state.get_include_name(overflow=(self.__spec_depth > 2))
+                # in_spec = self.__owner.get_spec(in_spec_name)
+                # compiler = SpecCompiler(
+                #     owner=self.__owner,
+                #     stack=self.__stack,
+                #     level=state.get_glevel() + 1,
+                #     reliability=state.get_reliability()
+                # )
+                # compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
+                # state.set_incapsulated_spec(compiled_in_spec)
+                state.set_dynamic()
 
             if state.is_anchor():
                 self.__handle_anchor_state(state)
@@ -495,6 +496,13 @@ class SpecCompiler(object):
             state.unlink_all()
             self.__states.remove(state)
 
+    def __review_anchors(self):
+        for state in self.__states:
+            if not state.is_anchor():
+                continue
+            if state not in self.__local_spec_anchors:
+                state.force_anchor(is_anchor=False)
+
     def register_rule_binding(self, rule, binding):
         return
 
@@ -543,8 +551,17 @@ class SpecCompiler(object):
         self.__incapsulate_rules()
         self.__incapsulate_states()
         self.__create_state_rules()
+        self.__review_anchors()
 
-        cs = CompiledSpec(spec, self.__spec_name, self.__states, self.__inis, self.__finis, self.__local_spec_anchors, spec.get_validate() if self.__level == 0 else None)
+        cs = CompiledSpec(
+            spec,
+            self.__spec_name,
+            self.__states,
+            self.__inis,
+            self.__finis,
+            self.__local_spec_anchors,
+            spec.get_validate() if self.__level == 0 else None
+        )
         self.__stack.pop()
         return cs
 
@@ -672,6 +689,7 @@ class SpecStateDef(object):
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
         self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
         self.__merges_with = set(spec_dict['merges_with']) if spec_dict.has_key('merges_with') else set()
+        self.__fixed = True
 
     def get_name(self):
         return self.__name
@@ -719,10 +737,10 @@ class SpecStateDef(object):
         return self.__is_local_anchor
 
     def fixed(self):
-        return True
+        return self.__fixed
 
-    def force_anchor(self):
-        self.__is_local_anchor = True
+    def force_anchor(self, is_anchor=True):
+        self.__is_local_anchor = is_anchor
 
     def can_merge(self, other):
         return bool(self.__merges_with & other.__merges_with)
@@ -882,8 +900,13 @@ class SpecStateDef(object):
                         return True
         return False
 
-    def get_transitions(self):
-        return self.__transitions[:]
+    def get_transitions(self, filt_fcn=None):
+        if filt_fcn is None:
+            return self.__transitions[:]
+        return filter(
+            filt_fcn,
+            self.__transitions
+        )
 
     def get_rtransitions(self):
         return self.__rtransitions[:]
@@ -922,9 +945,6 @@ class SpecStateDef(object):
     def get_stateless_rules(self):
         return [r.new_copy() for r in self.__stateless_rules]
 
-    def includes_spec(self):
-        return self.__incapsulate_spec_name is not None
-
     def has_rules(self):
         return len(set(['same_as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
 
@@ -937,7 +957,13 @@ class SpecStateDef(object):
     def get_rt_rules_list(self):
         return {r: self.__spec_dict[r] for r in ['same_as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
-    def get_incapsulated_spec_name(self, overflow=False):
+    def includes_spec(self):
+        return self.__incapsulate_spec is not None
+
+    def has_include(self):
+            return self.__incapsulate_spec_name is not None
+
+    def get_include_name(self, overflow=False):
         if not overflow:
             assert self.__incapsulate_spec_name is not None
             return self.__incapsulate_spec_name[0]
@@ -950,6 +976,9 @@ class SpecStateDef(object):
 
     def get_included(self):
         return self.__incapsulate_spec
+
+    def set_dynamic(self):
+        self.__fixed = False
 
     def __repr__(self):
         return "SpecStateDef(name='{0}')".format(self.get_name())
@@ -1275,6 +1304,7 @@ class MatchedSequence(object):
 
 class MatcherContext(object):
     fcns_map = [
+        ('ctx_create_fcn', 'ctx_create_fcn', lambda x: None),
         ('sequence_forked_fcn', 'sequence_forked_fcn', lambda x: None),
         ('sequence_forking_fcn', 'sequence_forking_fcn', lambda x: None),
         ('sequence_matched_fcn', 'sequence_matched_fcn', lambda x: None),
@@ -1288,6 +1318,9 @@ class MatcherContext(object):
         self.__create_fcns(kwargs)
         self.sequences = []
         self.ctxs = []
+        self.__new_ctxs = []
+        self.__blank = True
+        self.ctx_create()
 
     def __create_fcns(self, fcns):
         self.__fcns = {
@@ -1302,17 +1335,31 @@ class MatcherContext(object):
 
     def add_sequence(self, sq):
         self.sequences.append(sq)
+        self.__blank = False
 
     def get_ctxs(self):
         return self.ctxs
+
+    def set_ctxs(self, ctxs):
+        self.ctxs = ctxs
+
+    def get_new_ctxs(self):
+        return self.__new_ctxs
+
+    def clear_new_ctxs(self):
+        self.__new_ctxs = []
 
     def create_ctx(self, spec_name, **kwargs):
         matcher = self.owner.find_matcher(spec_name)
         mc = MatcherContext(self, **kwargs)
         self.ctxs.append((matcher, mc))
+        self.__new_ctxs.append((matcher, mc))
 
     def find_matcher(self, name):
         return self.owner.find_matcher(name)
+
+    def is_blank(self):
+        return self.__blank
 
     def sequence_forked(self, sq, new_sq):
         self.__fcns['sequence_forked_fcn']((self, sq, new_sq))
@@ -1328,6 +1375,9 @@ class MatcherContext(object):
 
     def sequence_res(self, res):
         self.__fcns['sequence_res_fcn']((self, res))
+
+    def ctx_create(self):
+        self.__fcns['ctx_create_fcn']((self, ))
 
     def ctx_complete(self):
         self.__fcns['ctx_complete_fcn']((self, ))
@@ -1358,9 +1408,9 @@ class RtMatchSequence(object):
         return self.logger
 
     @argres(show_result=False)
-    def __init__(self, based_on):
+    def __init__(self, based_on, indexes=None):
         if isinstance(based_on, RtMatchSequence):
-            self.__init_from_sq(based_on)
+            self.__init_from_sq(based_on, indexes)
         elif isinstance(based_on, ns):
             self.__init_new(based_on.matcher, based_on.initial_entry, based_on.ctx)
         else:
@@ -1372,6 +1422,7 @@ class RtMatchSequence(object):
         self.__ctx = ctx
         self.__entries = []
         self.__all_entries = []
+        self.__anchors = []
         self.__links = {}
         self.__forms_csum = 0
         self.__links_csum = 0
@@ -1380,52 +1431,94 @@ class RtMatchSequence(object):
         self.__append_entries(initial_entry)
 
     @argres(show_result=True)
-    def __init_from_sq(self, sq):
+    def __init_from_sq(self, sq, indexes=None):
         self.__matcher = sq.__matcher
         self.__ctx = sq.__ctx
         self.__entries = []
         self.__all_entries = []
+        self.__anchors = []
         self.__forms_csum = 0
         self.__confirmed_csum = 0
 
+        sq.__ctx.sequence_forking(sq)
+
         self.__stack = RtStackCounter(stack=sq.__stack)
 
-        self.__copy_all_entries(sq)
-        self.__copy_links(sq)
+        if indexes is not None:
+            assert isinstance(indexes, tuple) and len(indexes) == 2
+            assert indexes[0] == 0
+            l = indexes[0]
+            r = indexes[1]
+            if r < 0:
+                r += len(sq.__all_entries) + 1
+            indexes = range(l, r)
 
-    def __copy_all_entries(self, sq):
-        for e in sq.__all_entries:
+        self.__copy_all_entries(sq, indexes=indexes)
+        self.__copy_links(sq, indexes=indexes)
+        # self.__copy_anchors(sq, indexes=indexes)
+
+        sq.__ctx.sequence_forked(sq, self)
+
+    def __copy_all_entries(self, sq, indexes):
+        for i, e in filter(
+            lambda (idx, entry): indexes is None or idx in indexes,
+            enumerate(sq.__all_entries)
+        ):
             self.__append_entries(RtMatchEntry(self, e))
         for e in self.__all_entries:
             e.resolve_matched_rtmes()
-        assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
+        if indexes is None:
+            assert len(self.__all_entries) == len(sq.__all_entries) and len(self.__entries) == len(sq.__entries)
 
-    def __copy_links(self, sq):
+    def __copy_links(self, sq, indexes):
         self.__links = {}
         for master, slaves in sq.__links.items():
-            my_master = self[master.get_offset()]
+            master_offset = master.get_offset()
+            if indexes is not None and master_offset not in indexes:
+                continue
+            my_master = self[master_offset]
             self.__links[my_master] = {}
             for slave, details in slaves.items():
-                my_slave = self[slave.get_offset()]
+                slave_offset = slave.get_offset()
+                if indexes is not None and slave_offset not in indexes:
+                    continue
+                my_slave = self[slave_offset]
                 self.__links[my_master][my_slave] = details[:]
 
+    def __copy_anchors(self, sq, indexes):
+        self.__anchors = []
+        for anchor in sq.__anchors:
+            a_offset = anchor.get_offset()
+            if indexes is not None and a_offset not in indexes:
+                continue
+            self.__anchors.append(self[a_offset])
+
     @argres()
-    def __fork(self):
-        self.__ctx.sequence_forking(self)
-        rtms = RtMatchSequence(self)
-        self.__ctx.sequence_forked(self, rtms)
-        return rtms
+    def subseq(self, start, stop):
+        return RtMatchSequence(self, indexes=(start, stop))
+
+    def get_anchors(self):
+        return self.__anchors
+
+    def __add_anchor(self, rtme):
+        self.__anchors.append(rtme)
 
     @argres()
     def handle_forms(self, forms):
         head = self.__all_entries[-1]
+        if isinstance(head, RtTmpEntry):
+            return [ns(
+                sq=self,
+                valid=True if head.get_subctx() is not None else False,
+                fini=False
+            ), ]
         trs = head.find_transitions(forms)
         if not trs:
             return []
 
         new_sq = []
 
-        trs_sqs = [self, ] + map(lambda x: self.__fork(), trs[0:-1])
+        trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             for r in res:
@@ -1447,23 +1540,34 @@ class RtMatchSequence(object):
             return self.__handle_dynamic_trs(trs, form)
 
     @argres()
+    def append(self, rtme):
+        self.__append_entries(rtme)
+
+        if isinstance(rtme, RtTmpEntry):
+            return True
+
+        if not rtme.handle_rules():
+            return False
+
+        for e in self.get_entries(hidden=True, exclude=rtme):
+            if not e.handle_rules(on_entry=rtme):
+                return False
+
+        return True
+
+    @argres()
     def __handle_fixed_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
-        rtme = RtMatchEntry(self, ns(form=form if not to.is_fini() else parser.specdefs.common.SpecStateFiniForm(),
+        rtme = RtMatchEntry(self, ns(form=form,
                                      spec_state_def=to,
                                      rtms_offset=len(self.__all_entries)
                                      )
                             )
-        self.__append_entries(rtme)
 
-        if not rtme.handle_rules():
+        if not self.append(rtme):
             return [ns(sq=self, valid=False, fini=False), ]
-
-        for e in self.get_entries(hidden=True, exclude=rtme):
-            if not e.handle_rules(on_entry=rtme):
-                return [ns(sq=self, valid=False, fini=False), ]
 
         if to.is_fini():
             return [ns(sq=self, valid=self.__on_fini(), fini=True), ]
@@ -1491,11 +1595,28 @@ class RtMatchSequence(object):
         self.__append_entries(rte)
         self.__ctx.create_ctx(
             to.get_include_name(),
-            sequence_res_fcn=lambda (sq_ctx, res): self.__submatcher_res(rte, res),
-            sequence_forked_fcn=lambda (sq_ctx, sq, new_sq): self.__submatcher_forked(rte),
-            ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(rte),
+            ctx_create_fcn=lambda(sub_ctx, ): self.__subctx_create(sub_ctx, rte),
+            sequence_res_fcn=lambda (sub_ctx, res): self.__submatcher_res(sub_ctx, rte, res),
+            sequence_forked_fcn=lambda (sub_ctx, sq, new_sq): self.__submatcher_forked(sub_ctx, sq, new_sq, rte),
+            ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(sub_ctx, rte),
         )
         return [ns(sq=self, valid=True, fini=False), ]
+
+    def __subctx_create(self, sub_ctx, rte):
+        # print '__submatcher_create', sub_ctx, rte
+        rte.set_subctx(sub_ctx)
+
+    def __submatcher_res(self, sub_ctx, rte, res):
+        # print '__submatcher_res', res
+        rte.add_sequence_res(sub_ctx, res)
+
+    def __submatcher_forked(self, sub_ctx, sq, new_sq, rte):
+        # print '__submatcher_forked'
+        rte.add_forked_sequence(sub_ctx, new_sq)
+
+    def __subctx_complete(self, sub_ctx, rte):
+        # print '__submatcher_complete', sub_ctx, rte
+        rte.unset_subctx(sub_ctx)
 
     @argres()
     def __on_fini(self):
@@ -1509,6 +1630,8 @@ class RtMatchSequence(object):
         if rtme.get_spec().add_to_seq():
             self.__entries.append(rtme)
         self.__forms_csum |= rtme.get_form().get_uniq()
+        if rtme.get_spec().is_anchor():
+            self.__add_anchor(rtme)
 
     def __getitem__(self, index):
         return self.__all_entries[index]
@@ -1564,6 +1687,9 @@ class RtMatchSequence(object):
             return src[:]
         return [e for e in src if e is not exclude]
 
+    def get_ctx(self):
+        return self.__ctx
+
     def __repr__(self):
         return "RtMatchSequence(objid={0})".format(hex(id(self)))
 
@@ -1593,7 +1719,10 @@ class SpecMatcher(object):
 
     def match(self, ctx, sentence):
         for forms in sentence:
-            self.__handle_sequences(ctx, forms)
+            res = self.__handle_sequences(ctx, forms)
+            if res.complete:
+                return res
+        return ns(complete=False)
 
     def __create_new_sequence(self, ctx):
         ini_spec = self.__compiled_spec.get_inis()[0]
@@ -1622,15 +1751,20 @@ class SpecMatcher(object):
                 ctx.sequence_failed(res.sq)
 
     def __handle_sequences(self, ctx, forms):
-        self.__create_new_sequence(ctx)
+        if ctx.is_blank():
+            self.__create_new_sequence(ctx)
 
-        next_sequences = []
-        for sq in ctx.get_sequences():
-            for res in sq.handle_forms(forms):
-                self.__handle_forms_result(ctx, res, next_sequences)
-        ctx.set_sequences(next_sequences)
-        if not next_sequences:
-            ctx.ctx_complete()
+        if ctx.get_sequences():
+            next_sequences = []
+            for sq in ctx.get_sequences():
+                # print "handling", sq
+                for res in sq.handle_forms(forms):
+                    self.__handle_forms_result(ctx, res, next_sequences)
+            ctx.set_sequences(next_sequences)
+            if not next_sequences:
+                ctx.ctx_complete()
+                return ns(complete=True)
+        return ns(complete=False)
 
     def __print_sequences(self, ctx):
         for sq in ctx.get_sequences:
@@ -1654,6 +1788,7 @@ class SequenceMatchRes(object):
 class SequenceSpecMatcher(object):
     def __init__(self, export_svg=False):
         self.__matchers = []
+        self.__primary = []
         self.__spec_by_name = {}
         self.__create_specs()
         if export_svg:
@@ -1663,15 +1798,23 @@ class SequenceSpecMatcher(object):
         for sd in specdefs.load_specdefs():
             sd_inst = sd()
             independent_compile = self.__is_independent(sd_inst)
-            self.add_spec(sd_inst, independent_compile=independent_compile)
+            primary = self.__is_primary(sd_inst)
+            self.add_spec(
+                sd_inst,
+                independent_compile=independent_compile,
+                primary=primary
+            )
         self.build_specs()
 
     def __is_independent(self, specdef):
-        return specdef.get_name() == 'sentance'
+        return specdef.get_name() in ['adv-adj', 'basic-adv', 'basic-adj']
 
-    def add_spec(self, base_spec_class, independent_compile=False):
+    def __is_primary(self, specdef):
+        return specdef.get_name() == 'adv-adj'
+
+    def add_spec(self, base_spec_class, independent_compile=False, primary=False):
         assert base_spec_class.get_name() not in self.__spec_by_name
-        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None, independent_compile]
+        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None, independent_compile, primary]
 
     def get_spec(self, base_spec_name):
         return self.__spec_by_name[base_spec_name][0]
@@ -1685,6 +1828,7 @@ class SequenceSpecMatcher(object):
     def build_specs(self):
         for spec_name, spec_class_defs in self.__spec_by_name.items():
             independent_compile = spec_class_defs[2]
+            primary = spec_class_defs[3]
             if not independent_compile:
                 continue
             sc = SpecCompiler(self)
@@ -1692,6 +1836,8 @@ class SequenceSpecMatcher(object):
             spec_matcher = SpecMatcher(self, spec)
             spec_class_defs[1] = spec_matcher
             self.__matchers.append(spec_matcher)
+            if primary:
+                self.__primary.append(spec_matcher)
 
     def __export_svg(self):
         for sp in self.__matchers:
@@ -1718,7 +1864,7 @@ class SequenceSpecMatcher(object):
                     sequence_matched_fcn=lambda (sq_ctx, sq): ctx.matched_sqs.add(sq),
                 )
             ),
-            self.__matchers
+            self.__primary
         )
 
     def __create_ctx(self):
@@ -1728,9 +1874,26 @@ class SequenceSpecMatcher(object):
         )
 
     def __handle_ctx(self, matcher, ctx, s):
+        ctx.clear_new_ctxs()
+
+        next_subctxs = []
         for mtchr, m_ctx in ctx.get_ctxs():
+            # print "Processing existing sub ctxs", m_ctx, s[0].get_word(), "with", mtchr.get_name()
+            res = self.__handle_ctx(mtchr, m_ctx, s)
+            if not res.complete:
+                next_subctxs.append((mtchr, m_ctx))
+        ctx.set_ctxs(next_subctxs)
+
+        # print "Processing ctx", ctx, s[0].get_word(), "with", matcher.get_name()
+        res = matcher.match(ctx, s)
+        if res.complete:
+            return res
+
+        for mtchr, m_ctx in ctx.get_new_ctxs():
+            # print "Processing newly created ctxs", m_ctx, s[0].get_word(), "with", mtchr.get_name()
             self.__handle_ctx(mtchr, m_ctx, s)
-        matcher.match(ctx, s)
+
+        return ns(complete=False)
 
     def match_sentence(self, sentence, ctx=None, most_complete=False):
         if ctx is None:
@@ -1740,8 +1903,10 @@ class SequenceSpecMatcher(object):
         sentence += [parser.specdefs.common.SentanceFini(), ]
 
         for s in sentence:
+            # print "==========================", s.get_word(), "===================="
+            s = [s, ]
             for matcher, m_ctx in ctx.ctxs:
-                self.__handle_ctx(matcher, m_ctx, [s, ])
+                self.__handle_ctx(matcher, m_ctx, s)
 
         if most_complete:
             self.__select_most_complete(ctx)
@@ -1836,6 +2001,8 @@ class RtMatchEntry(object):
         for rule_rtme in self.__matched:
             if isinstance(rule_rtme.rtme, RtMatchEntry):
                 continue
+            # FIXME For or subseq calls except subseq(0. -2) when last entry
+            # is tmp we will get outofrange exception
             rule_rtme.rtme = self.__owner[rule_rtme.rtme]
         return True
 
@@ -1906,11 +2073,14 @@ class RtMatchEntry(object):
                         lambda (frm, trs): trs.get_to().is_static_applicable(frm),
                         map(
                             lambda trs: (form, trs),
-                            self.__spec.get_transitions()
+                            self.__spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
                         )
                     ),
                 forms.get_forms()
             )
+        ) + map(
+            lambda trs: (parser.specdefs.common.SpecStateFiniForm(), trs),
+            self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         )
 
     @argres()
@@ -1939,6 +2109,8 @@ class RtMatchEntry(object):
 
     @argres()
     def __check_applicable(self, rule, other_rtme):
+        if isinstance(other_rtme, RtTmpEntry):
+            return False
         return rule.is_applicable(self, other_rtme)
 
     @argres()
@@ -1981,11 +2153,15 @@ class RtTmpEntry(object):
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
+        self.__sub_ctx = None
 
         self.__create_name(self.__spec.get_name())
 
     def get_matched_rules(self):
         return []
+
+    def get_subctx(self):
+        return self.__sub_ctx
 
     @argres(show_result=True)
     def matched_list_valid(self):
@@ -2045,12 +2221,49 @@ class RtTmpEntry(object):
 
     @argres()
     def find_transitions(self, forms):
-        # FIXME return trs to self
-        return []
+        return map(
+            lambda f: (f, TrsDef(None, self.get_spec(), st_to=self.get_spec())),
+            forms.get_forms()
+        )
 
     @argres()
     def handle_rules(self, on_entry=None):
         return True
+
+    @argres(show_result=False)
+    def set_subctx(self, sub_ctx):
+        assert self.__sub_ctx is None
+        self.__sub_ctx = sub_ctx
+
+    @argres(show_result=False)
+    def add_sequence_res(self, sub_ctx, res):
+        assert sub_ctx == self.__sub_ctx
+        assert res.fini
+        if not res.valid:
+            return
+        rtms = self.__owner.subseq(start=0, stop=-2)
+        subseq_anchor = res.sq.get_anchors()[0].get_form()
+        rtme = RtMatchEntry(
+            rtms,
+            ns(
+                form=subseq_anchor,
+                spec_state_def=self.__spec,
+                rtms_offset=self.__rtms_offset
+            )
+        )
+        rtms.append(rtme)  # FIXME Check if this entry matches whole sequence
+        rtms.get_ctx().add_sequence(rtms)
+        # print rtms
+        # rtms.print_sequence()
+
+    @argres(show_result=False)
+    def add_forked_sequence(self, sub_ctx, new_sq):
+        assert sub_ctx == self.__sub_ctx
+
+    @argres(show_result=False)
+    def unset_subctx(self, sub_ctx):
+        assert id(sub_ctx) == id(self.__sub_ctx), '{0}, {1}'.format(sub_ctx, self.__sub_ctx)
+        self.__sub_ctx = None
 
     def __repr__(self):
         try:

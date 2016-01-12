@@ -16,7 +16,7 @@ class AdvAdjSequenceSpec(SequenceSpec):
         self.spec = template("spec")([
             template("repeat")(
                 "$PARENT::adv",
-                repeatable=RepeatableSpecs().Any(),
+                repeatable=RepeatableSpecs().Once(),
                 body={
                     "id": "$PARENT::adv",
                     "repeatable": RepeatableSpecs().Once(),
@@ -25,6 +25,11 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 },
                 separator={'always': False}
             ),
+            # {
+            #     "id": "$PARENT::adv",
+            #     "repeatable": RepeatableSpecs().Once(),
+            #     "include": ["basic-adv", ],
+            # },
             {
                 "id": "$PARENT::adj",
                 "repeatable": RepeatableSpecs().Once(),
