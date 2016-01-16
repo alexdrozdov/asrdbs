@@ -5,6 +5,7 @@
 import copy
 import parser.specdefs.common
 from parser.specdefs.common import RtRule, RtMatchString
+import parser.preprocessor
 import parser.specdefs.defs
 import specdefs
 import graph
@@ -334,17 +335,19 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_include():
-                # in_spec_name = state.get_include_name(overflow=(self.__spec_depth > 2))
-                # in_spec = self.__owner.get_spec(in_spec_name)
-                # compiler = SpecCompiler(
-                #     owner=self.__owner,
-                #     stack=self.__stack,
-                #     level=state.get_glevel() + 1,
-                #     reliability=state.get_reliability()
-                # )
-                # compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
-                # state.set_incapsulated_spec(compiled_in_spec)
-                state.set_dynamic()
+                if self.__spec_depth <= 1:
+                    in_spec_name = state.get_include_name()
+                    in_spec = self.__owner.get_spec(in_spec_name)
+                    compiler = SpecCompiler(
+                        owner=self.__owner,
+                        stack=self.__stack,
+                        level=state.get_glevel() + 1,
+                        reliability=state.get_reliability()
+                    )
+                    compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
+                    state.set_incapsulated_spec(compiled_in_spec)
+                else:
+                    state.set_dynamic()
 
             if state.is_anchor():
                 self.__handle_anchor_state(state)
@@ -677,8 +680,6 @@ class SpecStateDef(object):
         self.__uid = ue.get_uniq()
         self.__incapsulate_spec_name = spec_dict['include'] if spec_dict.has_key('include') else None
         assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
-        self.__incapsulate_ovf_spec_name = spec_dict['incapsulate-on-overflow'] if spec_dict.has_key('incapsulate-on-overflow') else None
-        assert self.__incapsulate_ovf_spec_name is None or len(self.__incapsulate_ovf_spec_name) == 1
         self.__incapsulate_spec = None
         self.__stateless_rules = []
         self.__rt_rules = []
@@ -963,12 +964,9 @@ class SpecStateDef(object):
     def has_include(self):
             return self.__incapsulate_spec_name is not None
 
-    def get_include_name(self, overflow=False):
-        if not overflow:
-            assert self.__incapsulate_spec_name is not None
-            return self.__incapsulate_spec_name[0]
-        assert self.__incapsulate_ovf_spec_name is not None, '{0}, {1}'.format(self.get_name(), self.__spec_dict)
-        return self.__incapsulate_ovf_spec_name[0]
+    def get_include_name(self):
+        assert self.__incapsulate_spec_name is not None
+        return self.__incapsulate_spec_name[0]
 
     def set_incapsulated_spec(self, spec):
         assert self.__incapsulate_spec is None
@@ -1790,54 +1788,60 @@ class SequenceSpecMatcher(object):
         self.__matchers = []
         self.__primary = []
         self.__spec_by_name = {}
+        self.__preprocessor = parser.preprocessor.Preprocessor()
         self.__create_specs()
         if export_svg:
             self.__export_svg()
 
     def __create_specs(self):
         for sd in specdefs.load_specdefs():
-            sd_inst = sd()
-            independent_compile = self.__is_independent(sd_inst)
-            primary = self.__is_primary(sd_inst)
-            self.add_spec(
-                sd_inst,
-                independent_compile=independent_compile,
-                primary=primary
-            )
+            self.add_spec(sd())
         self.build_specs()
 
     def __is_independent(self, specdef):
         return specdef.get_name() in ['adv-adj', 'basic-adv', 'basic-adj']
 
-    def __is_primary(self, specdef):
-        return specdef.get_name() == 'adv-adj'
+    def __is_primary(self, name):
+        return name == 'sentance'
 
-    def add_spec(self, base_spec_class, independent_compile=False, primary=False):
+    def add_spec(self, base_spec_class):
         assert base_spec_class.get_name() not in self.__spec_by_name
-        self.__spec_by_name[base_spec_class.get_name()] = [base_spec_class, None, independent_compile, primary]
+        res = self.__preprocessor.preprocess(base_spec_class)
+        self.__spec_by_name[base_spec_class.get_name()] = ns(
+            base_spec_class=base_spec_class,
+            matcher=None,
+            dependencies=res.dependencies
+        )
 
     def get_spec(self, base_spec_name):
-        return self.__spec_by_name[base_spec_name][0]
+        return self.__spec_by_name[base_spec_name].base_spec_class
 
     def get_matcher(self, name):
         for m in self.__matchers:
             if m.get_name() == name:
                 return m
-        raise KeyError()
+        raise KeyError(name)
+
+    def __build_spec(self, name):
+        desc = self.__spec_by_name[name]
+        if desc.matcher is not None:
+            return
+        desc.matcher = "Build in progress"
+        for d in desc.dependencies:
+            self.__build_spec(d)
+
+        sc = SpecCompiler(self)
+        spec = sc.compile(desc.base_spec_class)
+        matcher = SpecMatcher(self, spec)
+        desc.matcher = matcher
+        self.__matchers.append(matcher)
+        if self.__is_primary(matcher.get_name()):
+            self.__primary.append(matcher)
 
     def build_specs(self):
-        for spec_name, spec_class_defs in self.__spec_by_name.items():
-            independent_compile = spec_class_defs[2]
-            primary = spec_class_defs[3]
-            if not independent_compile:
-                continue
-            sc = SpecCompiler(self)
-            spec = sc.compile(spec_class_defs[0])
-            spec_matcher = SpecMatcher(self, spec)
-            spec_class_defs[1] = spec_matcher
-            self.__matchers.append(spec_matcher)
-            if primary:
-                self.__primary.append(spec_matcher)
+        for spec_name in self.__spec_by_name.keys():
+            if self.__is_primary(spec_name):
+                self.__build_spec(spec_name)
 
     def __export_svg(self):
         for sp in self.__matchers:

@@ -67,17 +67,17 @@ sentence = [u'друзья', u'шли', u'по', u'зеленым', u'лугам
 # sentence = [u'красные', u'цветы']
 # sentence = [u'мальчики', u'и', u'девочки', u'сидели', u'на', u'лавочке']
 sentence = [u'мальчики', u',', u'девочки', u'сидели', u'на', u'лавочке']
-# sentence = u'мама мыла покрашенную раму'
+sentence = u'мама мыла покрашенную раму'
 # sentence = [u'мама', u'мыла', u'покрашенную', u'белой', u'краской', u'раму', u'окна']
 # sentence = [u'я', u'смотрел', u'на', u'березу', u',', u'стоящую', u'под', u'окном', u',', u'покрытую', u'снегом']
 # sentence = [u'косой', u'косой', u'косил', u'косой', u'косой']
-sentence = u'ярко красный'
+# sentence = u'ярко красный'
 
 with timeit_ctx('total'):
     with timeit_ctx('loading database'):
         tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
     with timeit_ctx('building parser'):
-        srm = parser.specs.SequenceSpecMatcher(True)
+        srm = parser.specs.SequenceSpecMatcher(False)
 
     with timeit_ctx('tokenizing'):
         tokens = parser.sentparser.Tokenizer().tokenize(sentence)

@@ -170,7 +170,11 @@ class c__case_check(RtStaticRule):
         return c__case_check(self.__cases)
 
     def match(self, form):
-        return form.get_case() in self.__cases
+        try:
+            return form.get_case() in self.__cases
+        except:
+            pass
+        return False
 
     def get_info(self, wrap=False):
         return u'case: {0}'.format(self.__cases[0])

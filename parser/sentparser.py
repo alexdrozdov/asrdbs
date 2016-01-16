@@ -123,10 +123,12 @@ class WordFormInfo(object):
     def __get_info_param(self, name):
         try:
             return self.info[name]
-        except KeyError as e:
-            print u"Key ", name, u" not found in info for", self.info, self.get_word()
-            traceback.format_exc()
-            raise e
+        except KeyError:
+            raise KeyError(u"Key {0} not found in info for {1}, {2}".format(
+                name,
+                self.info,
+                self.get_word()
+            ))
 
     def get_case(self):
         return self.__get_info_param('case')
