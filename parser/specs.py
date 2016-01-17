@@ -335,7 +335,7 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_include():
-                if self.__spec_depth <= 1:
+                if self.__spec_depth <= 0:
                     in_spec_name = state.get_include_name()
                     in_spec = self.__owner.get_spec(in_spec_name)
                     compiler = SpecCompiler(
@@ -1145,12 +1145,29 @@ class Link(object):
 
 
 class MatchedEntry(object):
-    def __init__(self, rtme):
+    def __init__(self, me):
+        if isinstance(me, RtMatchEntry):
+            self.__init_from_rtme(me)
+        else:
+            self.__init_from_me(me)
+
+    def __init_from_rtme(self, rtme):
         self.__form = rtme.get_form()
         self.__name = rtme.get_name()
         self.__reliability = rtme.get_reliability()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
         self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
+        self.__masters = []
+        self.__slaves = []
+        self.__masters_csum = 0
+        self.__slaves_csum = 0
+
+    def __init_from_me(self, me):
+        self.__form = me.__form
+        self.__name = me.__name
+        self.__reliability = me.__reliability
+        self.__is_hidden = me.__hidden
+        self.__rules = [r for r in me.__rules]
         self.__masters = []
         self.__slaves = []
         self.__masters_csum = 0
@@ -1213,6 +1230,9 @@ class MatchedSequence(object):
         self.__reliability = 1.0
 
         for e in sq.get_entries(hidden=True):
+            if e.has_attribute('subseq'):
+                self.__copy_subseq(e)
+                continue
             me = MatchedEntry(e)
             self.__append_entries(me)
             self.__reliability *= me.get_reliability()
@@ -1220,6 +1240,18 @@ class MatchedSequence(object):
         for master, slaves in sq.get_links().items():
             for slave, details in slaves.items():
                 self.__mk_link(master, slave, details)
+
+    def __copy_subseq(self, rtme):
+        for me in rtme.get_attribute('subseq').get_entries(hidden=True):
+            if isinstance(
+                me.get_form(),
+                (
+                    parser.specdefs.common.SpecStateIniForm,
+                    parser.specdefs.common.SpecStateFiniForm
+                )
+            ):
+                continue
+            self.__append_entries(me)
 
     def __mk_link(self, master, slave, details):
         assert all((
@@ -1932,16 +1964,23 @@ class RtMatchEntry(object):
         if isinstance(based_on, RtMatchEntry):
             self.__init_from_rtme(owner, based_on)
         elif isinstance(based_on, ns):
-            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def, based_on.rtms_offset)
+            self.__init_from_form_spec(
+                owner,
+                based_on.form,
+                based_on.spec_state_def,
+                based_on.rtms_offset,
+                based_on.attributes if hasattr(based_on, 'attributes') else {}
+            )
 
     @argres(show_result=False)
-    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset):
+    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
         self.__form = form
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
+        self.__attributes = attributes
 
         self.__create_name(self.__spec.get_name())
         self.__create_rules()
@@ -1958,8 +1997,13 @@ class RtMatchEntry(object):
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
+        self.__copy_attributes(rtme)
         self.__index_rules()
         self.__copy_matched_rules(rtme)
+
+    @argres(show_result=False)
+    def __copy_attributes(self, rtme):
+        self.__attributes = {k: v for k, v in rtme.__attributes.items()}
 
     @argres(show_result=False)
     def __create_rules(self):
@@ -2120,6 +2164,12 @@ class RtMatchEntry(object):
     def __apply_on(self, rule, other_rtme):
         return rule.apply_on(self, other_rtme) != RtRule.res_failed
 
+    def has_attribute(self, name):
+        return self.__attributes.has_key(name)
+
+    def get_attribute(self, name):
+        return self.__attributes[name]
+
     def __repr__(self):
         try:
             return "RtMatchEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
@@ -2251,7 +2301,10 @@ class RtTmpEntry(object):
             ns(
                 form=subseq_anchor,
                 spec_state_def=self.__spec,
-                rtms_offset=self.__rtms_offset
+                rtms_offset=self.__rtms_offset,
+                attributes={
+                    'subseq': MatchedSequence(res.sq)
+                }
             )
         )
         rtms.append(rtme)  # FIXME Check if this entry matches whole sequence

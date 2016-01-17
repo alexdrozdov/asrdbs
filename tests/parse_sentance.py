@@ -86,7 +86,7 @@ with timeit_ctx('total'):
         parsed_sentence = tm.map(tokens)
 
     with timeit_ctx('matching sentences'):
-        matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
+        matched_sentences = srm.match_sentence(parsed_sentence, most_complete=False)
 
     for j, sq in enumerate(matched_sentences.get_sequences()):
         sq.print_sequence()
