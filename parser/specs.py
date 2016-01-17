@@ -1788,6 +1788,7 @@ class SequenceSpecMatcher(object):
         self.__matchers = []
         self.__primary = []
         self.__spec_by_name = {}
+        self.__matcher_by_name = {}
         self.__preprocessor = parser.preprocessor.Preprocessor()
         self.__create_specs()
         if export_svg:
@@ -1817,10 +1818,7 @@ class SequenceSpecMatcher(object):
         return self.__spec_by_name[base_spec_name].base_spec_class
 
     def get_matcher(self, name):
-        for m in self.__matchers:
-            if m.get_name() == name:
-                return m
-        raise KeyError(name)
+        return self.__matcher_by_name[name]
 
     def __build_spec(self, name):
         desc = self.__spec_by_name[name]
@@ -1835,6 +1833,7 @@ class SequenceSpecMatcher(object):
         matcher = SpecMatcher(self, spec)
         desc.matcher = matcher
         self.__matchers.append(matcher)
+        self.__matcher_by_name[matcher.get_name()] = matcher
         if self.__is_primary(matcher.get_name()):
             self.__primary.append(matcher)
 
