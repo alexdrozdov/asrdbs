@@ -1145,11 +1145,11 @@ class Link(object):
 
 
 class MatchedEntry(object):
-    def __init__(self, me):
+    def __init__(self, me, rtme=None):
         if isinstance(me, RtMatchEntry):
             self.__init_from_rtme(me)
         else:
-            self.__init_from_me(me)
+            self.__init_from_me(me, rtme)
 
     def __init_from_rtme(self, rtme):
         self.__form = rtme.get_form()
@@ -1157,17 +1157,22 @@ class MatchedEntry(object):
         self.__reliability = rtme.get_reliability()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
         self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
+        self.__is_anchor = rtme.get_spec().is_anchor()
         self.__masters = []
         self.__slaves = []
         self.__masters_csum = 0
         self.__slaves_csum = 0
 
-    def __init_from_me(self, me):
+    def __init_from_me(self, me, rtme):
+        assert rtme is not None
         self.__form = me.__form
         self.__name = me.__name
         self.__reliability = me.__reliability
-        self.__is_hidden = me.__hidden
+        self.__is_hidden = me.__is_hidden
         self.__rules = [r for r in me.__rules]
+        self.__is_anchor = me.__is_anchor and rtme.get_spec().is_anchor()
+        if me.__is_anchor:
+            self.__rules += [mr.rule for mr in rtme.get_matched_rules()]
         self.__masters = []
         self.__slaves = []
         self.__masters_csum = 0
@@ -1187,6 +1192,9 @@ class MatchedEntry(object):
 
     def is_hidden(self):
         return self.__is_hidden
+
+    def is_anchor(self):
+        return self.__is_anchor
 
     def get_reliability(self):
         return self.__reliability
@@ -1222,6 +1230,7 @@ class MatchedSequence(object):
         self.__name = sq.get_rule_name()
         self.__entries = []
         self.__all_entries = []
+        self.__anchors = []
         self.__links = []
         self.__all_links = []
         self.__entries_csum = 0
@@ -1251,6 +1260,7 @@ class MatchedSequence(object):
                 )
             ):
                 continue
+            me = MatchedEntry(me, rtme)
             self.__append_entries(me)
 
     def __mk_link(self, master, slave, details):
@@ -1270,6 +1280,8 @@ class MatchedSequence(object):
         self.__all_entries.append(me)
         if not me.is_hidden():
             self.__entries.append(me)
+        if me.is_anchor():
+            self.__anchors.append(me)
         self.__uid2me[me.get_uniq()] = me
         self.__entries_csum |= me.get_uniq()
 
