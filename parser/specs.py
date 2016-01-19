@@ -1262,6 +1262,24 @@ class MatchedSequence(object):
                 continue
             me = MatchedEntry(me, rtme)
             self.__append_entries(me)
+        for me in rtme.get_attribute('subseq').get_entries(hidden=True):
+            if isinstance(
+                me.get_form(),
+                (
+                    parser.specdefs.common.SpecStateIniForm,
+                    parser.specdefs.common.SpecStateFiniForm
+                )
+            ):
+                continue
+            for link in me.get_master_links():
+                master = link.get_master()
+                slave = link.get_slave()
+                me_from = self.__uid2me[master.get_form().get_uniq()]
+                me_to = self.__uid2me[slave.get_form().get_uniq()]
+                l = Link(me_from, me_to, link.get_details())
+                me_from.add_link(l)
+                me_to.add_link(l)
+                self.__append_links(l)
 
     def __mk_link(self, master, slave, details):
         assert all((
