@@ -335,7 +335,7 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_include():
-                if self.__spec_depth <= 0:
+                if self.__spec_depth <= 1:
                     in_spec_name = state.get_include_name()
                     in_spec = self.__owner.get_spec(in_spec_name)
                     compiler = SpecCompiler(
