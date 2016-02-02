@@ -16,7 +16,9 @@ class SubjectGroupSpec(SequenceSpec):
             {
                 "id": "$PARENT::subject",
                 "repeatable": RepeatableSpecs().Once(),
-                "include": ["basic-subject", ],
+                "include": {
+                    "spec": "basic-subject"
+                },
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             }
         )

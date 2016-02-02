@@ -20,20 +20,19 @@ class AdvAdjSequenceSpec(SequenceSpec):
                 body={
                     "id": "$PARENT::adv",
                     "repeatable": RepeatableSpecs().Once(),
-                    "include": ["basic-adv", ],
+                    "include": {
+                        "spec": "basic-adv"
+                    },
                     "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
                 },
                 separator={'always': False}
             ),
-            # {
-            #     "id": "$PARENT::adv",
-            #     "repeatable": RepeatableSpecs().Once(),
-            #     "include": ["basic-adv", ],
-            # },
             {
                 "id": "$PARENT::adj",
                 "repeatable": RepeatableSpecs().Once(),
-                "include": ["basic-adj", ],
+                "include": {
+                    "spec": "basic-adj"
+                },
                 "anchor": [AnchorSpecs().LocalSpecAnchor(), ]
             }
         ])

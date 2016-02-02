@@ -16,7 +16,9 @@ class NounNounSequenceSpec(SequenceSpec):
             {
                 "id": "$SPEC::noun",
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(2),
-                "include": ["adj+-noun", ],
+                "include": {
+                    "spec": "adj+-noun"
+                },
                 "incapsulate-binding": "$THIS::$INCAPSULATED::noun",
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX(0)-1]"), ],
             }

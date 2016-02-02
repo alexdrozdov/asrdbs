@@ -24,7 +24,9 @@ class TemplateRepeat(parser.templates.common.SpecTemplate):
                 {
                     "id": "$PARENT::comma-and-or",
                     "repeatable": RepeatableSpecs().Once(),
-                    "include": ["comma-and-or", ],
+                    "include": {
+                        "spec": "comma-and-or"
+                    },
                 }
         elif isinstance(separator, dict):
             optional = separator.has_key('always') and not separator['always']
@@ -34,7 +36,9 @@ class TemplateRepeat(parser.templates.common.SpecTemplate):
                     {
                         "id": "$PARENT::comma-and-or",
                         "repeatable": RepeatableSpecs().Once(),
-                        "include": ["comma-and-or", ],
+                        "include": {
+                            "spec": "comma-and-or"
+                        },
                     }
                 if optional:
                     separator['repeatable'] = RepeatableSpecs().LessOrEqualThan(1)

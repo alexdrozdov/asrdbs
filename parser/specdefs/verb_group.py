@@ -16,19 +16,25 @@ class VerbGroupSpec(SequenceSpec):
             {
                 "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT::noun-group-pre",
-                "include": ["noun-group", ],
+                "include": {
+                    "spec": "noun-group"
+                },
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             },
             {
                 "repeatable": RepeatableSpecs().Once(),
                 "id": "$PARENT::predicate",
-                "include": ["adv-verb", ],
+                "include": {
+                    "spec": "adv-verb"
+                },
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
             {
                 "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT::noun-group-post",
-                "include": ["noun-group", ],
+                "include": {
+                    "spec": "noun-group"
+                },
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             }
         ])

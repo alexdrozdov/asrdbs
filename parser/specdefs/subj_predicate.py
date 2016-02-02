@@ -17,7 +17,9 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
             {
                 "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT::subject-pre",
-                "include": ["subject-group", ],
+                "include": {
+                    "spec": "subject-group"
+                },
             },
             {
                 "repeatable": RepeatableSpecs().EqualOrMoreThan(1),
@@ -27,7 +29,9 @@ class SubjectPredicateSequenceSpec(SequenceSpec):
             {
                 "repeatable": RepeatableSpecs().Any(),
                 "id": "$PARENT::subject-post",
-                "include": ["subject-group", ],
+                "include": {
+                    "spec": "subject-group"
+                },
             }
         ])
 

@@ -64,13 +64,35 @@ class Preprocessor(object):
 
     def __on_include(self, attrs):
         ctx, value = attrs
-        if not isinstance(value, list):
-            raise PreprocessorError(ctx, 'Include key expects value to be a list, but got {0}', type(value))
-        if len(value) != 1:
-            raise PreprocessorError(ctx, 'Include value expects only one item , but got {0}', len(value))
-        if not isinstance(value[0], str):
-            raise PreprocessorError(ctx, 'Include value expects to be str, but got {0}', type(value[0]))
-        ctx.add_dependency(value[0])
+        if not isinstance(value, dict):
+            raise PreprocessorError(
+                ctx,
+                'Include key expects value to be a dict, but got {0}'.format(
+                    type(value)
+                )
+            )
+        if not value.has_key('spec'):
+            raise PreprocessorError(
+                ctx,
+                'Include dict requires at least "spec" key to be specified'
+            )
+        expected_keys = set(['spec', 'static-only', 'dynamic-only'])
+        unexpected_keys = set(value.keys()) - expected_keys
+        if unexpected_keys:
+            raise PreprocessorError(
+                ctx,
+                'Include contains unexpected keys {0}'.format(
+                    list(unexpected_keys)
+                )
+            )
+        if not isinstance(value['spec'], str):
+            raise PreprocessorError(
+                ctx,
+                'Include key value "spec" expects to be str, but got {0}'.format(
+                    type(value['spec'])
+                )
+            )
+        ctx.add_dependency(value['spec'])
         return True
 
     def __on_entries(self, attrs):

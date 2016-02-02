@@ -23,8 +23,9 @@ class NounGroupSpec(SequenceSpec):
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "include": ["noun-ctrl-noun", ],
-                "incapsulate-on-overflow": ["basic-noun", ],
+                "include": {
+                    "spec": "noun-ctrl-noun"
+                },
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::preposition"), ],
             },
             {
@@ -32,8 +33,9 @@ class NounGroupSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Any(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "same_as": [SameAsSpecs().SameCase("$PARENT::noun"), ],
-                "include": ["noun-group-aux", ],
-                "incapsulate-on-overflow": ["basic-noun", ],
+                "include": {
+                    "spec": "noun-group-aux"
+                },
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::preposition"), ],
             }
         ])
@@ -51,13 +53,17 @@ class NounGroupAuxSpec(SequenceSpec):
             {
                 "id": "$PARENT::comma-and-or",
                 "repeatable": RepeatableSpecs().Once(),
-                "include": ["comma-and-or", ],
+                "include": {
+                    "spec": "comma-and-or"
+                },
             },
             {
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "include": ["noun-ctrl-noun", ],
+                "include": {
+                    "spec": "noun-ctrl-noun"
+                },
             }
         ])
 
@@ -72,7 +78,9 @@ class NounCtrlNounSpec(SequenceSpec):
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "include": ["adj+-noun", ],
+                "include": {
+                    "spec": "adj+-noun"
+                },
                 "incapsulate-on-overflow": ["basic-noun", ],
             },
             {
@@ -84,14 +92,18 @@ class NounCtrlNounSpec(SequenceSpec):
                         "repeatable": RepeatableSpecs().Once(),
                         "master-slave": [LinkSpecs().IsSlave("$SPEC::noun"), ],
                         "case": [CaseSpecs().IsCase(["genitive", ]), ],
-                        "include": ["adj+-noun", ],
+                        "include": {
+                            "spec": "adj+-noun"
+                        },
                     },
                     {
                         "id": "$PARENT::ctrled-noun",
                         "repeatable": RepeatableSpecs().LessOrEqualThan(1),
                         "master-slave": [LinkSpecs().IsSlave("$SPEC::ctrled-noun::noun"), ],
                         "case": [CaseSpecs().IsCase(["genitive", ]), ],
-                        "include": ["adj+-noun", ],
+                        "include": {
+                            "spec": "adj+-noun"
+                        },
                     }
                 ]
             }

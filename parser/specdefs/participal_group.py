@@ -22,7 +22,9 @@ class ParticipalGroupSpec(SequenceSpec):
             {
                 "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                "include": ["noun-group", ],
+                "include": {
+                    "spec": "noun-group"
+                },
                 "incapsulate-on-overflow": ["basic-noun", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             }

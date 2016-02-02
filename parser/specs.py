@@ -678,8 +678,12 @@ class SpecStateDef(object):
         self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.init
         self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.fini
         self.__uid = ue.get_uniq()
-        self.__incapsulate_spec_name = spec_dict['include'] if spec_dict.has_key('include') else None
-        assert self.__incapsulate_spec_name is None or len(self.__incapsulate_spec_name) == 1
+        if spec_dict.has_key('include'):
+            self.__incapsulate_spec_name = spec_dict['include']['spec']
+            self.__static_only_include = spec_dict['include']['static-only'] if spec_dict['include'].has_key('static-only') else False
+        else:
+            self.__incapsulate_spec_name = None
+            self.__static_only_include = False
         self.__incapsulate_spec = None
         self.__stateless_rules = []
         self.__rt_rules = []
@@ -966,7 +970,7 @@ class SpecStateDef(object):
 
     def get_include_name(self):
         assert self.__incapsulate_spec_name is not None
-        return self.__incapsulate_spec_name[0]
+        return self.__incapsulate_spec_name
 
     def set_incapsulated_spec(self, spec):
         assert self.__incapsulate_spec is None
