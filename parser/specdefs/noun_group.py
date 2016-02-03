@@ -32,7 +32,7 @@ class NounGroupSpec(SequenceSpec):
                 "id": "$PARENT::noun-seq",
                 "repeatable": RepeatableSpecs().Any(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "same_as": [SameAsSpecs().SameCase("$PARENT::noun"), ],
+                "same-as": [SameAsSpecs().SameCase("$PARENT::noun"), ],
                 "include": {
                     "spec": "noun-group-aux"
                 },
@@ -81,7 +81,6 @@ class NounCtrlNounSpec(SequenceSpec):
                 "include": {
                     "spec": "adj+-noun"
                 },
-                "incapsulate-on-overflow": ["basic-noun", ],
             },
             {
                 "id": "$PARENT::ctrled-noun",

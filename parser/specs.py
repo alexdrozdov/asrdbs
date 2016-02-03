@@ -65,14 +65,14 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
                 self.__set_state_uid(st)
                 self.__set_state_level(st, level)
                 self.__all_entries.append(st)
-                if st.has_key("entries") or st.has_key("uniq_items"):
+                if st.has_key("entries") or st.has_key("uniq-items"):
                     self.__index_subentries(st, level + 1)
-        if item.has_key("uniq_items"):
-            for st in item["uniq_items"]:
+        if item.has_key("uniq-items"):
+            for st in item["uniq-items"]:
                 self.__set_state_uid(st)
                 self.__set_state_level(st, level)
                 self.__all_entries.append(st)
-                if st.has_key("entries") or st.has_key("uniq_items"):
+                if st.has_key("entries") or st.has_key("uniq-items"):
                     self.__index_subentries(st, level + 1)
 
     def __index_all_entries(self):
@@ -82,7 +82,7 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
             self.__set_state_uid(st)
             self.__set_state_level(st, level)
             self.__all_entries.append(st)
-            if st.has_key("entries") or st.has_key("uniq_items"):
+            if st.has_key("entries") or st.has_key("uniq-items"):
                 self.__index_subentries(st, level + 1)
 
     def __create_entry_copy(self, entry, order, set_order=False, repeatable=False, required=False):
@@ -97,12 +97,12 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
                 sub_specs = self.__unroll_entry(st)
                 entries.extend(sub_specs)
             entry["entries"] = entries
-        if entry.has_key("uniq_items"):
+        if entry.has_key("uniq-items"):
             entries = []
-            for st in entry["uniq_items"]:
+            for st in entry["uniq-items"]:
                 sub_specs = self.__unroll_entry(st)
                 entries.extend(sub_specs)
-            entry["uniq_items"] = entries
+            entry["uniq-items"] = entries
         return entry
 
     def __unroll_entry(self, entry):
@@ -151,8 +151,8 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
             l_list.append(st)
             if st.has_key("entries"):
                 self.__index_layer(st["entries"], layer=layer+1)
-            if st.has_key("uniq_items"):
-                self.__index_layer(st["uniq_items"], layer=layer+1)
+            if st.has_key("uniq-items"):
+                self.__index_layer(st["uniq-items"], layer=layer+1)
 
     def __index_layers(self):
         self.__layers = []
@@ -176,8 +176,8 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
                 l.append(st)
                 self.__add_child_to_parent(st, item)
                 self.__index_item_entries(st)
-        if item.has_key("uniq_items"):
-            for st in item["uniq_items"]:
+        if item.has_key("uniq-items"):
+            for st in item["uniq-items"]:
                 l.append(st)
                 self.__add_child_to_parent(st, item)
                 self.__index_item_entries(st)
@@ -668,7 +668,7 @@ class SpecStateDef(object):
         self.__spec_dict = spec_dict
         self.__parent = parent
         self.__is_container = spec_dict.has_key("entries")
-        self.__is_uniq_container = spec_dict.has_key("uniq_items")
+        self.__is_uniq_container = spec_dict.has_key("uniq-items")
         self.__is_contained = False
         if self.__parent:
             self.__is_contained = True
@@ -693,7 +693,7 @@ class SpecStateDef(object):
         self.__transitions_merged = False
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
         self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
-        self.__merges_with = set(spec_dict['merges_with']) if spec_dict.has_key('merges_with') else set()
+        self.__merges_with = set(spec_dict['merges-with']) if spec_dict.has_key('merges-with') else set()
         self.__fixed = True
 
     def get_name(self):
@@ -886,14 +886,14 @@ class SpecStateDef(object):
         self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
 
     def __create_rt_rules(self, compiler):
-        self.__create_rule_list(compiler, False, ['same_as', 'position', 'master-slave', 'unwanted-links'], self.__rt_rules)
+        self.__create_rule_list(compiler, False, ['same-as', 'position', 'master-slave', 'unwanted-links'], self.__rt_rules)
 
     def create_rules(self, compiler):
         self.__create_stateless_rules(compiler)
         self.__create_rt_rules(compiler)
 
     def has_noncreated_rules(self):
-        for r in ['same_as', 'position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
+        for r in ['same-as', 'position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
             if self.__spec_dict.has_key(r):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
@@ -951,16 +951,16 @@ class SpecStateDef(object):
         return [r.new_copy() for r in self.__stateless_rules]
 
     def has_rules(self):
-        return len(set(['same_as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(['same-as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
 
     def has_rt_rules(self):
-        return len(set(['same_as', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(['same-as', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
 
     def get_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['same_as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in ['same-as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def get_rt_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['same_as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in ['same-as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
 
     def includes_spec(self):
         return self.__incapsulate_spec is not None

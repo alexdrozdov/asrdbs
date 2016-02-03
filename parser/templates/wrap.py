@@ -16,14 +16,14 @@ class TemplateWrap(parser.templates.common.SpecTemplate):
                 "id": "$PARENT::comma-open",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsComma(), ],
-                "merges_with": ["comma", ],
+                "merges-with": ["comma", ],
             }, ]
         if after is None:
             after = [{
                 "id": "$PARENT::comma-close",
                 "repeatable": RepeatableSpecs().Once(),
                 "pos_type": [PosSpecs().IsComma(), ],
-                "merges_with": ["comma", ],
+                "merges-with": ["comma", ],
             }, ]
         if isinstance(body, dict):
             body = [body, ]

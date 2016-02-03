@@ -51,12 +51,9 @@ class Preprocessor(object):
             'pos_type': lambda (ctx, v): True,
             'case': lambda (ctx, v): True,
             'reliability': lambda (ctx, v): True,
-            'incapsulate-on-overflow': lambda (ctx, v): True,
-            'incapsulate-binding': lambda (ctx, v): True,
-            'uniq_items': self.__on_uniq_items,
-            'unwanted-links': lambda (ctx, v): True,
-            'same_as': lambda (ctx, v): True,
-            'merges_with': lambda (ctx, v): True,
+            'uniq-items': self.__on_uniq_items,
+            'same-as': lambda (ctx, v): True,
+            'merges-with': lambda (ctx, v): True,
         }
 
     def __on_id(self, v):

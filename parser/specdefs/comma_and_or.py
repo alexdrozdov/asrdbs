@@ -17,12 +17,12 @@ class CommaAndOrSpec(SequenceSpec):
                 "repeatable": RepeatableSpecs().Once(),
                 "id": "$PARENT:or",
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "uniq_items": [
+                "uniq-items": [
                     {
                         "id": "$PARENT::comma",
                         "repeatable": RepeatableSpecs().Once(),
                         "pos_type": [PosSpecs().IsComma(), ],
-                        "merges_with": ["comma", ],
+                        "merges-with": ["comma", ],
                     },
                     {
                         "id": "$PARENT::and",

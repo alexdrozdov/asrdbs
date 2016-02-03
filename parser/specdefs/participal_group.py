@@ -25,7 +25,6 @@ class ParticipalGroupSpec(SequenceSpec):
                 "include": {
                     "spec": "noun-group"
                 },
-                "incapsulate-on-overflow": ["basic-noun", ],
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
             }
         ])

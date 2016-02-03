@@ -2,7 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec, LinkWeight
+from parser.specdefs.common import SequenceSpec
 from parser.specdefs.defs import RepeatableSpecs, LinkSpecs, AnchorSpecs
 from parser.specdefs.validate import ValidatePresence
 from parser.named import template
@@ -29,7 +29,6 @@ class SentanceSpec(SequenceSpec):
                     "spec": "verb-group"
                 },
                 "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ],
-                "unwanted-links": [LinkSpecs().MastersExcept("$LOCAL_SPEC_ANCHOR", weight=LinkWeight("$SPECNAME")), ],
             },
             {
                 "id": "$PARENT::subject-post",

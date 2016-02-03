@@ -19,7 +19,6 @@ class NounNounSequenceSpec(SequenceSpec):
                 "include": {
                     "spec": "adj+-noun"
                 },
-                "incapsulate-binding": "$THIS::$INCAPSULATED::noun",
                 "master-slave": [LinkSpecs().IsSlave("$SPEC::noun[$INDEX(0)-1]"), ],
             }
         )
