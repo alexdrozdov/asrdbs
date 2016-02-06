@@ -335,7 +335,7 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_include():
-                if self.__spec_depth <= 1:
+                if self.__spec_depth <= 1 or state.include_is_static_only():
                     in_spec_name = state.get_include_name()
                     in_spec = self.__owner.get_spec(in_spec_name)
                     compiler = SpecCompiler(
@@ -971,6 +971,9 @@ class SpecStateDef(object):
     def get_include_name(self):
         assert self.__incapsulate_spec_name is not None
         return self.__incapsulate_spec_name
+
+    def include_is_static_only(self):
+        return self.__static_only_include
 
     def set_incapsulated_spec(self, spec):
         assert self.__incapsulate_spec is None
