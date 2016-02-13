@@ -2327,10 +2327,18 @@ class RtTmpEntry(object):
 
     @argres(show_result=False)
     def add_sequence_res(self, sub_ctx, res):
+        rc, rtms = self.__add_sequence_res(sub_ctx, res)
+        if not rc:
+            return
+        for new_rtms in self.__propagate_mergeable(sub_ctx, res, rtms):
+            new_rtms.get_ctx().add_sequence(new_rtms)
+
+    @argres(show_result=True)
+    def __add_sequence_res(self, sub_ctx, res):
         assert sub_ctx == self.__sub_ctx
         assert res.fini
         if not res.valid:
-            return
+            return False, None
         rtms = self.__owner.subseq(start=0, stop=-2)
         subseq_anchor = res.sq.get_anchors()[0].get_form()
         rtme = RtMatchEntry(
@@ -2344,10 +2352,35 @@ class RtTmpEntry(object):
                 }
             )
         )
-        rtms.append(rtme)  # FIXME Check if this entry matches whole sequence
-        rtms.get_ctx().add_sequence(rtms)
-        # print rtms
-        # rtms.print_sequence()
+        return rtms.append(rtme), rtms
+
+    def __propagate_mergeable(self, sub_ctx, res, rtms):
+        new_rtmss = [rtms, ]
+        assert sub_ctx == self.__sub_ctx
+        assert res.fini
+        if not res.valid:
+            return []
+        subseq_end_spec = res.sq[-2].get_spec()  # Get spec for last subseq entry
+        subseq_end_form = res.sq[-2].get_form()
+        seq_end_spec = rtms[-1].get_spec()       # Get spec for last seq entry
+        for trs in seq_end_spec.get_transitions():  # Try to find alternate transitions
+            if not subseq_end_spec.can_merge(trs.get_to()):
+                continue
+            new_rtms = RtMatchSequence(rtms)
+            subseq_end_form = res.sq[-2].get_form()
+            rtme = RtMatchEntry(
+                new_rtms,
+                ns(
+                    form=subseq_end_form,
+                    spec_state_def=subseq_end_spec,
+                    rtms_offset=self.__rtms_offset + 1,
+                    attributes={
+                        'merged-with': None
+                    }
+                )
+            )
+            new_rtmss.append(rtme)
+        return new_rtmss
 
     @argres(show_result=False)
     def add_forked_sequence(self, sub_ctx, new_sq):
