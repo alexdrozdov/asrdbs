@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import json
 import copy
 import parser.specdefs.common
 from parser.specdefs.common import RtRule, RtMatchString
@@ -1128,6 +1129,30 @@ def argres(show_result=True, repr_result=None):
     return argres_internal
 
 
+def todict(obj, classkey=None):
+    if isinstance(obj, dict):
+        data = {}
+        for (k, v) in obj.items():
+            data[k] = todict(v, classkey)
+        return data
+    elif hasattr(obj, "_ast"):
+        return todict(obj._ast())
+    elif hasattr(obj, "__iter__"):
+        return [todict(v, classkey) for v in obj]
+    elif hasattr(obj, "__dict__"):
+        data = dict(
+            [(key, todict(value, classkey))
+             for key, value in obj.__dict__.iteritems()
+             if not callable(value) and not key.startswith('_')
+             ]
+        )
+        if classkey is not None and hasattr(obj, "__class__"):
+            data[classkey] = obj.__class__.__name__
+        return data
+    else:
+        return obj
+
+
 class Link(object):
     def __init__(self, master, slave, details):
         self.__uniq = ue.get_uniq()
@@ -1149,6 +1174,13 @@ class Link(object):
 
     def get_slave(self):
         return self.__slave
+
+    def export_dict(self):
+        return {
+            'from': self.__master.get_uniq(),
+            'to': self.__slave.get_uniq(),
+            'details': todict(self.__details),
+        }
 
 
 class MatchedEntry(object):
@@ -1184,6 +1216,19 @@ class MatchedEntry(object):
         self.__slaves = []
         self.__masters_csum = 0
         self.__slaves_csum = 0
+
+    def export_dict(self):
+        print self.__name, type(self.__name)
+        return {
+            'uniq': self.get_uniq(),
+            'name': str(self.__name),
+            'reliability': self.__reliability,
+            'hidden': self.__is_hidden,
+            'anchor': self.__is_anchor,
+            'form': self.__form.get_info(),
+            'word': self.__form.get_word(),
+            'position': self.__form.get_position(),
+        }
 
     def get_name(self):
         return self.__name
@@ -1344,6 +1389,26 @@ class MatchedSequence(object):
             self.__entries_csum,
             self.__links_csum
         )
+
+    def export_dict(self):
+        nodes = map(
+            lambda e: e.export_dict(),
+            self.__all_entries
+        )
+        edges = map(
+            lambda l: l.export_dict(),
+            self.__all_links
+        )
+        return {
+            'name': self.__name,
+            'reliability': self.__reliability,
+            'nodes': nodes,
+            'edges': edges,
+            'csum': {
+                'nodes': self.__entries_csum,
+                'edges': self.__links_csum,
+            }
+        }
 
     def __repr__(self):
         r = u"MatchedSequence(objid={0}, entries=[{1}])".format(
@@ -1850,6 +1915,14 @@ class SequenceMatchRes(object):
 
     def get_sequences(self):
         return self.__sqs
+
+    def export_json(self):
+        return json.dumps(
+            map(
+                lambda s: s.export_dict(),
+                self.__sqs
+            )
+        )
 
 
 class SequenceSpecMatcher(object):

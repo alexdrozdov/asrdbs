@@ -108,8 +108,14 @@ class SpecStateIniForm(object):
     def get_word(self):
         return u'ini'
 
+    def get_info(self):
+        return u'ini'
+
     def get_pos(self):
         return u'ini'
+
+    def get_position(self):
+        return None
 
     def get_uniq(self):
         return 0
@@ -119,6 +125,15 @@ class SpecStateIniForm(object):
 
     def get_reliability(self):
         return 1.0
+
+    def export_dict(self):
+        return {
+            'name': 'ini',
+            'reliability': 1.0,
+            'hidden': False,
+            'anchor': False,
+            'form': {},
+        }
 
 
 class SpecStateFiniForm(object):
@@ -134,6 +149,9 @@ class SpecStateFiniForm(object):
     def get_pos(self):
         return u'fini'
 
+    def get_position(self):
+        return None
+
     def get_uniq(self):
         return 0
 
@@ -142,6 +160,15 @@ class SpecStateFiniForm(object):
 
     def get_reliability(self):
         return 1.0
+
+    def export_dict(self):
+        return {
+            'name': 'fini',
+            'reliability': 1.0,
+            'hidden': False,
+            'anchor': False,
+            'form': {},
+        }
 
 
 class SentanceFini(object):
