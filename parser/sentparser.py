@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import uuid
 import re
 import traceback
 import named
@@ -9,17 +10,6 @@ import worddb.worddb
 from argparse import Namespace as ns
 
 
-class UniqEnum(object):
-    def __init__(self):
-        self.__uniq = 1
-
-    def get_uniq(self):
-        r = self.__uniq
-        self.__uniq *= 2
-        return r
-
-
-ue = UniqEnum()
 named.load_named_instances()
 
 
@@ -189,7 +179,7 @@ class Link(object):
     def __init__(self, rule, master, slave, uniq=None):
         self.__rule = rule
         if uniq is None:
-            self.__uniq = ue.get_uniq()
+            self.__uniq = str(uuid.uuid1())
         else:
             self.__uniq = uniq
         self.__master = master
@@ -267,8 +257,8 @@ class WordForms(object):
 class WordFormFabric(object):
     def __init__(self, worddb_file):
         self.__wdb = worddb.worddb.Worddb(worddb_file)
-        self.__form_uniq = 1
-        self.__group_uniq = 1
+        self.__form_uniq = str(uuid.uuid1())
+        self.__group_uniq = str(uuid.uuid1())
 
     def create(self, word, position):
         if word in '.,;-!?':
@@ -293,8 +283,8 @@ class WordFormFabric(object):
     def __create_syntax_entry(self, symbol, position):
         se = SyntaxEntry(symbol, symbol, position, self.__form_uniq)
         wf = WordForms(symbol, [se, ], self.__group_uniq)
-        self.__form_uniq *= 2
-        self.__group_uniq *= 2
+        self.__form_uniq = str(uuid.uuid1())
+        self.__group_uniq = str(uuid.uuid1())
         return wf
 
     def __create_word_entry(self, word, position):
@@ -323,9 +313,9 @@ class WordFormFabric(object):
                     )
                 )
             )
-            self.__form_uniq *= 2
+            self.__form_uniq = str(uuid.uuid1())
         wf = WordForms(word, res, self.__group_uniq)
-        self.__group_uniq *= 2
+        self.__group_uniq = str(uuid.uuid1())
         return wf
 
 

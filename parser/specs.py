@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import uuid
 import json
 import copy
 import parser.specdefs.common
@@ -17,19 +18,6 @@ import sentparser
 
 
 logs_enabled = False
-
-
-class UniqEnum(object):
-    def __init__(self):
-        self.__uniq = 1
-
-    def get_uniq(self):
-        r = self.__uniq
-        self.__uniq *= 2
-        return r
-
-
-ue = UniqEnum()
 
 
 class SequenceSpecIter(object):
@@ -162,7 +150,7 @@ class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
     def __set_state_uid(self, state):
         if state.has_key("uid"):
             return
-        state["uid"] = ue.get_uniq()
+        state["uid"] = str(uuid.uuid1())
 
     def __set_state_level(self, state, level):
         state["level"] = level
@@ -678,7 +666,7 @@ class SpecStateDef(object):
         self.__is_local_final = False
         self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.init
         self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.fini
-        self.__uid = ue.get_uniq()
+        self.__uid = str(uuid.uuid1())
         if spec_dict.has_key('include'):
             self.__incapsulate_spec_name = spec_dict['include']['spec']
             self.__static_only_include = spec_dict['include']['static-only'] if spec_dict['include'].has_key('static-only') else False
@@ -1155,7 +1143,7 @@ def todict(obj, classkey=None):
 
 class Link(object):
     def __init__(self, master, slave, details):
-        self.__uniq = ue.get_uniq()
+        self.__uniq = str(uuid.uuid1())
         self.__master = master
         self.__slave = slave
         self.__details = details
@@ -1199,8 +1187,8 @@ class MatchedEntry(object):
         self.__is_anchor = rtme.get_spec().is_anchor()
         self.__masters = []
         self.__slaves = []
-        self.__masters_csum = 0
-        self.__slaves_csum = 0
+        self.__masters_csum = set()
+        self.__slaves_csum = set()
 
     def __init_from_me(self, me, rtme):
         assert rtme is not None
@@ -1214,8 +1202,8 @@ class MatchedEntry(object):
             self.__rules += [mr.rule for mr in rtme.get_matched_rules()]
         self.__masters = []
         self.__slaves = []
-        self.__masters_csum = 0
-        self.__slaves_csum = 0
+        self.__masters_csum = set()
+        self.__slaves_csum = set()
 
     def export_dict(self):
         print self.__name, type(self.__name)
@@ -1256,10 +1244,10 @@ class MatchedEntry(object):
         assert link.get_master() == self or link.get_slave() == self
         if link.get_master() == self:
             self.__slaves.append(link)
-            self.__slaves_csum |= link.get_uniq()
+            self.__slaves_csum.add(link.get_uniq())
         else:
             self.__masters.append(link)
-            self.__masters_csum |= link.get_uniq()
+            self.__masters_csum.add(link.get_uniq())
 
     def get_master_links(self):
         return self.__masters
@@ -1285,8 +1273,8 @@ class MatchedSequence(object):
         self.__anchors = []
         self.__links = []
         self.__all_links = []
-        self.__entries_csum = 0
-        self.__links_csum = 0
+        self.__entries_csum = set()
+        self.__links_csum = set()
         self.__uid2me = {}
         self.__reliability = 1.0
 
@@ -1353,13 +1341,13 @@ class MatchedSequence(object):
         if me.is_anchor():
             self.__anchors.append(me)
         self.__uid2me[me.get_uniq()] = me
-        self.__entries_csum |= me.get_uniq()
+        self.__entries_csum.add(me.get_uniq())
 
     def __append_links(self, link):
         if not link.get_master().is_hidden() and not link.get_slave().is_hidden():
             self.__links.append(link)
         self.__all_links.append(link)
-        self.__links_csum += link.get_csum()
+        self.__links_csum.add(link.get_csum())
 
     def get_name(self):
         return self.__name
@@ -1404,10 +1392,6 @@ class MatchedSequence(object):
             'reliability': self.__reliability,
             'nodes': nodes,
             'edges': edges,
-            'csum': {
-                'nodes': self.__entries_csum,
-                'edges': self.__links_csum,
-            }
         }
 
     def __repr__(self):
@@ -1431,7 +1415,12 @@ class MatchedSequence(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.__entries_csum, self.__links_csum))
+        return hash(
+            (
+                tuple(sorted(self.__entries_csum)),
+                tuple(sorted(self.__links_csum))
+            )
+        )
 
 
 class MatcherContext(object):
@@ -1556,8 +1545,8 @@ class RtMatchSequence(object):
         self.__all_entries = []
         self.__anchors = []
         self.__links = {}
-        self.__forms_csum = 0
-        self.__links_csum = 0
+        self.__forms_csum = set()
+        self.__links_csum = set()
 
         self.__stack = RtStackCounter()
         self.__append_entries(initial_entry)
@@ -1569,8 +1558,8 @@ class RtMatchSequence(object):
         self.__entries = []
         self.__all_entries = []
         self.__anchors = []
-        self.__forms_csum = 0
-        self.__confirmed_csum = 0
+        self.__forms_csum = set()
+        self.__confirmed_csum = set()
 
         sq.__ctx.sequence_forking(sq)
 
@@ -1761,7 +1750,7 @@ class RtMatchSequence(object):
         self.__all_entries.append(rtme)
         if rtme.get_spec().add_to_seq():
             self.__entries.append(rtme)
-        self.__forms_csum |= rtme.get_form().get_uniq()
+        self.__forms_csum.add(rtme.get_form().get_uniq())
         if rtme.get_spec().is_anchor():
             self.__add_anchor(rtme)
 
