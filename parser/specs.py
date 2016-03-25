@@ -1167,7 +1167,7 @@ class Link(object):
         return {
             'from': self.__master.get_uniq(),
             'to': self.__slave.get_uniq(),
-            'details': todict(self.__details),
+            'udata': todict(self.__details),
         }
 
 
@@ -1209,13 +1209,15 @@ class MatchedEntry(object):
         print self.__name, type(self.__name)
         return {
             'uniq': self.get_uniq(),
-            'name': str(self.__name),
-            'reliability': self.__reliability,
-            'hidden': self.__is_hidden,
-            'anchor': self.__is_anchor,
-            'form': self.__form.get_info(),
-            'word': self.__form.get_word(),
-            'position': self.__form.get_position(),
+            'udata': {
+                'name': str(self.__name),
+                'position': self.__form.get_position(),
+                'word': self.__form.get_word(),
+                'reliability': self.__reliability,
+                'hidden': self.__is_hidden,
+                'anchor': self.__is_anchor,
+                'form': self.__form.get_info(),
+            },
         }
 
     def get_name(self):
@@ -1905,12 +1907,15 @@ class SequenceMatchRes(object):
     def get_sequences(self):
         return self.__sqs
 
+    def export_obj(self):
+        return map(
+            lambda s: s.export_dict(),
+            self.__sqs
+        )
+
     def export_json(self):
         return json.dumps(
-            map(
-                lambda s: s.export_dict(),
-                self.__sqs
-            )
+            self.export_obj()
         )
 
 

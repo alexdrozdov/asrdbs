@@ -3,14 +3,17 @@
 
 
 import sys
+import os
 import codecs
 import time
+import json
 import unittest
 from contextlib import contextmanager
 import parser.sentparser
 import parser.graph
 import parser.graph_span
 import parser.specs
+import common.dictcmp
 from common.output import output as oput
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
@@ -60,13 +63,17 @@ class SequenceSpecMatcher(parser.specs.SequenceSpecMatcher):
 
 
 class ParserTestCase(unittest.TestCase):
-    def __init__(self, methodName='test_sentence', sentence=None):
-        assert sentence is not None
+    def __init__(self, methodName='test_sentence', filename=None):
+        assert filename is not None
         super(ParserTestCase, self).__init__(methodName)
-        self.sentence = sentence
+        self.filename = filename
 
     def setUp(self):
         print ''
+        with open(self.filename) as f:
+            data = json.load(f)
+            self.sentence = data['input']
+            self.reference = data['graph']
         print u'Setting env for {0}'.format(self.sentence)
         with timeit_ctx('loading worddb'):
             self.tm = TokenMapper('./dbs/worddb.db')
@@ -83,8 +90,19 @@ class ParserTestCase(unittest.TestCase):
         with timeit_ctx('matching sentences'):
             matched_sentences = self.srm.match_sentence(parsed_sentence, most_complete=True)
 
-        res_json = matched_sentences.export_json()
-        print res_json
+        res = matched_sentences.export_obj()
+        obj_res = res[0]
+        obj_reference = self.reference[0]
+        gc = common.dictcmp.GraphComparator(
+            obj_reference,
+            obj_res,
+            lambda n:
+                hash((n['uniq'], n['udata']['word']))
+        )
+        gc.nodes_presence()
+        gc.linkage()
+        # gc.nodes_equality()
+        # print res_json
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
             sq.print_sequence()
@@ -95,10 +113,22 @@ class ParserTestCase(unittest.TestCase):
 
 
 def suite():
+    parser_tests_dir = os.path.join(
+        os.path.dirname(
+            os.path.realpath(__file__)
+        ),
+        'parser'
+    )
     return unittest.TestSuite(
         map(
-            lambda sentence: ParserTestCase(sentence=sentence),
-            sentences
+            lambda filename: ParserTestCase(filename=filename),
+            map(
+                lambda f: os.path.join(parser_tests_dir, f),
+                filter(
+                    lambda f: f.endswith('.json'),
+                    os.listdir(parser_tests_dir)
+                )
+            )
         )
     )
 
