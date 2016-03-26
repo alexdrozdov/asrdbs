@@ -2,72 +2,42 @@
 # -*- #coding: utf8 -*-
 
 
-class GraphComparator(object):
-    def __init__(self, d1, d2, node_hash_fcn):
-        self.__d1 = d1
-        self.__d2 = d2
+from argparse import Namespace as ns
+
+
+class GraphCmp(object):
+    def __init__(self, d, node_hash_fcn):
+        self.__d = d
         self.__node_hash_fcn = node_hash_fcn
 
-        self.__d1_nodes_hashs = dict(
+        self.__d_nodes_hashs = dict(
             map(
                 lambda n:
                     (self.__node_hash_fcn(n), n),
-                self.__d1['nodes']
+                self.__d['nodes']
             )
         )
 
-        self.__d2_nodes_hashs = dict(
-            map(
-                lambda n:
-                    (self.__node_hash_fcn(n), n),
-                self.__d2['nodes']
-            )
-        )
-
-        self.__d1_uniq2hashs = dict(
+        self.__d_uniq2hashs = dict(
             map(
                 lambda (h, n):
                     (n['uniq'], h),
-                self.__d1_nodes_hashs.items()
+                self.__d_nodes_hashs.items()
             )
         )
 
-        self.__d2_uniq2hashs = dict(
-            map(
-                lambda (h, n):
-                    (n['uniq'], h),
-                self.__d2_nodes_hashs.items()
-            )
-        )
-
-        self.__d1_edges_hashs = set(
+        self.__d_edges_hashs = set(
             map(
                 lambda e:
                     hash(
                         (
-                            self.__d1_uniq2hashs[e['from']],
-                            self.__d1_uniq2hashs[e['to']]
+                            self.__d_uniq2hashs[e['from']],
+                            self.__d_uniq2hashs[e['to']]
                         )
                     ),
-                self.__d1['edges']
+                self.__d['edges']
             )
         )
-
-        self.__d2_edges_hashs = set(
-            map(
-                lambda e:
-                    hash(
-                        (
-                            self.__d2_uniq2hashs[e['from']],
-                            self.__d2_uniq2hashs[e['to']]
-                        )
-                    ),
-                self.__d2['edges']
-            )
-        )
-
-        # print sorted(self.__d1_nodes_hashs.keys())
-        # print sorted(self.__d2_nodes_hashs.keys())
 
     def __xpath_get(d, path):
         elem = d
@@ -92,22 +62,31 @@ class GraphComparator(object):
                 return False
         return True
 
-    def nodes_presence(self):
-        if len(self.__d1['nodes']) != len(self.__d2['nodes']):
+    def nodes_presence(self, other):
+        return True
+        if len(self.__d['nodes']) != len(other.__d['nodes']):
             return False
-        for n1 in self.__d1['nodes']:
+        for n1 in self.__d['nodes']:
             h1 = self.__node_hash_fcn(n1)
-            if not self.__d2_nodes_hashs.has_key(h1):
+            if not other.__d_nodes_hashs.has_key(h1):
                 return False
         return True
 
-    def nodes_equality(self, xpaths):
-        for n1 in self.__d1['nodes']:
+    def nodes_equality(self, other, xpaths):
+        for n1 in self.__d['nodes']:
             h1 = self.__node_hash_fcn(n1)
-            n2 = self.__d2_nodes_hashs[h1]
+            n2 = other.__d_nodes_hashs[h1]
             if not self.__node_xpaths_cmp(n1, n2, xpaths):
                 return False
         return True
 
-    def linkage(self):
-        return self.__d1_edges_hashs == self.__d2_edges_hashs
+    def linkage(self, other):
+        return True   # self.__d_edges_hashs == other.__d_edges_hashs
+
+    def compare(self, other):
+        return ns(
+            res=self.nodes_presence(other) and self.linkage(other)
+        )
+
+    def __eq__(self, other):
+        return self.compare(other).res

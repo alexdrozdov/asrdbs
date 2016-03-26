@@ -67,22 +67,18 @@ class SequenceSpecMatcher(parser.specs.SequenceSpecMatcher):
 #     return hash((n['udata']['position'], n['udata']['word']))
 
 
-class MatchResComparator(common.dictcmp.GraphComparator):
-    def __init__(self, reference, obj):
-        super(MatchResComparator, self).__init__(
-            reference,
-            obj,
+class MatchResCmp(common.dictcmp.GraphCmp):
+    def __init__(self, d):
+        super(MatchResCmp, self).__init__(
+            d,
             lambda n:
                 hash((n['udata']['position'], n['udata']['word']))
         )
 
-    def compare(self):
-        if not self.nodes_presence():
-            return False
-        if not self.linkage():
-            return False
-        return True
-        # gc.nodes_equality()
+    def __eq__(self, other):
+        if not isinstance(other, MatchResCmp):
+            other = MatchResCmp(other)
+        return super(MatchResCmp, self).__eq__(other)
 
 
 class ParserTestCase(unittest.TestCase):
@@ -114,10 +110,7 @@ class ParserTestCase(unittest.TestCase):
             matched_sentences = self.srm.match_sentence(parsed_sentence, most_complete=True)
 
         res = matched_sentences.export_obj()
-        obj_res = res[0]
-        obj_reference = self.reference[0]
-        mrc = MatchResComparator(obj_reference, obj_res)
-        self.assertTrue(mrc.compare())
+        self.assertTrue(MatchResCmp(self.reference[0]) == res[0])
         # print res_json
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
