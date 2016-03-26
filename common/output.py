@@ -21,6 +21,8 @@ class OutputPath(object):
         return path
 
     def get_output_file(self, subpath, filename):
+        if isinstance(subpath, list):
+            subpath = os.path.join(*subpath)
         path = self.get_output_dir(subpath)
         return os.path.join(path, filename)
 

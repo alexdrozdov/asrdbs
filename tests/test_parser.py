@@ -111,6 +111,7 @@ class ParserTestCase(unittest.TestCase):
         assert filename is not None
         super(ParserTestCase, self).__init__(methodName)
         self.filename = filename
+        self.filename_base = os.path.splitext(os.path.basename(self.filename))[0]
 
     def setUp(self):
         print ''
@@ -132,18 +133,26 @@ class ParserTestCase(unittest.TestCase):
             parsed_sentence = self.tm.map(tokens)
 
         with timeit_ctx('matching sentences'):
-            matched_sentences = self.srm.match_sentence(parsed_sentence, most_complete=True)
-
-        res = matched_sentences.export_obj()
-        self.assertTrue(CrossMatchResCmp(self.reference) == res)
-        # print res_json
-
-        for j, sq in enumerate(matched_sentences.get_sequences()):
-            # sq.print_sequence()
-            parser.graph.SequenceGraph(img_type='svg').generate(
-                sq,
-                oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
+            matched_sentences = self.srm.match_sentence(
+                parsed_sentence,
+                most_complete=True
             )
+
+        with timeit_ctx('comparing with reference'):
+            res = CrossMatchResCmp(self.reference) == matched_sentences.export_obj()
+
+        if not res:
+            with timeit_ctx('exporting failed test result'):
+                for j, sq in enumerate(matched_sentences.get_sequences()):
+                    parser.graph.SequenceGraph(img_type='svg').generate(
+                        sq,
+                        oput.get_output_file(
+                            [self.filename_base, 'imgs'],
+                            'sq-{0}.svg'.format(j)
+                        )
+                    )
+
+        self.assertTrue(res)
 
 
 def suite():

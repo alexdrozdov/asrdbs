@@ -63,7 +63,6 @@ class GraphCmp(object):
         return True
 
     def nodes_presence(self, other):
-        return True
         if len(self.__d['nodes']) != len(other.__d['nodes']):
             return False
         for n1 in self.__d['nodes']:
@@ -81,7 +80,7 @@ class GraphCmp(object):
         return True
 
     def linkage(self, other):
-        return True   # self.__d_edges_hashs == other.__d_edges_hashs
+        return self.__d_edges_hashs == other.__d_edges_hashs
 
     def compare(self, other):
         return ns(
