@@ -8,6 +8,7 @@ import codecs
 import time
 import json
 import unittest
+import logging
 from contextlib import contextmanager
 import parser.sentparser
 import parser.graph
@@ -39,7 +40,7 @@ def timeit_ctx(name):
     startTime = time.time()
     yield
     elapsedTime = time.time() - startTime
-    print('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
+    logging.info('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
 
 
 def singleton(class_):
@@ -60,11 +61,6 @@ class TokenMapper(parser.sentparser.TokenMapper):
 @singleton
 class SequenceSpecMatcher(parser.specs.SequenceSpecMatcher):
     pass
-
-
-# def hfcn(n):
-#     print (n['udata']['position'], n['udata']['word'])
-#     return hash((n['udata']['position'], n['udata']['word']))
 
 
 class MatchResCmp(common.dictcmp.GraphCmp):
@@ -115,17 +111,19 @@ class ParserTestCase(unittest.TestCase):
 
     def setUp(self):
         print ''
-        with open(self.filename) as f:
-            data = json.load(f)
-            self.sentence = data['input']
-            self.reference = data['graph']
-        print u'Setting env for {0}'.format(self.sentence)
+
+    def test_sentence(self):
         with timeit_ctx('loading worddb'):
             self.tm = TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building spec matcher'):
             self.srm = SequenceSpecMatcher(False)
 
-    def test_sentence(self):
+        with open(self.filename) as f:
+            data = json.load(f)
+            self.sentence = data['input']
+            self.reference = data['graph']
+        logging.info(u'Setting env for {0}'.format(self.sentence))
+
         with timeit_ctx('tokenizing'):
             tokens = parser.sentparser.Tokenizer().tokenize(self.sentence)
 
@@ -139,7 +137,8 @@ class ParserTestCase(unittest.TestCase):
             )
 
         with timeit_ctx('comparing with reference'):
-            res = CrossMatchResCmp(self.reference) == matched_sentences.export_obj()
+            obj_res = matched_sentences.export_obj()
+            res = CrossMatchResCmp(self.reference) == obj_res
 
         if not res:
             with timeit_ctx('exporting failed test result'):
@@ -150,6 +149,18 @@ class ParserTestCase(unittest.TestCase):
                             [self.filename_base, 'imgs'],
                             'sq-{0}.svg'.format(j)
                         )
+                    )
+                with open(
+                    oput.get_output_file(self.filename_base, 'res.json'),
+                    'w'
+                ) as jf:
+                    json.dump(
+                        {
+                            'input': self.sentence,
+                            'expected': self.reference,
+                            'graph': obj_res
+                        },
+                        jf
                     )
 
         self.assertTrue(res)
@@ -176,5 +187,6 @@ def suite():
     )
 
 if __name__ == '__main__':
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     runner = unittest.TextTestRunner()
     runner.run(suite())

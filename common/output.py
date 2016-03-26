@@ -16,7 +16,10 @@ class OutputPath(object):
         if self.__pathes.has_key(subpath):
             return self.__pathes[subpath]
         path = os.path.join(self.__defpath, subpath)
-        os.makedirs(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        elif not os.path.isdir(path):
+            raise OSError('Path {0} is file')
         self.__pathes[subpath] = path
         return path
 
