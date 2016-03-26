@@ -1206,7 +1206,6 @@ class MatchedEntry(object):
         self.__slaves_csum = set()
 
     def export_dict(self):
-        print self.__name, type(self.__name)
         return {
             'uniq': self.get_uniq(),
             'udata': {

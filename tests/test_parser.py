@@ -62,6 +62,29 @@ class SequenceSpecMatcher(parser.specs.SequenceSpecMatcher):
     pass
 
 
+# def hfcn(n):
+#     print (n['udata']['position'], n['udata']['word'])
+#     return hash((n['udata']['position'], n['udata']['word']))
+
+
+class MatchResComparator(common.dictcmp.GraphComparator):
+    def __init__(self, reference, obj):
+        super(MatchResComparator, self).__init__(
+            reference,
+            obj,
+            lambda n:
+                hash((n['udata']['position'], n['udata']['word']))
+        )
+
+    def compare(self):
+        if not self.nodes_presence():
+            return False
+        if not self.linkage():
+            return False
+        return True
+        # gc.nodes_equality()
+
+
 class ParserTestCase(unittest.TestCase):
     def __init__(self, methodName='test_sentence', filename=None):
         assert filename is not None
@@ -93,19 +116,12 @@ class ParserTestCase(unittest.TestCase):
         res = matched_sentences.export_obj()
         obj_res = res[0]
         obj_reference = self.reference[0]
-        gc = common.dictcmp.GraphComparator(
-            obj_reference,
-            obj_res,
-            lambda n:
-                hash((n['uniq'], n['udata']['word']))
-        )
-        gc.nodes_presence()
-        gc.linkage()
-        # gc.nodes_equality()
+        mrc = MatchResComparator(obj_reference, obj_res)
+        self.assertTrue(mrc.compare())
         # print res_json
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
-            sq.print_sequence()
+            # sq.print_sequence()
             parser.graph.SequenceGraph(img_type='svg').generate(
                 sq,
                 oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))

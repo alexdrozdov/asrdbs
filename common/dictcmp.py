@@ -66,6 +66,9 @@ class GraphComparator(object):
             )
         )
 
+        # print sorted(self.__d1_nodes_hashs.keys())
+        # print sorted(self.__d2_nodes_hashs.keys())
+
     def __xpath_get(d, path):
         elem = d
         try:
