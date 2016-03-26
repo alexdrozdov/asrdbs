@@ -81,6 +81,31 @@ class MatchResCmp(common.dictcmp.GraphCmp):
         return super(MatchResCmp, self).__eq__(other)
 
 
+class CrossMatchResCmp(object):
+    def __init__(self, obj):
+        assert isinstance(obj, list)
+        self.__obj = obj
+        self.__cmps = map(
+            lambda o:
+                MatchResCmp(o),
+            self.__obj
+        )
+
+    def __eq__(self, other):
+        if not isinstance(other, CrossMatchResCmp):
+            other = CrossMatchResCmp(other)
+        if len(self.__obj) != len(other.__obj):
+            return False
+        for i, c in enumerate(self.__cmps):
+            for j, cc in enumerate(other.__cmps):
+                if c == cc:
+                    break
+            else:
+                return False
+            continue
+        return True
+
+
 class ParserTestCase(unittest.TestCase):
     def __init__(self, methodName='test_sentence', filename=None):
         assert filename is not None
@@ -110,7 +135,7 @@ class ParserTestCase(unittest.TestCase):
             matched_sentences = self.srm.match_sentence(parsed_sentence, most_complete=True)
 
         res = matched_sentences.export_obj()
-        self.assertTrue(MatchResCmp(self.reference[0]) == res[0])
+        self.assertTrue(CrossMatchResCmp(self.reference) == res)
         # print res_json
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
