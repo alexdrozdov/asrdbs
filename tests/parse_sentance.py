@@ -6,6 +6,7 @@ import sys
 import codecs
 import time
 import json
+import io
 import parser.sentparser
 import parser.graph
 import parser.graph_span
@@ -95,14 +96,16 @@ with timeit_ctx('total'):
             sq,
             oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
         )
-    with open(
-        oput.get_output_file('', 'res.json'),
-        'w'
+    with io.open(
+        oput.get_output_file('', 'res.json'), 'w', encoding='utf8'
     ) as jf:
-        json.dump(
+        s = json.dumps(
             {
                 'input': sentence,
                 'graph': matched_sentences.export_obj()
             },
-            jf
+            jf,
+            ensure_ascii=False,
+            encoding='utf8'
         )
+        jf.write(s)
