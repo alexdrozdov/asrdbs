@@ -9,6 +9,7 @@ import time
 import json
 import io
 import argparse
+import uuid
 import parser.sentparser
 import parser.graph
 import parser.graph_span
@@ -31,6 +32,7 @@ def parse_opts():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--sentence')
     parser.add_argument('-t', '--test')
+    parser.add_argument('-m', '--make-test', action='store_true', default=False)
     res = parser.parse_args(sys.argv[1:])
 
     if res.sentence is None and res.test is None:
@@ -68,14 +70,18 @@ def execute(opts):
         with timeit_ctx('matching sentences'):
             matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
 
+        base_dir = str(uuid.uuid1()) if opts.make_test else None
+
         for j, sq in enumerate(matched_sentences.get_sequences()):
             sq.print_sequence()
             parser.graph.SequenceGraph(img_type='svg').generate(
                 sq,
-                oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
+                oput.get_output_file([base_dir, 'imgs'], 'sq-{0}.svg'.format(j))
             )
+
+        jf_name = 'test.json' if opts.make_test else 'res.json'
         with io.open(
-            oput.get_output_file('', 'res.json'), 'w', encoding='utf8'
+            oput.get_output_file([base_dir, ''], jf_name), 'w', encoding='utf8'
         ) as jf:
             s = json.dumps(
                 {
