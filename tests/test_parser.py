@@ -176,10 +176,10 @@ def suite():
     return unittest.TestSuite(
         map(
             lambda filename: ParserTestCase(filename=filename),
-            map(
-                lambda f: os.path.join(parser_tests_dir, f),
-                filter(
-                    lambda f: f.endswith('.json'),
+            filter(
+                lambda d: os.path.exists(d),
+                map(
+                    lambda e: os.path.join(parser_tests_dir, e, 'test.json'),
                     os.listdir(parser_tests_dir)
                 )
             )
