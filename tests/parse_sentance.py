@@ -75,6 +75,9 @@ sentence = u'мальчики , девочки сидели на лавочке'
 # sentence = [u'косой', u'косой', u'косил', u'косой', u'косой']
 # sentence = u'ярко красный'
 
+if len(sys.argv) > 1:
+    sentence = sys.argv[1].decode('utf8')
+
 with timeit_ctx('total'):
     with timeit_ctx('loading database'):
         tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
