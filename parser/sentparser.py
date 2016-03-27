@@ -83,6 +83,9 @@ class SyntaxEntry(SentenceEntry):
     def get_reliability(self):
         return 1.0
 
+    def get_info(self, crlf=False):
+        return dict()
+
 
 class WordFormInfo(object):
     def __init__(self, word, info):

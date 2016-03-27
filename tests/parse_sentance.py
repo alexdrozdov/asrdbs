@@ -2,13 +2,14 @@
 # -*- #coding: utf8 -*-
 
 
+import sys
+import codecs
+import time
+import json
 import parser.sentparser
 import parser.graph
 import parser.graph_span
 import parser.specs
-import sys
-import codecs
-import time
 from contextlib import contextmanager
 from common.output import output as oput
 
@@ -66,8 +67,8 @@ sentence = [u'друзья', u'шли', u'по', u'зеленым', u'лугам
 # sentence = [u'мы', u'поймали', u'его', u'в', u'парке']
 # sentence = [u'красные', u'цветы']
 # sentence = [u'мальчики', u'и', u'девочки', u'сидели', u'на', u'лавочке']
-sentence = [u'мальчики', u',', u'девочки', u'сидели', u'на', u'лавочке']
-sentence = u'мама мыла покрашенную раму'
+sentence = u'мальчики , девочки сидели на лавочке'
+# sentence = u'мама мыла покрашенную раму'
 # sentence = [u'мама', u'мыла', u'покрашенную', u'белой', u'краской', u'раму', u'окна']
 # sentence = [u'я', u'смотрел', u'на', u'березу', u',', u'стоящую', u'под', u'окном', u',', u'покрытую', u'снегом']
 # sentence = [u'косой', u'косой', u'косил', u'косой', u'косой']
@@ -93,4 +94,15 @@ with timeit_ctx('total'):
         parser.graph.SequenceGraph(img_type='svg').generate(
             sq,
             oput.get_output_file('imgs', 'sq-{0}.svg'.format(j))
+        )
+    with open(
+        oput.get_output_file('', 'res.json'),
+        'w'
+    ) as jf:
+        json.dump(
+            {
+                'input': sentence,
+                'graph': matched_sentences.export_obj()
+            },
+            jf
         )
