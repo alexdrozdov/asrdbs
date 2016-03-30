@@ -6,9 +6,10 @@ from argparse import Namespace as ns
 
 
 class GraphCmp(object):
-    def __init__(self, d, node_hash_fcn):
+    def __init__(self, d, node_hash_fcn, xpaths=None):
         self.__d = d
         self.__node_hash_fcn = node_hash_fcn
+        self.__xpaths = xpaths
 
         self.__d_nodes_hashs = dict(
             map(
@@ -39,7 +40,7 @@ class GraphCmp(object):
             )
         )
 
-    def __xpath_get(d, path):
+    def __xpath_get(self, d, path):
         elem = d
         try:
             for x in path.strip("/").split("/"):
@@ -71,11 +72,11 @@ class GraphCmp(object):
                 return False
         return True
 
-    def nodes_equality(self, other, xpaths):
+    def nodes_equality(self, other):
         for n1 in self.__d['nodes']:
             h1 = self.__node_hash_fcn(n1)
             n2 = other.__d_nodes_hashs[h1]
-            if not self.__node_xpaths_cmp(n1, n2, xpaths):
+            if not self.__node_xpaths_cmp(n1, n2, self.__xpaths):
                 return False
         return True
 
@@ -84,7 +85,7 @@ class GraphCmp(object):
 
     def compare(self, other):
         return ns(
-            res=self.nodes_presence(other) and self.linkage(other)
+            res=self.nodes_presence(other) and self.linkage(other) and self.nodes_equality(self)
         )
 
     def __eq__(self, other):

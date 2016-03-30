@@ -68,7 +68,16 @@ class MatchResCmp(common.dictcmp.GraphCmp):
         super(MatchResCmp, self).__init__(
             d,
             lambda n:
-                hash((n['udata']['position'], n['udata']['word']))
+                hash((n['udata']['position'], n['udata']['word'])),
+            [
+                '/udata/form/count',
+                '/udata/form/case',
+                '/udata/form/animation',
+                '/udata/form/parts_of_speech',
+                '/udata/verb_form',
+                '/udata/time'
+                '/udata/hidden',
+                '/udata/anchor']
         )
 
     def __eq__(self, other):
