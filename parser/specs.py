@@ -5,11 +5,12 @@
 import uuid
 import json
 import copy
-import parser.specdefs.common
-from parser.specdefs.common import RtRule, RtMatchString
+import common.config
+import parser.lang.common
+import parser.lang.defs
+from parser.lang.common import RtRule, RtMatchString
 import parser.preprocessor
-import parser.specdefs.defs
-import specdefs
+import parser.matcher
 import graph
 import common.output
 from argparse import Namespace as ns
@@ -35,9 +36,9 @@ class SequenceSpecIter(object):
             return None
 
 
-class IterableSequenceSpec(parser.specdefs.common.SequenceSpec):
+class IterableSequenceSpec(parser.lang.common.SequenceSpec):
     def __init__(self, spec):
-        parser.specdefs.common.SequenceSpec.__init__(self, spec.get_name())
+        parser.lang.common.SequenceSpec.__init__(self, spec.get_name())
         spec = copy.deepcopy(spec)
         self.__unroll_repeatable_entries(spec.get_spec())
         self.__index_all_entries()
@@ -664,8 +665,8 @@ class SpecStateDef(object):
         self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
         self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
         self.__is_local_final = False
-        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.init
-        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.specdefs.defs.FsmSpecs.fini
+        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.init
+        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.fini
         self.__uid = str(uuid.uuid1())
         if spec_dict.has_key('include'):
             self.__incapsulate_spec_name = spec_dict['include']['spec']
@@ -915,7 +916,7 @@ class SpecStateDef(object):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [parser.specdefs.common.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
+            rule_def = [parser.lang.common.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
             if not self.__spec_dict.has_key(r):
@@ -1296,8 +1297,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.specdefs.common.SpecStateIniForm,
-                    parser.specdefs.common.SpecStateFiniForm
+                    parser.lang.common.SpecStateIniForm,
+                    parser.lang.common.SpecStateFiniForm
                 )
             ):
                 continue
@@ -1307,8 +1308,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.specdefs.common.SpecStateIniForm,
-                    parser.specdefs.common.SpecStateFiniForm
+                    parser.lang.common.SpecStateIniForm,
+                    parser.lang.common.SpecStateFiniForm
                 )
             ):
                 continue
@@ -1853,7 +1854,7 @@ class SpecMatcher(object):
                 ns(
                     matcher=self,
                     initial_entry=RtMatchEntry(None, ns(
-                        form=parser.specdefs.common.SpecStateIniForm(),
+                        form=parser.lang.common.SpecStateIniForm(),
                         spec_state_def=ini_spec,
                         rtms_offset=0)
                     ),
@@ -1925,13 +1926,31 @@ class SequenceSpecMatcher(object):
         self.__spec_by_name = {}
         self.__matcher_by_name = {}
         self.__preprocessor = parser.preprocessor.Preprocessor()
+        self.__load_linkdefs()
         self.__create_specs()
         if export_svg:
             self.__export_svg()
 
+    def __load_linkdefs(self):
+        parser.matcher.load()
+
+    def __load_module(self, path):
+        parts = ['parser', 'lang'] + path.split('/')
+        root = parts[0]
+        parts = parts[1:]
+        path = root
+        obj = __import__(root, globals(), locals(), root)
+        for p in parts:
+            path += '.' + p
+            obj = __import__(path, globals(), locals(), path)
+        return obj
+
     def __create_specs(self):
-        for sd in specdefs.load_specdefs():
-            self.add_spec(sd())
+        cfg = common.config.Config()
+        for specdefs_dir in cfg['/parser/specdefs']:
+            obj = self.__load_module(specdefs_dir)
+            for sd in obj.load_specdefs():
+                self.add_spec(sd())
         self.build_specs()
 
     def __is_independent(self, specdef):
@@ -2038,7 +2057,7 @@ class SequenceSpecMatcher(object):
             ctx = self.__create_ctx()
             self.__create_initial_ctxs(ctx)
 
-        sentence += [parser.specdefs.common.SentanceFini(), ]
+        sentence += [parser.lang.common.SentanceFini(), ]
 
         for s in sentence:
             # print "==========================", s.get_word(), "===================="
@@ -2229,7 +2248,7 @@ class RtMatchEntry(object):
                 forms.get_forms()
             )
         ) + map(
-            lambda trs: (parser.specdefs.common.SpecStateFiniForm(), trs),
+            lambda trs: (parser.lang.common.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         )
 

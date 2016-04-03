@@ -2,21 +2,21 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.lang.common import SequenceSpec
+from parser.lang.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
 from parser.named import template
 
 
-class BasicVerbSpec(SequenceSpec):
+class BasicNounSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'basic-verb')
+        SequenceSpec.__init__(self, 'basic-noun')
         self.__compared_with = {}
 
         self.spec = template("spec")(
             {
-                "id": "$PARENT::verb",
+                "id": "$PARENT::noun",
                 "repeatable": RepeatableSpecs().Once(),
-                "pos_type": [PosSpecs().IsVerb(), ],
+                "pos_type": [PosSpecs().IsNoun(), ],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             }
         )

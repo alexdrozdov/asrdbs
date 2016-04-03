@@ -3,7 +3,7 @@
 
 
 import parser.templates.common
-from parser.specdefs.defs import RepeatableSpecs
+from parser.lang.defs import RepeatableSpecs
 
 
 class TemplateRepeat(parser.templates.common.SpecTemplate):

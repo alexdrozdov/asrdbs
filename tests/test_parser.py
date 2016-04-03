@@ -10,6 +10,7 @@ import json
 import unittest
 import logging
 from contextlib import contextmanager
+import common.config
 import parser.sentparser
 import parser.graph
 import parser.graph_span
@@ -18,21 +19,6 @@ import common.dictcmp
 from common.output import output as oput
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-
-sentences = [
-    # u'мальчики, девочки сидели на лавочке',
-    u'мама мыла покрашенную раму',
-    # u'падал прошлогодний снег на теплую землю поля',
-    # u'мелькнул последний луч жаркого дня',
-    # u'мелькнул последний яркий луч жаркого дня',
-    # u'мелькнул последний , яркий луч жаркого дня',
-    # u'хижина рыбака стояла на береге синего моря',
-    # u'он сидел на стволе упавшего дерева',
-    # u'мальчик сидел на стволе упавшего дерева',
-    # u'наши дела шли',
-    # u'мы поймали его в парке',
-    # u'красные цветы',
-]
 
 
 @contextmanager
@@ -196,6 +182,21 @@ def suite():
     )
 
 if __name__ == '__main__':
+    cfg = common.config.Config(
+        obj={
+            'app': {
+                'modules': [
+                    'parser',
+                    'worddb',
+                ],
+            },
+            'parser': {
+                'specdefs': ['ru_RU/default/specdefs', ],
+                'linkdefs': ['ru_RU/default/linkdefs', ],
+            },
+        }
+    )
+
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     runner = unittest.TextTestRunner()
     runner.run(suite())

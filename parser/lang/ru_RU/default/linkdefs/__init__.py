@@ -1,8 +1,8 @@
-def load_specdefs():
+def load_linkdefs():
     global __all__
     import os
     import inspect
-    import parser.specdefs.common
+    import parser.matchcmn
     local_path = os.path.dirname(os.path.realpath(__file__))
     __all__ = filter(
         lambda m: m != '__init__' and '.' not in m,
@@ -21,7 +21,7 @@ def load_specdefs():
                 lambda c: c[1],
                 inspect.getmembers(
                     obj,
-                    lambda c: inspect.isclass(c) and c is not parser.specdefs.common.SequenceSpec and issubclass(c, parser.specdefs.common.SequenceSpec)
+                    lambda c: inspect.isclass(c) and c is not parser.matchcmn.PosMatcher and issubclass(c, parser.matchcmn.PosMatcher)
                 )
             )
         )

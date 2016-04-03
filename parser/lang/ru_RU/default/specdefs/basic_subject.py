@@ -2,8 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs
+from parser.lang.common import SequenceSpec
+from parser.lang.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs
 from parser.named import template
 
 

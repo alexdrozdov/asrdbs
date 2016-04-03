@@ -10,6 +10,7 @@ import json
 import io
 import argparse
 import uuid
+import common.config
 import parser.sentparser
 import parser.graph
 import parser.graph_span
@@ -96,5 +97,20 @@ def execute(opts):
 
 
 if __name__ == '__main__':
+    cfg = common.config.Config(
+        obj={
+            'app': {
+                'modules': [
+                    'parser',
+                    'worddb',
+                ],
+            },
+            'parser': {
+                'specdefs': ['ru_RU/default/specdefs', ],
+                'linkdefs': ['ru_RU/default/linkdefs', ],
+            },
+        }
+    )
+
     opts = parse_opts()
     execute(opts)

@@ -2,21 +2,21 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
+from parser.lang.common import SequenceSpec
+from parser.lang.defs import RepeatableSpecs, PosSpecs, AnchorSpecs
 from parser.named import template
 
 
-class BasicAdjSpec(SequenceSpec):
+class BasicAdvSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'basic-adj')
+        SequenceSpec.__init__(self, 'basic-adv')
         self.__compared_with = {}
 
         self.spec = template("spec")(
             {
-                "id": "$PARENT::adj",
+                "id": "$PARENT::adv",
                 "repeatable": RepeatableSpecs().Once(),
-                "pos_type": [PosSpecs().IsAdjective(), ],
+                "pos_type": [PosSpecs().IsAdverb(), ],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-            },
+            }
         )

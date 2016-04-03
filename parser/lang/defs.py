@@ -2,9 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.matcher import matcher
+import parser.matcher
 from parser.matchcmn import MatchBool
-from parser.specdefs.common import RtStaticRule, RtDynamicRule, RtMatchString, RtRuleFactory, RtRule
+from parser.lang.common import RtStaticRule, RtDynamicRule, RtMatchString, RtRuleFactory, RtRule
 from argparse import Namespace as ns
 
 
@@ -354,7 +354,7 @@ class c__slave_master_spec(RtDynamicRule):
     def apply_on(self, rtme, other_rtme):
         rtme_form = rtme.get_form()
         other_form = other_rtme.get_form()
-        res = matcher.match(other_form, rtme_form)
+        res = parser.matcher.match(other_form, rtme_form)
         if res:
             rtme.add_link(
                 [

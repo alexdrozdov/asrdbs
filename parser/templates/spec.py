@@ -3,7 +3,7 @@
 
 
 import parser.templates.common
-from parser.specdefs.defs import RequiredSpecs, FsmSpecs
+from parser.lang.defs import RequiredSpecs, FsmSpecs
 
 
 class TemplateSpec(parser.templates.common.SpecTemplate):

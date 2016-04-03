@@ -2,35 +2,32 @@
 # -*- #coding: utf8 -*-
 
 
+import common.config
 import matchcmn
-import linkdefs.noun_adj
-import linkdefs.noun_participal
-import linkdefs.noun_noun
-import linkdefs.noun_pronoun
-import linkdefs.preposition_noun
-import linkdefs.verb_adverb
-import linkdefs.verb_noun
-import linkdefs.verb_pronoun
-import linkdefs.verb_verb
-import linkdefs.adj_adverb
 
 
 class WordMatcher(object):
     def __init__(self):
         self.match_dict = {}
-        self.add_matcher(linkdefs.noun_adj.NounAdjectiveMatcher())
-        self.add_matcher(linkdefs.noun_participal.NounParticipalMatcher())
-        self.add_matcher(linkdefs.noun_participal.ParticipalNounMatcher())
-        self.add_matcher(linkdefs.noun_noun.NounNounMatcher())
-        self.add_matcher(linkdefs.noun_pronoun.NounPronounMatcher())
-        self.add_matcher(linkdefs.preposition_noun.PrepositionNounMatcher())
-        self.add_matcher(linkdefs.verb_adverb.VerbAdverbMatcher())
-        self.add_matcher(linkdefs.verb_noun.VerbNounMatcher())
-        self.add_matcher(linkdefs.verb_noun.NounVerbMatcher())
-        self.add_matcher(linkdefs.verb_pronoun.VerbPronounMatcher())
-        self.add_matcher(linkdefs.verb_pronoun.PronounVerbMatcher())
-        self.add_matcher(linkdefs.verb_verb.VerbVerbMatcher())
-        self.add_matcher(linkdefs.adj_adverb.AdjAdverbMatcher())
+        self.__load_linkdefs()
+
+    def __load_module(self, path):
+        parts = ['parser', 'lang'] + path.split('/')
+        root = parts[0]
+        parts = parts[1:]
+        path = root
+        obj = __import__(root, globals(), locals(), root)
+        for p in parts:
+            path += '.' + p
+            obj = __import__(path, globals(), locals(), path)
+        return obj
+
+    def __load_linkdefs(self):
+        cfg = common.config.Config()
+        for linkdefs_dir in cfg['/parser/linkdefs']:
+            obj = self.__load_module(linkdefs_dir)
+            for m in obj.load_linkdefs():
+                self.add_matcher(m())
 
     def add_matcher(self, matcher):
         pos1_name, pos2_name = matcher.get_pos_names()
@@ -57,5 +54,13 @@ class WordMatcher(object):
             return m.match(wf1, wf2)
         return matchcmn.invariantBool()
 
+matcher = None
 
-matcher = WordMatcher()
+
+def load():
+    global matcher
+    matcher = WordMatcher()
+
+
+def match(wf1, wf2):
+    return matcher.match(wf1, wf2)

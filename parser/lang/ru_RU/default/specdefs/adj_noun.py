@@ -2,9 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.specdefs.common import SequenceSpec
-from parser.specdefs.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs, LinkSpecs
-from parser.specdefs.validate import ValidatePresence
+from parser.lang.common import SequenceSpec
+from parser.lang.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, CaseSpecs, LinkSpecs
+from parser.lang.validate import ValidatePresence
 from parser.named import template
 
 
