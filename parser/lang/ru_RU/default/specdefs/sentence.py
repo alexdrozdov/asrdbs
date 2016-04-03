@@ -8,9 +8,9 @@ from parser.lang.validate import ValidatePresence
 from parser.named import template
 
 
-class SentanceSpec(SequenceSpec):
+class SentenceSpec(SequenceSpec):
     def __init__(self):
-        SequenceSpec.__init__(self, 'sentance')
+        SequenceSpec.__init__(self, 'sentence')
         self.__compared_with = {}
 
         self.spec = template("spec")([

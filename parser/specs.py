@@ -1920,8 +1920,8 @@ class SequenceMatchRes(object):
 
 
 class SequenceSpecMatcher(object):
-    def __init__(self, export_svg=False, primary='sentance'):
-        self.__primary_spec = 'sentance' if primary is None else primary
+    def __init__(self, export_svg=False, primary='sentence'):
+        self.__primary_spec = 'sentence' if primary is None else primary
         self.__matchers = []
         self.__primary = []
         self.__spec_by_name = {}
@@ -2055,7 +2055,7 @@ class SequenceSpecMatcher(object):
             ctx = self.__create_ctx()
             self.__create_initial_ctxs(ctx)
 
-        sentence += [parser.lang.common.SentanceFini(), ]
+        sentence += [parser.lang.common.SentenceFini(), ]
 
         for s in sentence:
             # print "==========================", s.get_word(), "===================="

@@ -171,7 +171,7 @@ class SpecStateFiniForm(object):
         }
 
 
-class SentanceFini(object):
+class SentenceFini(object):
     def __init__(self):
         self.__entries = [SpecStateFiniForm()]
 
