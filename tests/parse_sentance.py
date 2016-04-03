@@ -33,6 +33,7 @@ def parse_opts():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--sentence')
     parser.add_argument('-t', '--test')
+    parser.add_argument('-p', '--primary')
     parser.add_argument('-m', '--make-test', action='store_true', default=False)
     res = parser.parse_args(sys.argv[1:])
 
@@ -60,7 +61,7 @@ def execute(opts):
         with timeit_ctx('loading database'):
             tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            srm = parser.specs.SequenceSpecMatcher(False)
+            srm = parser.specs.SequenceSpecMatcher(False, primary=opts.primary)
 
         with timeit_ctx('tokenizing'):
             tokens = parser.sentparser.Tokenizer().tokenize(sentence)

@@ -1920,7 +1920,8 @@ class SequenceMatchRes(object):
 
 
 class SequenceSpecMatcher(object):
-    def __init__(self, export_svg=False):
+    def __init__(self, export_svg=False, primary='sentance'):
+        self.__primary_spec = 'sentance' if primary is None else primary
         self.__matchers = []
         self.__primary = []
         self.__spec_by_name = {}
@@ -1953,11 +1954,8 @@ class SequenceSpecMatcher(object):
                 self.add_spec(sd())
         self.build_specs()
 
-    def __is_independent(self, specdef):
-        return specdef.get_name() in ['adv-adj', 'basic-adv', 'basic-adj']
-
     def __is_primary(self, name):
-        return name == 'sentance'
+        return name == self.__primary_spec
 
     def add_spec(self, base_spec_class):
         assert base_spec_class.get_name() not in self.__spec_by_name
