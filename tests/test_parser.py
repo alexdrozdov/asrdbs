@@ -9,6 +9,7 @@ import time
 import json
 import unittest
 import logging
+import argparse
 from contextlib import contextmanager
 import common.config
 import parser.sentparser
@@ -98,11 +99,12 @@ class CrossMatchResCmp(object):
 
 
 class ParserTestCase(unittest.TestCase):
-    def __init__(self, methodName='test_sentence', filename=None):
+    def __init__(self, methodName='test_sentence', filename=None, primary='sentence'):
         assert filename is not None
         super(ParserTestCase, self).__init__(methodName)
         self.filename = filename
         self.filename_base = os.path.splitext(os.path.basename(self.filename))[0]
+        self.primary = primary
 
     def setUp(self):
         print ''
@@ -111,7 +113,7 @@ class ParserTestCase(unittest.TestCase):
         with timeit_ctx('loading worddb'):
             self.tm = TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building spec matcher'):
-            self.srm = SequenceSpecMatcher(False)
+            self.srm = SequenceSpecMatcher(False, primary=self.primary)
 
         with open(self.filename) as f:
             data = json.load(f)
@@ -161,16 +163,10 @@ class ParserTestCase(unittest.TestCase):
         self.assertTrue(res)
 
 
-def suite():
-    parser_tests_dir = os.path.join(
-        os.path.dirname(
-            os.path.realpath(__file__)
-        ),
-        'parser'
-    )
+def suite(parser_tests_dir, primary):
     return unittest.TestSuite(
         map(
-            lambda filename: ParserTestCase(filename=filename),
+            lambda filename: ParserTestCase(filename=filename, primary=primary),
             filter(
                 lambda d: os.path.exists(d),
                 map(
@@ -181,22 +177,22 @@ def suite():
         )
     )
 
+
+def parse_opts():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--test-dir')
+    res = parser.parse_args(sys.argv[1:])
+
+    if res.test_dir is None:
+        raise ValueError('test directory required')
+
+    return res
+
+
 if __name__ == '__main__':
-    cfg = common.config.Config(
-        obj={
-            'app': {
-                'modules': [
-                    'parser',
-                    'worddb',
-                ],
-            },
-            'parser': {
-                'specdefs': ['ru_RU/default/specdefs', ],
-                'linkdefs': ['ru_RU/default/linkdefs', ],
-            },
-        }
-    )
+    opts = parse_opts()
+    cfg = common.config.Config(filename=os.path.join(opts.test_dir, 'config.json'))
 
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
     runner = unittest.TextTestRunner()
-    runner.run(suite())
+    runner.run(suite(opts.test_dir, cfg['/tests/primary']))

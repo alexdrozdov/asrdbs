@@ -19,7 +19,7 @@ class WordMatcher(object):
         obj = __import__(root, globals(), locals(), root)
         for p in parts:
             path += '.' + p
-            obj = __import__(path, globals(), locals(), path)
+            obj = __import__(str(path), globals(), locals(), str(path))
         return obj
 
     def __load_linkdefs(self):
