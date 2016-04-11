@@ -107,8 +107,8 @@ if __name__ == '__main__':
                 ],
             },
             'parser': {
-                'specdefs': ['ru_RU/default/specdefs', ],
-                'linkdefs': ['ru_RU/default/linkdefs', ],
+                'specdefs': ['ru_RU/enchanced/specdefs', ],
+                'linkdefs': ['ru_RU/enchanced/linkdefs', ],
             },
         }
     )

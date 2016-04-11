@@ -54,6 +54,7 @@ class Preprocessor(object):
             'uniq-items': self.__on_uniq_items,
             'same-as': lambda (ctx, v): True,
             'merges-with': lambda (ctx, v): True,
+            'dependency-off': lambda (ctx, v): True,
         }
 
     def __on_id(self, v):
