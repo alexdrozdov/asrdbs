@@ -55,6 +55,7 @@ class Preprocessor(object):
             'same-as': lambda (ctx, v): True,
             'merges-with': lambda (ctx, v): True,
             'dependency-off': lambda (ctx, v): True,
+            'refers-to': lambda (ctx, v): True,
         }
 
     def __on_id(self, v):

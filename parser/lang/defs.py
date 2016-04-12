@@ -43,6 +43,12 @@ class RepeatableSpecs(object):
     def Any(self):
         return self.EqualOrMoreThan(0)
 
+    def Never(self):
+        return (None, None)
+
+    def Virtual(self):
+        return (None, 1)
+
 
 class AnchorSpecs(object):
     no_anchor = 0

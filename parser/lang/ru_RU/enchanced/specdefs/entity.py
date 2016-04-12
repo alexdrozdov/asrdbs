@@ -65,7 +65,10 @@ class EntityNegSpec(SequenceSpec):
         self.spec = template("spec")([
             template("neg")(
                 "entity-neg",
-                template("include")("entity"),
+                {
+                    "id": "$PARENT::body",
+                    "include": template("include")("entity"),
+                },
                 strict_neg=False
             )
         ])
@@ -104,7 +107,7 @@ class EntityListSpec(SequenceSpec):
                         }
                     ]
                 },
-                None,
+                repeatable=RepeatableSpecs().Once(),
                 separator=None
             )
         ])
@@ -118,7 +121,10 @@ class EntityListNegSpec(SequenceSpec):
         self.spec = template("spec")([
             template("neg")(
                 "entity-list-neg",
-                template("include")("entity-list"),
+                {
+                    "id": "$PARENT::body",
+                    "include": template("include")("entity-list"),
+                },
                 strict_neg=False
             )
         ])
@@ -130,7 +136,7 @@ class EntityOwnerSpec(SequenceSpec):
         self.__compared_with = {}
 
         self.spec = template("subclass")(
-            base="entity-list-neg",
+            base=EntityListNegSpec,
             rewrite=[
                 {
                     "find": {
@@ -141,7 +147,5 @@ class EntityOwnerSpec(SequenceSpec):
                         "repeatable": RepeatableSpecs().Once(),
                     }
                 },
-            ],
-            extend=[
             ]
         )
