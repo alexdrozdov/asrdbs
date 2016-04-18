@@ -35,13 +35,13 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
             yield e
 
     def __rule_matched(self, e, r):
-        for k, v in r:
+        for k, v in r.items():
             if not e.has_key(k):
                 return False
             if re.match(v, e[k]) is None:
                 return False
         return True
 
-    def __rule_apply(e, extend):
-        for k, v in extend:
+    def __rule_apply(self, e, extend):
+        for k, v in extend.items():
             e[k] = v

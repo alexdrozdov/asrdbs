@@ -123,6 +123,11 @@ class Preprocessor(object):
     def __validate_dict(self, ctx, d):
         if not d.has_key('id'):
             raise PreprocessorError(ctx, "Required key 'id' is missing")
+        if not d.has_key('repeatable') and not d.has_key('required'):
+            raise PreprocessorError(
+                ctx,
+                "Required key 'repeatable' or 'required' are missing"
+            )
 
         ctx.push_stack(d['id'])
         for k, v in d.items():

@@ -102,6 +102,9 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         min_count = entry["repeatable"][0]
         max_count = entry["repeatable"][1]
 
+        if min_count is None:
+            return []
+
         res = []
         if (min_count == max_count and min_count == 1) or (min_count == 0 and max_count == 1):
             set_order = False
@@ -1436,8 +1439,9 @@ class MatcherContext(object):
         ('ctx_complete_fcn', 'ctx_complete_fcn', lambda x: None),
     ]
 
-    def __init__(self, owner, **kwargs):
+    def __init__(self, owner, spec_name, **kwargs):
         self.owner = owner
+        self.spec_name = spec_name
         self.__create_fcns(kwargs)
         self.sequences = []
         self.ctxs = []
@@ -1473,10 +1477,28 @@ class MatcherContext(object):
         self.__new_ctxs = []
 
     def create_ctx(self, spec_name, **kwargs):
+        # if not isinstance(self.owner, ns):
+        #     print list(self.__get_callstack())
         matcher = self.owner.find_matcher(spec_name)
-        mc = MatcherContext(self, **kwargs)
+        mc = MatcherContext(self, spec_name, **kwargs)
         self.ctxs.append((matcher, mc))
         self.__new_ctxs.append((matcher, mc))
+
+    def called_more_than(self, ctx_name, max_count):
+        cnt = 0
+        for name in self.__get_callstack():
+            if ctx_name != name:
+                continue
+            cnt += 1
+            if cnt > max_count:
+                return True
+        return False
+
+    def __get_callstack(self):
+        o = self.owner
+        while not isinstance(o, ns):
+            yield o.get_name()
+            o = o.owner
 
     def find_matcher(self, name):
         return self.owner.find_matcher(name)
@@ -1504,6 +1526,9 @@ class MatcherContext(object):
 
     def ctx_complete(self):
         self.__fcns['ctx_complete_fcn']((self, ))
+
+    def get_name(self):
+        return self.spec_name
 
 
 class RtMatchSequence(object):
@@ -1703,6 +1728,10 @@ class RtMatchSequence(object):
             return [ns(sq=self, valid=True, fini=False), ]
 
         to = trs.get_to()
+
+        if self.__dynamic_ctx_overflow(to.get_include_name()):
+            return [ns(sq=self, valid=False, fini=False), ]
+
         self.__stack.handle_trs(trs)
 
         # Create virtual entry, awaiting for subsequence
@@ -1721,9 +1750,12 @@ class RtMatchSequence(object):
             ctx_create_fcn=lambda(sub_ctx, ): self.__subctx_create(sub_ctx, rte),
             sequence_res_fcn=lambda (sub_ctx, res): self.__submatcher_res(sub_ctx, rte, res),
             sequence_forked_fcn=lambda (sub_ctx, sq, new_sq): self.__submatcher_forked(sub_ctx, sq, new_sq, rte),
-            ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(sub_ctx, rte),
+            ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(sub_ctx, rte)
         )
         return [ns(sq=self, valid=True, fini=False), ]
+
+    def __dynamic_ctx_overflow(self, next_ctx_name):
+        return self.__ctx.called_more_than(next_ctx_name, 0)
 
     def __subctx_create(self, sub_ctx, rte):
         # print '__submatcher_create', sub_ctx, rte
@@ -1739,6 +1771,10 @@ class RtMatchSequence(object):
 
     def __subctx_complete(self, sub_ctx, rte):
         # print '__submatcher_complete', sub_ctx, rte
+        rte.unset_subctx(sub_ctx)
+
+    def __subctx_failed(self, sub_ctx, rte):
+        # print '__submatcher_failed', sub_ctx, rte
         rte.unset_subctx(sub_ctx)
 
     @argres()
@@ -2016,6 +2052,7 @@ class SequenceSpecMatcher(object):
                 m,
                 MatcherContext(
                     ctx,
+                    '__root',
                     sequence_matched_fcn=lambda (sq_ctx, sq): ctx.matched_sqs.add(sq),
                 )
             ),
