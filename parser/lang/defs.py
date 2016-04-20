@@ -46,9 +46,6 @@ class RepeatableSpecs(object):
     def Never(self):
         return (None, None)
 
-    def Virtual(self):
-        return (None, 1)
-
 
 class AnchorSpecs(object):
     no_anchor = 0

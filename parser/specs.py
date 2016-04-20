@@ -670,6 +670,7 @@ class SpecStateDef(object):
         self.__is_local_final = False
         self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.init
         self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.fini
+        self.__is_virtual = spec_dict.has_key("virtual") and spec_dict["virtual"]
         self.__uid = str(uuid.uuid1())
         if spec_dict.has_key('include'):
             self.__incapsulate_spec_name = spec_dict['include']['spec']
@@ -733,6 +734,9 @@ class SpecStateDef(object):
 
     def is_anchor(self):
         return self.__is_local_anchor
+
+    def is_virtual(self):
+        return self.__is_virtual
 
     def fixed(self):
         return self.__fixed
@@ -1653,31 +1657,57 @@ class RtMatchSequence(object):
 
     @argres()
     def handle_forms(self, forms):
+        new_sq = []
+        again = [self, ]
+        i = 0
+        while again:
+            sq = again.pop(0)
+            r = sq.__handle_forms(forms)
+            new_sq.extend(r.results)
+            again.extend(r.again)
+            #i +=1
+            #if i > 1:
+            #    print "again", r.results, r.results[0].sq.print_sequence()
+        return new_sq
+
+    def __handle_forms(self, forms):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
-            return [ns(
-                sq=self,
-                valid=True if head.get_subctx() is not None else False,
-                fini=False
-            ), ]
+            return [
+                ns(
+                    results=[
+                        ns(
+                            sq=self,
+                            valid=True if head.get_subctx() is not None else False,
+                            fini=False
+                        ), ],
+                    again=[]
+                ), ]
+
+        hres = ns(
+            results=[],
+            again=[]
+        )
+
         trs = head.find_transitions(forms)
         if not trs:
-            return []
-
-        new_sq = []
+            return hres
 
         trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             for r in res:
                 if r.valid:
-                    new_sq.append(r)
+                    if not r.again:
+                        hres.results.append(r)
+                    else:
+                        hres.again.append(r.sq)
                 else:
                     self.__ctx.sequence_failed(r.sq)
                 if r.fini:
                     self.__ctx.sequence_res(r)
 
-        return new_sq
+        return hres
 
     @argres()
     def __handle_trs(self, trs, form):
@@ -1715,22 +1745,22 @@ class RtMatchSequence(object):
                             )
 
         if not self.append(rtme):
-            return [ns(sq=self, valid=False, fini=False), ]
+            return [ns(sq=self, valid=False, fini=False, again=False), ]
 
         if to.is_fini():
-            return [ns(sq=self, valid=self.__on_fini(), fini=True), ]
-        return [ns(sq=self, valid=True, fini=False), ]
+            return [ns(sq=self, valid=self.__on_fini(), fini=True, again=False), ]
+        return [ns(sq=self, valid=True, fini=False, again=to.is_virtual()), ]
 
     @argres()
     def __handle_dynamic_trs(self, trs, form):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
-            return [ns(sq=self, valid=True, fini=False), ]
+            return [ns(sq=self, valid=True, fini=False, again=False), ]
 
         to = trs.get_to()
 
         if self.__dynamic_ctx_overflow(to.get_include_name()):
-            return [ns(sq=self, valid=False, fini=False), ]
+            return [ns(sq=self, valid=False, fini=False, again=False), ]
 
         self.__stack.handle_trs(trs)
 
@@ -1752,7 +1782,7 @@ class RtMatchSequence(object):
             sequence_forked_fcn=lambda (sub_ctx, sq, new_sq): self.__submatcher_forked(sub_ctx, sq, new_sq, rte),
             ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(sub_ctx, rte)
         )
-        return [ns(sq=self, valid=True, fini=False), ]
+        return [ns(sq=self, valid=True, fini=False, again=False), ]
 
     def __dynamic_ctx_overflow(self, next_ctx_name):
         return self.__ctx.called_more_than(next_ctx_name, 0)

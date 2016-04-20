@@ -92,11 +92,12 @@ class EntityListSpec(SequenceSpec):
                 "id": "$PARENT::#pre#",
                 "repeatable": RepeatableSpecs().Never(),
             },
-            # {
-            #     "id": "$PARENT::aggregate",
-            #     "repeatable": RepeatableSpecs().Virtual(),
-            #     "anchor": AnchorSpecs().LocalSpecAnchor(),
-            # },
+            {
+                "id": "$PARENT::aggregate",
+                "virtual": True,
+                "repeatable": RepeatableSpecs().Once(),
+                # "anchor": AnchorSpecs().LocalSpecAnchor(),
+            },
             template("repeat")(
                 "$PARENT::entity-list",
                 {
