@@ -171,6 +171,48 @@ class SpecStateFiniForm(object):
         }
 
 
+class SpecStateVirtForm(object):
+    def __init__(self):
+        pass
+
+    def get_word(self):
+        return u'virt'
+
+    def get_info(self):
+        return u'virt'
+
+    def get_pos(self):
+        return u'virt'
+
+    def get_position(self):
+        return None
+
+    def get_uniq(self):
+        return 0
+
+    def clone_without_links(self):
+        return SpecStateIniForm()
+
+    def get_reliability(self):
+        return 1.0
+
+    def export_dict(self):
+        return {
+            'name': 'virt',
+            'reliability': 1.0,
+            'hidden': True,
+            'anchor': False,
+            'form': {},
+        }
+
+    def format_table(self, align=u'LEFT', bgcolor=u'white'):
+        return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
+            align,
+            bgcolor,
+            u'virt'
+        )
+
+
 class SentenceFini(object):
     def __init__(self):
         self.__entries = [SpecStateFiniForm()]

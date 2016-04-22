@@ -1181,7 +1181,7 @@ class Link(object):
 
 class MatchedEntry(object):
     def __init__(self, me, rtme=None):
-        if isinstance(me, RtMatchEntry):
+        if isinstance(me, (RtMatchEntry, RtVirtualEntry)):
             self.__init_from_rtme(me)
         else:
             self.__init_from_me(me, rtme)
@@ -1616,7 +1616,9 @@ class RtMatchSequence(object):
             lambda (idx, entry): indexes is None or idx in indexes,
             enumerate(sq.__all_entries)
         ):
-            self.__append_entries(RtMatchEntry(self, e))
+            self.__append_entries(
+                RtMatchEntry(self, e) if isinstance(e, RtMatchEntry) else RtVirtualEntry(self, e)
+            )
         for e in self.__all_entries:
             e.resolve_matched_rtmes()
         if indexes is None:
@@ -1659,15 +1661,11 @@ class RtMatchSequence(object):
     def handle_forms(self, forms):
         new_sq = []
         again = [self, ]
-        i = 0
         while again:
             sq = again.pop(0)
             r = sq.__handle_forms(forms)
             new_sq.extend(r.results)
             again.extend(r.again)
-            #i +=1
-            #if i > 1:
-            #    print "again", r.results, r.results[0].sq.print_sequence()
         return new_sq
 
     def __handle_forms(self, forms):
@@ -1738,11 +1736,18 @@ class RtMatchSequence(object):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
-        rtme = RtMatchEntry(self, ns(form=form,
-                                     spec_state_def=to,
-                                     rtms_offset=len(self.__all_entries)
-                                     )
-                            )
+        if to.is_virtual():
+            rtme = RtVirtualEntry(self, ns(form=form,
+                                           spec_state_def=to,
+                                           rtms_offset=len(self.__all_entries)
+                                           )
+                                  )
+        else:
+            rtme = RtMatchEntry(self, ns(form=form,
+                                         spec_state_def=to,
+                                         rtms_offset=len(self.__all_entries)
+                                         )
+                                )
 
         if not self.append(rtme):
             return [ns(sq=self, valid=False, fini=False, again=False), ]
@@ -2552,3 +2557,145 @@ class RtTmpEntry(object):
             return "RtTmpEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
         except:
             return "RtTmpEntry(objid={0})".format(hex(id(self)))
+
+
+class RtVirtualEntry(object):
+    def __new__(cls, *args, **kwargs):
+        obj = super(RtVirtualEntry, cls).__new__(cls)
+        owner = args[0]
+        obj.logger = owner.get_logger() if owner is not None else None
+        return obj
+
+    def get_logger(self):
+        return self.logger
+
+    @argres(show_result=False)
+    def __init__(self, owner, based_on):
+        if isinstance(based_on, RtVirtualEntry):
+            self.__init_from_rtme(owner, based_on)
+        else:
+            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def, based_on.rtms_offset)
+
+    @argres(show_result=False)
+    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset):
+        assert form is not None and spec_state_def is not None
+        self.__owner = owner
+        self.__form = parser.lang.common.SpecStateVirtForm()
+        self.__spec = spec_state_def
+        self.__rtms_offset = rtms_offset
+        self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
+        self.__sub_ctx = None
+
+        self.__create_name(self.__spec.get_name())
+
+    @argres(show_result=False)
+    def __init_from_rtme(self, owner, rtme):
+        self.__owner = owner
+        self.__form = rtme.__form
+        self.__spec = rtme.__spec
+        self.__rtms_offset = rtme.__rtms_offset
+        self.__reliability = rtme.__reliability
+
+        self.__name = RtMatchString(rtme.__name)
+
+    def get_matched_rules(self):
+        return []
+
+    def get_subctx(self):
+        return self.__sub_ctx
+
+    @argres(show_result=True)
+    def matched_list_valid(self):
+        for rule_rtme in self.__matched:
+            if isinstance(rule_rtme.rtme, RtMatchEntry):
+                continue
+            return False
+        return True
+
+    @argres(show_result=False)
+    def resolve_matched_rtmes(self):
+        return True
+
+    def __create_name(self, name):
+        self.__name = RtMatchString(name)
+        if self.__name.need_reindex():
+            self.__reindex_name(self.__name)
+
+    def __reindex_name(self, name):
+        stack = self.__owner.get_stack()
+        if name.get_max_level() is not None:
+            stack = stack[0:max(name.get_max_level() - 1, 0)]
+        try:
+            name.update(str(name).format(*stack))
+        except IndexError:
+            stack = stack + ['\\d+'] * 20
+            str_name = str(name).replace('[', '\\[').replace(']', '\\]').replace('+', '\\+')
+            name.update(str_name.format(*stack))
+
+    def get_name(self):
+        return self.__name
+
+    def get_owner(self):
+        return self.__owner
+
+    def get_form(self):
+        return self.__form
+
+    def get_spec(self):
+        return self.__spec
+
+    def get_offset(self, base=None):
+        return self.__rtms_offset
+
+    def get_reliability(self):
+        return self.__reliability
+
+    @argres()
+    def has_pending(self, required_only=False):
+        return False
+
+    @argres(show_result=False)
+    def add_link(self, link):
+        self.__owner.add_link(link)
+
+    @argres()
+    def find_transitions(self, forms):
+        return reduce(
+            lambda x, y: x + y,
+            map(
+                lambda form:
+                    filter(
+                        lambda (frm, trs): trs.get_to().is_static_applicable(frm),
+                        map(
+                            lambda trs: (form, trs),
+                            self.__spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
+                        )
+                    ),
+                forms.get_forms()
+            )
+        ) + map(
+            lambda trs: (parser.lang.common.SpecStateFiniForm(), trs),
+            self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
+        )
+
+    @argres()
+    def handle_rules(self, on_entry=None):
+        return True
+
+    def has_attribute(self, name):
+        return False
+
+    def get_attribute(self, name):
+        return None
+
+    def __repr__(self):
+        try:
+            return "RtVirtualEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+        except:
+            return "RtVirtualEntry(objid={0})".format(hex(id(self)))
+
+    def __str__(self):
+        try:
+            return "RtVirtualEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+        except:
+            return "RtVirtualEntry(objid={0})".format(hex(id(self)))
