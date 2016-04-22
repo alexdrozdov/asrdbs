@@ -30,7 +30,7 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
                 for ee in self.__iterall(e['entries']):
                     yield ee
             if e.has_key('uniq-items'):
-                for ee in self.__iterall(e['entries']):
+                for ee in self.__iterall(e['uniq-items']):
                     yield ee
             yield e
 
