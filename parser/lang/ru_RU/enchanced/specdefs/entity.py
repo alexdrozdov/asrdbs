@@ -97,13 +97,6 @@ class EntityListSpec(SequenceSpec):
                 "virtual": True,
                 "repeatable": RepeatableSpecs().Once(),
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "uniq": None,
-                "form-info": {
-                    "part_of_speech": None,
-                    "count": None,
-                    "case": None,
-                    "gender": None,
-                },
             },
             template("repeat")(
                 "$PARENT::entity-list",

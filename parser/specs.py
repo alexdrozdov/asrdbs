@@ -1686,16 +1686,15 @@ class RtMatchSequence(object):
     def __handle_forms(self, forms):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
-            return [
-                ns(
-                    results=[
-                        ns(
-                            sq=self,
-                            valid=True if head.get_subctx() is not None else False,
-                            fini=False
-                        ), ],
-                    again=[]
-                ), ]
+            return ns(
+                results=[
+                    ns(
+                        sq=self,
+                        valid=True if head.get_subctx() is not None else False,
+                        fini=False
+                    ), ],
+                again=[]
+            )
 
         hres = ns(
             results=[],
@@ -2872,7 +2871,7 @@ class RtVirtualEntry(object):
         res = {}
         for k in merge_fcn.keys():
             if x.has_key(k) and y.has_key(k):
-                r = merge_fcn[k](x, y)
+                r = merge_fcn[k](x[k], y[k])
                 if r is not None:
                     res[k] = r
         return res
