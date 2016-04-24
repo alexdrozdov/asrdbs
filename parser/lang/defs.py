@@ -454,3 +454,63 @@ class LinkSpecs(object):
 
     def AllMasters(self, weight=None):
         return RtRuleFactory(c__slave_master_unwanted_spec, ("__all_masters", ))
+
+
+class c__refersto_spec(RtDynamicRule):
+    def __init__(self, anchor=None):
+        RtDynamicRule.__init__(self, False, False)
+        self.__anchor = RtMatchString(anchor)
+
+    def new_copy(self):
+        return c__refersto_spec(self.__anchor)
+
+    def clone(self):
+        return c__refersto_spec(self.__anchor)
+
+    def is_applicable(self, rtme, other_rtme):
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
+            return True
+        return False
+
+    def apply_on(self, rtme, aggregator_rtme):
+        aggregator_rtme.attach_referer(rtme)
+        rtme_form = rtme.get_form()
+        aggregator_form = aggregator_rtme.get_form()
+        rtme.add_link(
+            [
+                ns(master=aggregator_rtme, slave=rtme, details=self.to_dict()),
+            ]
+        )
+        return RtRule.res_matched
+
+    def get_info(self, wrap=False):
+        s = u'refers-to{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
+
+    def to_dict(self):
+        return {
+            'rule': 'c__refersto_spec',
+            'res': MatchBool.defaultTrue,
+            'id_name': self.__anchor,
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+        }
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
+
+class RefersToSpecs(object):
+    def AttachTo(self, anchor):
+        return RtRuleFactory(
+            c__refersto_spec,
+            anchor=anchor
+        )

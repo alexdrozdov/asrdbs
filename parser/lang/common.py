@@ -172,8 +172,8 @@ class SpecStateFiniForm(object):
 
 
 class SpecStateVirtForm(object):
-    def __init__(self):
-        pass
+    def __init__(self, owner):
+        self.__owner = owner
 
     def get_word(self):
         return u'virt'
@@ -188,7 +188,7 @@ class SpecStateVirtForm(object):
         return None
 
     def get_uniq(self):
-        return 0
+        return self.__owner.get_uniq()
 
     def clone_without_links(self):
         return SpecStateIniForm()

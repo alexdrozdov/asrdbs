@@ -96,7 +96,14 @@ class EntityListSpec(SequenceSpec):
                 "id": "$PARENT::aggregate",
                 "virtual": True,
                 "repeatable": RepeatableSpecs().Once(),
-                # "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "uniq": None,
+                "form-info": {
+                    "part_of_speech": None,
+                    "count": None,
+                    "case": None,
+                    "gender": None,
+                },
             },
             template("repeat")(
                 "$PARENT::entity-list",
@@ -106,13 +113,13 @@ class EntityListSpec(SequenceSpec):
                     "entries": [
                         # {
                         #     "id": "$PARENT::#pre#",
-                        #     # "repeatable": RepeatableSpecs().Never(),
+                        #     "repeatable": RepeatableSpecs().Never(),
+                        #     "dependency-off": "$PARENT::entity",
                         # },
                         {
                             "id": "$PARENT::entity",
                             "repeatable": RepeatableSpecs().Once(),
-                            "anchor": AnchorSpecs().LocalSpecAnchor(),
-                            "refers-to": "$LOCAL_SPEC_ANCHOR",
+                            "refers-to": template("refers-to")(),
                             "include": template("include")("entity-neg", is_static=True),
                         }
                     ]
@@ -139,27 +146,6 @@ class EntityListNegSpec(SequenceSpec):
         ])
 
 
-# class EntityOwnerSpec(SequenceSpec):
-#     def __init__(self):
-#         SequenceSpec.__init__(self, 'entity-owner')
-#         self.__compared_with = {}
-#
-#         self.spec = template("subclass")(
-#             base=EntityListNegSpec,
-#             rewrite=[
-#                 {
-#                     "find": {
-#                         "id": "*::#pre#",
-#                     },
-#                     "extend": {
-#                         "dependency-off": "$PARENT::entity",
-#                         "repeatable": RepeatableSpecs().Once(),
-#                     }
-#                 },
-#             ]
-#         )
-#
-#
 class EntityLocationSpec(SequenceSpec):
     def __init__(self):
         SequenceSpec.__init__(self, 'entity-location')
@@ -178,8 +164,8 @@ class EntityLocationSpec(SequenceSpec):
                         "repeatable": RepeatableSpecs().Once(),
                         "uniq-items": template("phrases")(
                             [u"на",
-                            u"под",
-                            u"в"]
+                             u"под",
+                             u"в"]
                         )
                     }
                 },

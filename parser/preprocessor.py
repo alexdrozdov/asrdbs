@@ -57,6 +57,8 @@ class Preprocessor(object):
             'dependency-off': lambda (ctx, v): True,
             'refers-to': lambda (ctx, v): True,
             'virtual': lambda (ctx, v): True,
+            'form-info': lambda (ctx, v): True,
+            'uniq': lambda (ctx, v): True,
         }
 
     def __on_id(self, v):

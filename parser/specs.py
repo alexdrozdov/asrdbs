@@ -650,6 +650,11 @@ class TrsDef(object):
 
 
 class SpecStateDef(object):
+
+    static_rules = ['pos_type', 'case']
+    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to']
+    all_rules = static_rules + dynamic_rules
+
     def __init__(self, compiler, name, spec_dict, parent=None):
         self.__name = RtMatchString(name)
         if self.__name.need_resolve():
@@ -880,17 +885,27 @@ class SpecStateDef(object):
                         target_list.extend(rule_def.create(compiler, self))
 
     def __create_stateless_rules(self, comiler):
-        self.__create_rule_list(comiler, True, ['pos_type', 'case'], self.__stateless_rules)
+        self.__create_rule_list(
+            comiler,
+            True,
+            SpecStateDef.static_rules,
+            self.__stateless_rules
+        )
 
     def __create_rt_rules(self, compiler):
-        self.__create_rule_list(compiler, False, ['same-as', 'position', 'master-slave', 'unwanted-links'], self.__rt_rules)
+        self.__create_rule_list(
+            compiler,
+            False,
+            SpecStateDef.dynamic_rules,
+            self.__rt_rules
+        )
 
     def create_rules(self, compiler):
         self.__create_stateless_rules(compiler)
         self.__create_rt_rules(compiler)
 
     def has_noncreated_rules(self):
-        for r in ['same-as', 'position', 'master-slave', 'unwanted-links', 'pos_type', 'case']:
+        for r in SpecStateDef.all_rules:
             if self.__spec_dict.has_key(r):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
@@ -948,16 +963,16 @@ class SpecStateDef(object):
         return [r.new_copy() for r in self.__stateless_rules]
 
     def has_rules(self):
-        return len(set(['same-as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(SpecStateDef.all_rules).intersection(self.__spec_dict.keys())) > 0
 
     def has_rt_rules(self):
-        return len(set(['same-as', 'position', 'master-slave', 'unwanted-links']).intersection(self.__spec_dict.keys())) > 0
+        return len(set(SpecStateDef.dynamic_rules).intersection(self.__spec_dict.keys())) > 0
 
     def get_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['same-as', 'pos_type', 'case', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in SpecStateDef.all_rules if self.__spec_dict.has_key(r)}
 
     def get_rt_rules_list(self):
-        return {r: self.__spec_dict[r] for r in ['same-as', 'position', 'master-slave', 'unwanted-links'] if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in SpecStateDef.dynamic_rules if self.__spec_dict.has_key(r)}
 
     def includes_spec(self):
         return self.__incapsulate_spec is not None
@@ -1160,7 +1175,7 @@ class Link(object):
         return self.__uniq
 
     def get_csum(self):
-        return self.__master.get_uniq() + self.__slave.get_uniq()
+        return '{0}{1}'.format(self.__master.get_uniq(), self.__slave.get_uniq())
 
     def get_details(self):
         return self.__details
@@ -1332,10 +1347,10 @@ class MatchedSequence(object):
 
     def __mk_link(self, master, slave, details):
         assert all((
-            isinstance(master, RtMatchEntry),
+            isinstance(master, (RtMatchEntry, RtVirtualEntry)),
             isinstance(slave, RtMatchEntry),
             isinstance(details, list)
-        ))
+        )), '{0}, {1}, {2}'.format(type(master), type(slave), type(details))
         me_from = self.__uid2me[master.get_form().get_uniq()]
         me_to = self.__uid2me[slave.get_form().get_uniq()]
         l = Link(me_from, me_to, details)
@@ -2238,7 +2253,7 @@ class RtMatchEntry(object):
     @argres(show_result=False)
     def resolve_matched_rtmes(self):
         for rule_rtme in self.__matched:
-            if isinstance(rule_rtme.rtme, RtMatchEntry):
+            if isinstance(rule_rtme.rtme, (RtMatchEntry, RtVirtualEntry)):
                 continue
             # FIXME For or subseq calls except subseq(0. -2) when last entry
             # is tmp we will get outofrange exception
@@ -2574,35 +2589,89 @@ class RtVirtualEntry(object):
         if isinstance(based_on, RtVirtualEntry):
             self.__init_from_rtme(owner, based_on)
         else:
-            self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def, based_on.rtms_offset)
+            self.__init_from_form_spec(
+                owner,
+                based_on.form,
+                based_on.spec_state_def,
+                based_on.rtms_offset,
+                based_on.attributes if hasattr(based_on, 'attributes') else {}
+            )
 
     @argres(show_result=False)
-    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset):
+    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
-        self.__form = parser.lang.common.SpecStateVirtForm()
+        self.__form = parser.lang.common.SpecStateVirtForm(self)
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
-        self.__sub_ctx = None
+        self.__attributes = attributes
+        self.__referers = []
+        self.__uniq = None
 
         self.__create_name(self.__spec.get_name())
+        self.__create_rules()
+        self.__index_rules()
+        self.__create_static_rules()
 
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
-        self.__form = rtme.__form
+        self.__form = parser.lang.common.SpecStateVirtForm(self)
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability
+        self.__referers = []
+        self.__uniq = rtme.get_uniq()
 
         self.__name = RtMatchString(rtme.__name)
+        self.__pending = rtme.__pending[:]
+        self.__copy_attributes(rtme)
+        self.__index_rules()
+        self.__copy_matched_rules(rtme)
+        self.__copy_referers(rtme)
+
+    @argres(show_result=False)
+    def __copy_attributes(self, rtme):
+        self.__attributes = {k: v for k, v in rtme.__attributes.items()}
+
+    @argres(show_result=False)
+    def __create_rules(self):
+        self.__pending = []
+        for r in self.__spec.get_rt_rules():
+            assert r is not None
+            for b in r.get_bindings():
+                if b.need_reindex():
+                    self.__reindex_name(b)
+            self.__pending.append(r)
+
+    @argres(show_result=False)
+    def __create_static_rules(self):
+        self.__matched = []
+        for r in self.__spec.get_stateless_rules():
+            self.__matched.append(ns(rule=r, rtme=self))
+
+    @argres(show_result=False)
+    def __copy_matched_rules(self, rtme):
+        self.__matched = []
+        for rule_rtme in rtme.__matched:
+            self.__matched.append(
+                ns(
+                    rule=rule_rtme.rule.new_copy(),
+                    rtme=self if id(rule_rtme) == id(rtme) else self.__owner[rule_rtme.rtme.get_offset()] if rule_rtme.rtme.get_offset() < self.get_offset() else rule_rtme.rtme.get_offset()
+                )
+            )
+
+    @argres(show_result=False)
+    def __copy_referers(self, rtme):
+        self.__referers = []
+        for referer in rtme.__referers:
+            self.__referers.append(
+                self.__owner[referer.get_offset()] if referer.get_offset() < self.get_offset() else referer.get_offset()
+            )
 
     def get_matched_rules(self):
-        return []
-
-    def get_subctx(self):
-        return self.__sub_ctx
+        return self.__matched
 
     @argres(show_result=True)
     def matched_list_valid(self):
@@ -2614,7 +2683,26 @@ class RtVirtualEntry(object):
 
     @argres(show_result=False)
     def resolve_matched_rtmes(self):
+        for rule_rtme in self.__matched:
+            if isinstance(rule_rtme.rtme, (RtMatchEntry, RtVirtualEntry)):
+                continue
+            # FIXME For or subseq calls except subseq(0. -2) when last entry
+            # is tmp we will get outofrange exception
+            rule_rtme.rtme = self.__owner[rule_rtme.rtme]
+
+        for i, referer in enumerate(self.__referers):
+            if isinstance(referer, (RtMatchEntry, RtVirtualEntry)):
+                continue
+            self.__referers[i] = self.__owner[self.__referers[i]]
+
         return True
+
+    @argres(show_result=False)
+    def __index_rules(self):
+        self.__required_count = 0
+        for r in self.__pending:
+            if not r.is_optional():
+                self.__required_count += 1
 
     def __create_name(self, name):
         self.__name = RtMatchString(name)
@@ -2631,6 +2719,12 @@ class RtVirtualEntry(object):
             stack = stack + ['\\d+'] * 20
             str_name = str(name).replace('[', '\\[').replace(']', '\\]').replace('+', '\\+')
             name.update(str_name.format(*stack))
+
+    @argres()
+    def __decrease_rule_counters(self, rule):
+        if not rule.is_persistent():
+            self.__required_count -= 1
+        return self.__required_count
 
     def get_name(self):
         return self.__name
@@ -2650,9 +2744,16 @@ class RtVirtualEntry(object):
     def get_reliability(self):
         return self.__reliability
 
+    def get_uniq(self):
+        if self.__uniq is None:
+            self.__recalculate_uniq()
+        return self.__uniq
+
     @argres()
     def has_pending(self, required_only=False):
-        return False
+        if required_only:
+            return self.__required_count > 0
+        return len(self.__pending) > 0
 
     @argres(show_result=False)
     def add_link(self, link):
@@ -2680,13 +2781,56 @@ class RtVirtualEntry(object):
 
     @argres()
     def handle_rules(self, on_entry=None):
+        pending = []
+        entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
+        for r in self.__pending:
+            applied = False
+            for e in entries:
+                if self.__check_applicable(r, e):
+                    applied = True
+                    if not self.__apply_on(r, e):
+                        return False
+                    self.__decrease_rule_counters(r)
+                    self.__add_matched_rule(r, e)
+                    if not r.is_persistent():
+                        break
+            if not applied or r.is_persistent():
+                pending.append(r)
+            self.__pending = pending
         return True
+
+    @argres(show_result=False)
+    def __add_matched_rule(self, rule, rtme):
+        self.__matched.append(ns(rule=rule, rtme=rtme))
+
+    @argres()
+    def __check_applicable(self, rule, other_rtme):
+        if isinstance(other_rtme, RtTmpEntry):
+            return False
+        return rule.is_applicable(self, other_rtme)
+
+    @argres()
+    def __apply_on(self, rule, other_rtme):
+        return rule.apply_on(self, other_rtme) != RtRule.res_failed
 
     def has_attribute(self, name):
         return False
 
     def get_attribute(self, name):
         return None
+
+    @argres()
+    def attach_referer(self, rtme):
+        self.__referers.append(rtme)
+        self.__uniq = None
+        return True
+
+    @argres(show_result=False)
+    def __recalculate_uniq(self):
+        referers_uuids = '.'.join(
+            sorted([r.get_form().get_uniq() for r in self.__referers])
+        )
+        self.__uniq = str(uuid.uuid3(uuid.NAMESPACE_DNS, referers_uuids))
 
     def __repr__(self):
         try:
