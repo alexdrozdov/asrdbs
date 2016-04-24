@@ -20,12 +20,12 @@ class EntitySpec(SequenceSpec):
             # {
             #     "id": "$PARENT::ownership",
             #     "repeatable": RepeatableSpecs().Any(),
-            #     "dependency-off": template("dependency")("ownership"),
+            #     "dependency-of": template("dependency")("ownership"),
             #     "include": template("include")("entity-owner"),
             # },
             # {
             #     "id": "$PARENT::from",
-            #     "dependency-off": template("dependency")("from"),
+            #     "dependency-of": template("dependency")("from"),
             #     "include": template("include")("entity-list-neg"),
             # },
             # {
@@ -56,7 +56,7 @@ class EntitySpec(SequenceSpec):
             {
                 "id": "$PARENT::location",
                 "repeatable": RepeatableSpecs().Any(),
-                "dependency-off": template("dependency")("location"),
+                "dependency-of": template("dependency")("location"),
                 "include": template("include")("entity-location"),
             },
         ])
@@ -107,12 +107,13 @@ class EntityListSpec(SequenceSpec):
                         # {
                         #     "id": "$PARENT::#pre#",
                         #     "repeatable": RepeatableSpecs().Never(),
-                        #     "dependency-off": "$PARENT::entity",
+                        #     "dependency-of": "$PARENT::entity",
                         # },
                         {
                             "id": "$PARENT::entity",
                             "repeatable": RepeatableSpecs().Once(),
                             "refers-to": template("refers-to")(),
+                            "anchor": AnchorSpecs().Tag("object"),
                             "include": template("include")("entity-neg", is_static=True),
                         }
                     ]
@@ -153,7 +154,7 @@ class EntityLocationSpec(SequenceSpec):
                     },
                     "extend": {
                         "id": "$PARENT::prepositions",
-                        "dependency-off": "$PARENT::entity",
+                        "dependency-of": "$TAG(object)",
                         "repeatable": RepeatableSpecs().Once(),
                         "uniq-items": template("phrases")(
                             [u"на",

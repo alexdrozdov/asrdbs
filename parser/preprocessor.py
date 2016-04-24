@@ -54,7 +54,7 @@ class Preprocessor(object):
             'uniq-items': self.__on_uniq_items,
             'same-as': lambda (ctx, v): True,
             'merges-with': lambda (ctx, v): True,
-            'dependency-off': lambda (ctx, v): True,
+            'dependency-of': lambda (ctx, v): True,
             'refers-to': lambda (ctx, v): True,
             'virtual': lambda (ctx, v): True,
             'form-info': lambda (ctx, v): True,

@@ -50,10 +50,14 @@ class RepeatableSpecs(object):
 class AnchorSpecs(object):
     no_anchor = 0
     local_spec_anchor = 1
-    global_anchor = 2
+    local_spec_tag = 2
+    global_anchor = 3
 
     def LocalSpecAnchor(self, name=None):
         return (True, AnchorSpecs.local_spec_anchor, name)
+
+    def Tag(self, name):
+        return (True, AnchorSpecs.local_spec_tag, name)
 
 
 class c__pos_check(RtStaticRule):

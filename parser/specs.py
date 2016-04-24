@@ -5,6 +5,7 @@
 import uuid
 import json
 import copy
+import re
 import common.config
 import parser.lang.common
 import parser.lang.defs
@@ -225,6 +226,7 @@ class SpecCompiler(object):
         self.__incapsulate_in = []
         self.__rule_bindins = {}
         self.__local_spec_anchors = []
+        self.__local_spec_tags = {}
 
     def __create_parent_path(self, st):
         parent = self.__spec.get_parent(st)
@@ -248,6 +250,12 @@ class SpecCompiler(object):
     def resolve_variant_count(self, ref_state, name):
         if '$LOCAL_SPEC_ANCHOR' in name:
             return len(self.__local_spec_anchors)
+        if '$TAG' in name:
+            m = re.search('\$TAG\((.+?)\)', name)
+            assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
+            tag = m.group(1)
+            assert self.__local_spec_tags.has_key(tag), 'tag {0} not defined for spec {1}'.format(tag, self.__spec_name)
+            return len(self.__local_spec_tags[tag])
         return 1
 
     def resolve_name(self, ref_state, name, var_num=None):
@@ -257,6 +265,22 @@ class SpecCompiler(object):
             name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
         if '$LOCAL_SPEC_ANCHOR' in name:
             assert self.__local_spec_anchors, 'Tried to resolve name for spec "{0}" without local spec anchor'.format(
+                self.__spec_name
+            )
+            assert len(self.__local_spec_anchors) == 1 or var_num is not None, 'Tried to resolve name for spec "{0}" with multiple local spec anchors {1}'.format(
+                self.__spec_name,
+                self.__local_spec_anchors
+            )
+            if var_num is None:
+                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))
+            else:
+                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[var_num].get_name()))
+        if '$TAG' in name:
+            m = re.search('\$TAG\((.+?)\)', name)
+            assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
+            tag = m.group(1)
+            assert self.__local_spec_tags.has_key(tag), 'Tried to resolve tag {0} for spec "{1}" without local spec anchor'.format(
+                tag,
                 self.__spec_name
             )
             assert len(self.__local_spec_anchors) == 1 or var_num is not None, 'Tried to resolve name for spec "{0}" with multiple local spec anchors {1}'.format(
@@ -688,7 +712,14 @@ class SpecStateDef(object):
         self.__rt_rules = []
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
-        self.__is_local_anchor = spec_dict.has_key('anchor')
+        self.__is_local_anchor = spec_dict.has_key('anchor') and spec_dict['anchor'][0] in [
+            parser.lang.defs.AnchorSpecs.local_spec_anchor,
+            parser.lang.defs.AnchorSpecs.global_anchor
+        ]
+        if spec_dict.has_key('anchor') and spec_dict['anchor'][0] == parser.lang.defs.AnchorSpecs.local_spec_tag:
+            self.__tag = spec_dict['anchor'][2]
+        else:
+            self.__tag = None
         self.__transitions_merged = False
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
         self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
