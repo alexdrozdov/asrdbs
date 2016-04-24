@@ -179,7 +179,7 @@ class SpecStateVirtForm(object):
         return u'virt'
 
     def get_info(self):
-        return u'virt'
+        return self.__owner.get_aggregated_info()
 
     def get_pos(self):
         return u'virt'
@@ -188,7 +188,7 @@ class SpecStateVirtForm(object):
         return None
 
     def get_uniq(self):
-        return self.__owner.get_uniq()
+        return self.__owner.get_aggregated_uniq()
 
     def clone_without_links(self):
         return SpecStateIniForm()
@@ -205,11 +205,36 @@ class SpecStateVirtForm(object):
             'form': {},
         }
 
+    def __format_info(self, sep=None, head='', tail=''):
+        short_names = {
+            'parts_of_speech': 'pos',
+            'case': 'case',
+            'gender': 'gender',
+            'count': 'count',
+            'time': 'time',
+        }
+        if sep is None:
+            sep = tail + head
+        return head + sep.join(
+            map(
+                lambda (k, v): '{0}: {1}'.format(short_names[k], v),
+                filter(
+                    lambda (k, v): k in short_names,
+                    self.__owner.get_aggregated_info().items()
+                )
+            )
+        ) + tail
+
     def format_table(self, align=u'LEFT', bgcolor=u'white'):
-        return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
-            align,
-            bgcolor,
-            u'virt'
+        if self.__owner.get_aggregated_info() is None:
+            return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
+                align,
+                bgcolor,
+                u'virt'
+            )
+        return self.__format_info(
+            head=u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">'.format(align, bgcolor),
+            tail='</TD></TR>'
         )
 
 
