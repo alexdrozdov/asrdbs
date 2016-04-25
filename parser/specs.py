@@ -258,12 +258,13 @@ class SpecCompiler(object):
             return len(self.__local_spec_tags[tag])
         return 1
 
-    def resolve_name(self, ref_state, name, var_num=None):
-        if '$LEVEL' in name:
-            name = name.replace('$LEVEL', str(ref_state['level']))
-        if '$GLEVEL' in name:
-            name = name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
-        if '$LOCAL_SPEC_ANCHOR' in name:
+    def __resolve_name_level(self, ref_state, name):
+        return name.replace('$LEVEL', str(ref_state['level']))
+
+    def __resolve_name_glevel(self, ref_state, name):
+        return name.replace('$GLEVEL', str(ref_state['level'] + self.__level))
+
+    def __resolve_name_lsa(self, ref_state, name, var_num):
             assert self.__local_spec_anchors, 'Tried to resolve name for spec "{0}" without local spec anchor'.format(
                 self.__spec_name
             )
@@ -271,26 +272,47 @@ class SpecCompiler(object):
                 self.__spec_name,
                 self.__local_spec_anchors
             )
+
             if var_num is None:
-                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))
+                anchor_name = str(self.__local_spec_anchors[0].get_name())
             else:
-                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[var_num].get_name()))
-        if '$TAG' in name:
+                anchor_name = str(self.__local_spec_anchors[var_num].get_name())
+            name = name.replace('$LOCAL_SPEC_ANCHOR', anchor_name)
+
+            return name
+
+    def __resolve_name_tag(self, ref_state, name, var_num):
             m = re.search('\$TAG\((.+?)\)', name)
             assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
             tag = m.group(1)
-            assert self.__local_spec_tags.has_key(tag), 'Tried to resolve tag {0} for spec "{1}" without local spec anchor'.format(
+
+            assert self.__local_spec_tags.has_key(tag), 'Tried to resolve tag {0} for spec "{1}" without such tag'.format(
                 tag,
                 self.__spec_name
             )
-            assert len(self.__local_spec_anchors) == 1 or var_num is not None, 'Tried to resolve name for spec "{0}" with multiple local spec anchors {1}'.format(
+            assert len(self.__local_spec_tags[tag]) == 1 or var_num is not None, 'Tried to resolve name for spec "{0}" with multiple tags {1}: {2}'.format(
                 self.__spec_name,
-                self.__local_spec_anchors
+                tag,
+                self.__local_spec_tags[tag]
             )
+
             if var_num is None:
-                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[0].get_name()))
+                tag_value = str(self.__local_spec_tags[tag][0].get_name())
             else:
-                name = name.replace('$LOCAL_SPEC_ANCHOR', str(self.__local_spec_anchors[var_num].get_name()))
+                tag_value = str(self.__local_spec_tags[tag][var_num].get_name())
+            name = re.sub('\$TAG\((.+?)\)', tag_value, name)
+
+            return name
+
+    def resolve_name(self, ref_state, name, var_num=None):
+        if '$LEVEL' in name:
+            name = self.__resolve_name_level(ref_state, name)
+        if '$GLEVEL' in name:
+            name = self.__resolve_name_glevel(ref_state, name)
+        if '$LOCAL_SPEC_ANCHOR' in name:
+            name = self.__resolve_name_lsa(ref_state, name, var_num)
+        if '$TAG' in name:
+            name = self.__resolve_name_tag(ref_state, name, var_num)
         if '$INCAPSULATED' in name:
             assert ref_state.has_key('include') and len(ref_state['include']) == 1
             name = name.replace('$INCAPSULATED', ref_state['include'][0])
@@ -335,6 +357,25 @@ class SpecCompiler(object):
 
         self.__local_spec_anchors.append(state)
 
+    def __get_tag_entries_list(self, tag_name):
+        if not self.__local_spec_tags.has_key(tag_name):
+            self.__local_spec_tags[tag_name] = []
+        return self.__local_spec_tags[tag_name]
+
+    def __handle_tag_state(self, state):
+        if state.is_container() or state.is_uniq_container():
+            return
+
+        tag_name = state.get_tag()
+        if state.includes_spec():
+            in_spec = state.get_included()
+            in_spec_anchors = in_spec.get_local_spec_anchors()
+            if in_spec_anchors:
+                self.__get_tag_entries_list(tag_name).extend(in_spec_anchors)
+            return
+
+        self.__get_tag_entries_list(tag_name).append(state)
+
     def __create_states(self, spec):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
@@ -347,6 +388,8 @@ class SpecCompiler(object):
                 state.set_parent_state(parent_state)
                 if parent_state.is_anchor():
                     state.force_anchor()
+                if parent_state.is_tagged():
+                    state.force_tag(parent_state.get_tag())
                 state.inherit_parent_reliability(parent_state.get_reliability())
             else:
                 state.inherit_parent_reliability(self.get_reliability())
@@ -368,6 +411,9 @@ class SpecCompiler(object):
 
             if state.is_anchor():
                 self.__handle_anchor_state(state)
+
+            if state.is_tagged():
+                self.__handle_tag_state(state)
 
             self.__add_state(state)
 
@@ -523,6 +569,14 @@ class SpecCompiler(object):
             if state not in self.__local_spec_anchors:
                 state.force_anchor(is_anchor=False)
 
+    def __review_tags(self):
+        for state in self.__states:
+            if not state.is_tagged():
+                continue
+            tagged_states = self.__get_tag_entries_list(state.get_tag())
+            if state not in tagged_states:
+                state.force_tag(None)
+
     def register_rule_binding(self, rule, binding):
         return
 
@@ -572,6 +626,7 @@ class SpecCompiler(object):
         self.__incapsulate_states()
         self.__create_state_rules()
         self.__review_anchors()
+        self.__review_tags()
 
         cs = CompiledSpec(
             spec,
@@ -712,11 +767,11 @@ class SpecStateDef(object):
         self.__rt_rules = []
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
-        self.__is_local_anchor = spec_dict.has_key('anchor') and spec_dict['anchor'][0] in [
+        self.__is_local_anchor = spec_dict.has_key('anchor') and spec_dict['anchor'][1] in [
             parser.lang.defs.AnchorSpecs.local_spec_anchor,
             parser.lang.defs.AnchorSpecs.global_anchor
         ]
-        if spec_dict.has_key('anchor') and spec_dict['anchor'][0] == parser.lang.defs.AnchorSpecs.local_spec_tag:
+        if spec_dict.has_key('anchor') and spec_dict['anchor'][1] == parser.lang.defs.AnchorSpecs.local_spec_tag:
             self.__tag = spec_dict['anchor'][2]
         else:
             self.__tag = None
@@ -774,11 +829,20 @@ class SpecStateDef(object):
     def is_virtual(self):
         return self.__is_virtual
 
+    def is_tagged(self):
+        return self.__tag is not None
+
+    def get_tag(self):
+        return self.__tag
+
     def fixed(self):
         return self.__fixed
 
     def force_anchor(self, is_anchor=True):
         self.__is_local_anchor = is_anchor
+
+    def force_tag(self, tag_name):
+        self.__tag = tag_name
 
     def can_merge(self, other):
         return bool(self.__merges_with & other.__merges_with)
