@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs
+from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs
 from parser.named import template
 
 
@@ -156,10 +156,16 @@ class EntityLocationSpec(SequenceSpec):
                         "id": "$PARENT::prepositions",
                         "dependency-of": "$TAG(object)",
                         "repeatable": RepeatableSpecs().Once(),
-                        "uniq-items": template("phrases")(
-                            [u"на",
-                             u"под",
-                             u"в"]
+                        "uniq-items": template("foreach")(
+                            prototype={
+                                "repeatable": RepeatableSpecs().Once(),
+                                "pos_type": [PosSpecs().IsPreposition(), ],
+                            },
+                            items=[
+                                {"pos_type": [WordSpecs().IsWord([u'над']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'под']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'в']), ]},
+                            ]
                         )
                     }
                 },
