@@ -731,7 +731,7 @@ class TrsDef(object):
 class SpecStateDef(object):
 
     static_rules = ['pos_type', 'case']
-    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to']
+    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to', 'dependency-of']
     all_rules = static_rules + dynamic_rules
 
     def __init__(self, compiler, name, spec_dict, parent=None):

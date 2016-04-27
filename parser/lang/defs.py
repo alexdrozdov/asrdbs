@@ -480,8 +480,6 @@ class c__refersto_spec(RtDynamicRule):
 
     def apply_on(self, rtme, aggregator_rtme):
         aggregator_rtme.attach_referer(rtme)
-        rtme_form = rtme.get_form()
-        aggregator_form = aggregator_rtme.get_form()
         rtme.add_link(
             [
                 ns(master=aggregator_rtme, slave=rtme, details=self.to_dict()),
@@ -518,3 +516,70 @@ class RefersToSpecs(object):
             c__refersto_spec,
             anchor=anchor
         )
+
+
+class c__dependencyof_spec(RtDynamicRule):
+    def __init__(self, anchor=None, weight=None):
+        RtDynamicRule.__init__(self, True, False)
+        self.__anchor = RtMatchString(anchor)
+        self.__weight = weight
+
+    def new_copy(self):
+        return c__dependencyof_spec(self.__anchor, self.__weight)
+
+    def clone(self):
+        return c__dependencyof_spec(self.__anchor, self.__weight)
+
+    def is_applicable(self, rtme, other_rtme):
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
+            return True
+        return False
+
+    def apply_on(self, rtme, other_rtme):
+        rtme_form = rtme.get_form()
+        other_form = other_rtme.get_form()
+        res = parser.matcher.match(other_form, rtme_form)
+        if res:
+            rtme.add_link(
+                [
+                    ns(master=other_rtme, slave=rtme, details=res.to_dict()),
+                    ns(master=other_rtme, slave=rtme, details=self.to_dict()),
+                ]
+            )
+        return RtRule.res_matched if res else RtRule.res_failed
+
+    def get_info(self, wrap=False):
+        s = u'dependency-of{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
+    def to_dict(self):
+        return {
+            'rule': 'c__dependencyof_spec',
+            'res': MatchBool.defaultTrue,
+            'reliability': self.__weight if self.__weight is not None else 1.0,
+            'id_name': self.__anchor,
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+        }
+
+    def __repr__(self):
+        return "DependencyOf(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+    def __str__(self):
+        return "DependencyOf(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+
+class DependencySpecs(object):
+    def DependencyOf(self, anchor, weight=None):
+        return RtRuleFactory(c__dependencyof_spec, anchor=anchor, weight=weight)

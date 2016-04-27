@@ -56,7 +56,7 @@ class EntitySpec(SequenceSpec):
             {
                 "id": "$PARENT::location",
                 "repeatable": RepeatableSpecs().Any(),
-                "dependency-of": template("dependency")("location"),
+                # "dependency-of": template("dependency")("location"),
                 "include": template("include")("entity-location"),
             },
         ])
@@ -154,12 +154,15 @@ class EntityLocationSpec(SequenceSpec):
                     },
                     "extend": {
                         "id": "$PARENT::prepositions",
-                        "dependency-of": "$TAG(object)",
                         "repeatable": RepeatableSpecs().Once(),
                         "uniq-items": template("foreach")(
                             prototype={
                                 "repeatable": RepeatableSpecs().Once(),
                                 "pos_type": [PosSpecs().IsPreposition(), ],
+                                "dependency-of": template("dependency")(
+                                    "location",
+                                    "$TAG(object)"
+                                ),
                             },
                             items=[
                                 {"pos_type": [WordSpecs().IsWord([u'над']), ]},
