@@ -182,7 +182,8 @@ class SpecStateVirtForm(object):
         return self.__owner.get_aggregated_info()
 
     def get_pos(self):
-        return u'virt'
+        info = self.__owner.get_aggregated_info()
+        return info['parts_of_speech'] if info.has_key('parts_of_speech') else 'virt'
 
     def get_position(self):
         return None

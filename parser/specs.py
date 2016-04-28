@@ -767,6 +767,8 @@ class SpecStateDef(object):
         self.__rt_rules = []
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
+        if spec_dict.has_key('anchor') and isinstance(spec_dict['anchor'], list):
+            spec_dict['anchor'] = spec_dict['anchor'][0]
         self.__is_local_anchor = spec_dict.has_key('anchor') and spec_dict['anchor'][1] in [
             parser.lang.defs.AnchorSpecs.local_spec_anchor,
             parser.lang.defs.AnchorSpecs.global_anchor

@@ -56,7 +56,9 @@ class EntitySpec(SequenceSpec):
             {
                 "id": "$PARENT::location",
                 "repeatable": RepeatableSpecs().Any(),
-                # "dependency-of": template("dependency")("location"),
+                # "dependency-of": template("dependency")(
+                #     "location"
+                # ),
                 "include": template("include")("entity-location"),
             },
         ])
@@ -92,12 +94,6 @@ class EntityListSpec(SequenceSpec):
                 "id": "$PARENT::#pre#",
                 "repeatable": RepeatableSpecs().Never(),
             },
-            {
-                "id": "$PARENT::aggregate",
-                "virtual": True,
-                "repeatable": RepeatableSpecs().Once(),
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
-            },
             template("repeat")(
                 "$PARENT::entity-list",
                 {
@@ -120,7 +116,13 @@ class EntityListSpec(SequenceSpec):
                 },
                 repeatable=RepeatableSpecs().Once(),
                 separator=None
-            )
+            ),
+            {
+                "id": "$PARENT::aggregate",
+                "virtual": True,
+                "repeatable": RepeatableSpecs().Once(),
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
+            },
         ])
 
 
