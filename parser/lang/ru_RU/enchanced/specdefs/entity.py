@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs, AggregateSpecs
+from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs
 from parser.named import template
 
 
@@ -94,46 +94,36 @@ class EntityListSpec(SequenceSpec):
                 "id": "$PARENT::#pre#",
                 "repeatable": RepeatableSpecs().Never(),
             },
-            {
-                "id": "$PARENT::aggregate",
-                "virtual": True,
-                "repeatable": RepeatableSpecs().Once(),
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "closed-with": AggregateSpecs().CloseWith("$TAG(agg-close)"),
-                "closed": False,
-            },
-            template("repeat")(
-                "$PARENT::entity-list",
-                {
-                    "id": "$PARENT::entity-list",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "entries": [
-                        # {
-                        #     "id": "$PARENT::#pre#",
-                        #     "repeatable": RepeatableSpecs().Never(),
-                        #     "dependency-of": "$PARENT::entity",
-                        # },
-                        {
-                            "id": "$PARENT::entity",
-                            "repeatable": RepeatableSpecs().Once(),
-                            "refers-to": template("refers-to")(),
-                            "anchor": AnchorSpecs().Tag("object"),
-                            "include": template("include")("entity-neg", is_static=True),
-                        }
-                    ]
+            template("aggregate")(
+                "$PARENT::aggregate",
+                attributes={
+                    "anchor": AnchorSpecs().LocalSpecAnchor(),
                 },
-                repeatable=RepeatableSpecs().Once(),
-                separator=None
-            ),
-            {
-                "id": "$PARENT::close-aggregate",
-                "virtual": True,
-                "repeatable": RepeatableSpecs().Once(),
-                "anchor": AnchorSpecs().Tag("agg-close"),
-                "action": AggregateSpecs().Close("$LOCAL_SPEC_ANCHOR"),
-                "closed": True,
-                "add-to-seq": False,
-            },
+                body=template("repeat")(
+                    "$PARENT::entity-list",
+                    {
+                        "id": "$PARENT::entity-list",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "entries": [
+                            # {
+                            #     "id": "$PARENT::#pre#",
+                            #     "repeatable": RepeatableSpecs().Never(),
+                            #     "dependency-of": "$PARENT::entity",
+                            # },
+                            {
+                                "id": "$PARENT::entity",
+                                "repeatable": RepeatableSpecs().Once(),
+                                "refers-to": template("refers-to")(),
+                                "anchor": AnchorSpecs().Tag("object"),
+                                "include": template("include")("entity-neg", is_static=True),
+                            }
+                        ]
+                    },
+                    repeatable=RepeatableSpecs().Once(),
+                    separator=None
+                ),
+                as_dict=True
+            )
         ])
 
 
