@@ -60,6 +60,8 @@ class Preprocessor(object):
             'form-info': lambda (ctx, v): True,
             'uniq': lambda (ctx, v): True,
             'action': lambda (ctx, v): True,
+            'closed-with': lambda (ctx, v): True,
+            'closed': lambda (ctx, v): True,
         }
 
     def __on_id(self, v):

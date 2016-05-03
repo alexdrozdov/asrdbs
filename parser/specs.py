@@ -731,7 +731,7 @@ class TrsDef(object):
 class SpecStateDef(object):
 
     static_rules = ['pos_type', 'case']
-    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to', 'dependency-of']
+    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to', 'dependency-of', 'action', 'closed-with']
     all_rules = static_rules + dynamic_rules
 
     def __init__(self, compiler, name, spec_dict, parent=None):
@@ -781,6 +781,7 @@ class SpecStateDef(object):
         self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
         self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
         self.__merges_with = set(spec_dict['merges-with']) if spec_dict.has_key('merges-with') else set()
+        self.__closed = spec_dict['closed'] if spec_dict.has_key('closed') else True
         self.__fixed = True
 
     def get_name(self):
@@ -833,6 +834,9 @@ class SpecStateDef(object):
 
     def is_tagged(self):
         return self.__tag is not None
+
+    def is_closed(self):
+        return self.__closed
 
     def get_tag(self):
         return self.__tag
@@ -1445,7 +1449,7 @@ class MatchedSequence(object):
     def __mk_link(self, master, slave, details):
         assert all((
             isinstance(master, (RtMatchEntry, RtVirtualEntry)),
-            isinstance(slave, RtMatchEntry),
+            isinstance(slave, (RtMatchEntry, RtVirtualEntry)),
             isinstance(details, list)
         )), '{0}, {1}, {2}'.format(type(master), type(slave), type(details))
         me_from = self.__uid2me[master.get_form().get_uniq()]
@@ -1833,14 +1837,39 @@ class RtMatchSequence(object):
         if isinstance(rtme, RtTmpEntry):
             return True
 
-        if not rtme.handle_rules():
-            return False
+        if isinstance(rtme, RtVirtualEntry) and not rtme.closed():
+            return True
 
-        for e in self.get_entries(hidden=True, exclude=rtme):
-            if not e.handle_rules(on_entry=rtme):
+        rtme_pares = self.__find_affected_pares(rtme, find_all=True)
+
+        while rtme_pares:
+            e, ee = rtme_pares.pop(0)
+            res = e.handle_rules(on_entry=ee)
+            if res.later:
+                continue
+            if res.again:
+                rtme_pares.extend(self.__find_affected_pares(e, find_all=True))
+            elif not res.valid:
                 return False
+            if ee.closed() and ee.modified():
+                rtme_pares.extend(self.__find_affected_pares(ee))
 
         return True
+
+    @argres()
+    def __find_affected_pares(self, rtme, find_all=False):
+        if find_all:
+            return map(
+                lambda other_rtme: (rtme, other_rtme),
+                self.get_entries(hidden=True, exclude=rtme)
+            ) + map(
+                lambda other_rtme: (other_rtme, rtme),
+                self.get_entries(hidden=True, exclude=rtme)
+            )
+        return map(
+            lambda other_rtme: (rtme, other_rtme),
+            self.get_entries(hidden=True, exclude=rtme)
+        )
 
     @argres()
     def __handle_fixed_trs(self, trs, form):
@@ -2403,6 +2432,9 @@ class RtMatchEntry(object):
     def get_reliability(self):
         return self.__reliability
 
+    def closed(self):
+        return True
+
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -2443,7 +2475,7 @@ class RtMatchEntry(object):
                 if self.__check_applicable(r, e):
                     applied = True
                     if not self.__apply_on(r, e):
-                        return False
+                        return ns(later=False, again=False, valid=False)
                     self.__decrease_rule_counters(r)
                     self.__add_matched_rule(r, e)
                     if not r.is_persistent():
@@ -2451,7 +2483,10 @@ class RtMatchEntry(object):
             if not applied or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
-        return True
+        return ns(later=False, again=False, valid=True)
+
+    def modified(self):
+        return False
 
     @argres(show_result=False)
     def __add_matched_rule(self, rule, rtme):
@@ -2565,6 +2600,9 @@ class RtTmpEntry(object):
     def get_reliability(self):
         return self.__reliability
 
+    def closed(self):
+        return True
+
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -2584,7 +2622,10 @@ class RtTmpEntry(object):
 
     @argres()
     def handle_rules(self, on_entry=None):
-        return True
+        return ns(later=False, again=False, valid=True)
+
+    def modified(self):
+        return False
 
     @argres(show_result=False)
     def set_subctx(self, sub_ctx):
@@ -2705,6 +2746,9 @@ class RtVirtualEntry(object):
         self.__referers = []
         self.__uniq = None
         self.__aggregated_info = None
+        self.__modified = False
+        self.__first_handle = True
+        self.__closed = spec_state_def.is_closed()
 
         self.__create_name(self.__spec.get_name())
         self.__create_rules()
@@ -2721,6 +2765,9 @@ class RtVirtualEntry(object):
         self.__referers = []
         self.__uniq = rtme.get_aggregated_uniq()
         self.__aggregated_info = copy.deepcopy(rtme.get_aggregated_info())
+        self.__modified = rtme.__modified
+        self.__first_handle = rtme.__first_handle
+        self.__closed = rtme.__closed
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
@@ -2884,6 +2931,13 @@ class RtVirtualEntry(object):
 
     @argres()
     def handle_rules(self, on_entry=None):
+        if not self.closed():
+            return ns(later=True, again=False, valid=False)
+
+        if self.__first_handle:
+            self.__first_handle = False
+            return ns(later=False, again=True, valid=False)
+
         pending = []
         entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
         for r in self.__pending:
@@ -2892,7 +2946,7 @@ class RtVirtualEntry(object):
                 if self.__check_applicable(r, e):
                     applied = True
                     if not self.__apply_on(r, e):
-                        return False
+                        return ns(later=False, again=False, valid=False)
                     self.__decrease_rule_counters(r)
                     self.__add_matched_rule(r, e)
                     if not r.is_persistent():
@@ -2900,7 +2954,17 @@ class RtVirtualEntry(object):
             if not applied or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
-        return True
+        self.__modified = False
+        return ns(later=False, again=False, valid=True)
+
+    def modified(self):
+        return self.__modified
+
+    def closed(self):
+        return self.__closed
+
+    def close_aggregator(self):
+        self.__closed = True
 
     @argres(show_result=False)
     def __add_matched_rule(self, rule, rtme):
@@ -2927,6 +2991,7 @@ class RtVirtualEntry(object):
         self.__referers.append(rtme)
         self.__uniq = None
         self.__aggregated_info = None
+        self.__modified = True
         return True
 
     @argres(show_result=False)

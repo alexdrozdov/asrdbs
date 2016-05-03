@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs
+from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs, AggregateSpecs
 from parser.named import template
 
 
@@ -56,9 +56,9 @@ class EntitySpec(SequenceSpec):
             {
                 "id": "$PARENT::location",
                 "repeatable": RepeatableSpecs().Any(),
-                # "dependency-of": template("dependency")(
-                #     "location"
-                # ),
+                "dependency-of": template("dependency")(
+                    "location"
+                ),
                 "include": template("include")("entity-location"),
             },
         ])
@@ -94,6 +94,14 @@ class EntityListSpec(SequenceSpec):
                 "id": "$PARENT::#pre#",
                 "repeatable": RepeatableSpecs().Never(),
             },
+            {
+                "id": "$PARENT::aggregate",
+                "virtual": True,
+                "repeatable": RepeatableSpecs().Once(),
+                "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "closed-with": AggregateSpecs().CloseWith("$TAG(agg-close)"),
+                "closed": False,
+            },
             template("repeat")(
                 "$PARENT::entity-list",
                 {
@@ -118,10 +126,13 @@ class EntityListSpec(SequenceSpec):
                 separator=None
             ),
             {
-                "id": "$PARENT::aggregate",
+                "id": "$PARENT::close-aggregate",
                 "virtual": True,
                 "repeatable": RepeatableSpecs().Once(),
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "anchor": AnchorSpecs().Tag("agg-close"),
+                "action": AggregateSpecs().Close("$LOCAL_SPEC_ANCHOR"),
+                "closed": True,
+                "add-to-seq": False,
             },
         ])
 
@@ -170,6 +181,7 @@ class EntityLocationSpec(SequenceSpec):
                                 {"pos_type": [WordSpecs().IsWord([u'над']), ]},
                                 {"pos_type": [WordSpecs().IsWord([u'под']), ]},
                                 {"pos_type": [WordSpecs().IsWord([u'в']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'на']), ]},
                             ]
                         )
                     }
