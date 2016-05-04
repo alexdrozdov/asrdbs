@@ -1,0 +1,15 @@
+{
+    "app": {
+        "modules": [
+            "parser",
+            "worddb"
+        ]
+    },
+    "parser": {
+        "specdefs": ["ru_RU/enchanced/specdefs"],
+        "linkdefs": ["ru_RU/enchanced/linkdefs"]
+    },
+    "tests": {
+        "primary": "entity"
+    }
+}

@@ -3,6 +3,7 @@
 
 
 import re
+import uuid
 
 
 class SequenceSpec(object):
@@ -176,7 +177,10 @@ class SpecStateVirtForm(object):
         self.__owner = owner
 
     def get_word(self):
-        return u'virt'
+        w = self.__owner.get_aggregated_word()
+        if w:
+            return w
+        return u'virt_' + unicode(uuid.uuid1())
 
     def get_info(self):
         return self.__owner.get_aggregated_info()

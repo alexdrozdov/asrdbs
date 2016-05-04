@@ -2746,6 +2746,7 @@ class RtVirtualEntry(object):
         self.__referers = []
         self.__uniq = None
         self.__aggregated_info = None
+        self.__word = None
         self.__modified = False
         self.__first_handle = True
         self.__closed = spec_state_def.is_closed()
@@ -2764,6 +2765,7 @@ class RtVirtualEntry(object):
         self.__reliability = rtme.__reliability
         self.__referers = []
         self.__uniq = rtme.get_aggregated_uniq()
+        self.__word = rtme.get_aggregated_word()
         self.__aggregated_info = copy.deepcopy(rtme.get_aggregated_info())
         self.__modified = rtme.__modified
         self.__first_handle = rtme.__first_handle
@@ -2899,6 +2901,11 @@ class RtVirtualEntry(object):
             self.__recalculate_aggregated_props()
         return self.__aggregated_info
 
+    def get_aggregated_word(self):
+        if self.__word is None or not self.__word:
+            self.__recalculate_aggregated_props()
+        return self.__word
+
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -2991,6 +2998,7 @@ class RtVirtualEntry(object):
         self.__referers.append(rtme)
         self.__uniq = None
         self.__aggregated_info = None
+        self.__word = None
         self.__modified = True
         return True
 
@@ -3000,6 +3008,10 @@ class RtVirtualEntry(object):
             sorted([r.get_form().get_uniq() for r in self.__referers])
         )
         self.__uniq = str(uuid.uuid3(uuid.NAMESPACE_DNS, referers_uuids))
+
+        self.__word = u'_'.join(
+            sorted([r.get_form().get_word() for r in self.__referers])
+        )
 
         self.__aggregated_info = reduce(
             lambda x, y: self.__merge_props(x, y),

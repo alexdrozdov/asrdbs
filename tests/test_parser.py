@@ -56,6 +56,8 @@ class MatchResCmp(common.dictcmp.GraphCmp):
             d,
             lambda n:
                 hash((n['udata']['position'], n['udata']['word'])),
+            lambda n:
+                not n['udata']['hidden'],
             [
                 '/udata/form/count',
                 '/udata/form/case',

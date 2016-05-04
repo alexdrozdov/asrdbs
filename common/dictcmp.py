@@ -6,16 +6,20 @@ from argparse import Namespace as ns
 
 
 class GraphCmp(object):
-    def __init__(self, d, node_hash_fcn, xpaths=None):
+    def __init__(self, d, node_hash_fcn, filter_fcn=None, xpaths=None):
         self.__d = d
         self.__node_hash_fcn = node_hash_fcn
+        self.__filter_fcn = filter_fcn if filter_fcn is not None else self.__true
         self.__xpaths = xpaths
 
         self.__d_nodes_hashs = dict(
             map(
                 lambda n:
-                    (self.__node_hash_fcn(n), n),
-                self.__d['nodes']
+                (self.__node_hash_fcn(n), n),
+                filter(
+                    self.__filter_fcn,
+                    self.__d['nodes']
+                )
             )
         )
 
@@ -39,6 +43,9 @@ class GraphCmp(object):
                 self.__d['edges']
             )
         )
+
+    def __true(self, *args):
+        return True
 
     def __xpath_get(self, d, path):
         elem = d
@@ -67,6 +74,8 @@ class GraphCmp(object):
         if len(self.__d['nodes']) != len(other.__d['nodes']):
             return False
         for n1 in self.__d['nodes']:
+            if not self.__filter_fcn(n1):
+                continue
             h1 = self.__node_hash_fcn(n1)
             if not other.__d_nodes_hashs.has_key(h1):
                 return False
@@ -74,6 +83,8 @@ class GraphCmp(object):
 
     def nodes_equality(self, other):
         for n1 in self.__d['nodes']:
+            if not self.__filter_fcn(n1):
+                continue
             h1 = self.__node_hash_fcn(n1)
             n2 = other.__d_nodes_hashs[h1]
             if not self.__node_xpaths_cmp(n1, n2, self.__xpaths):
