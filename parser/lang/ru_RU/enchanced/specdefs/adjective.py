@@ -45,4 +45,24 @@ class AdjectiveSpec(SequenceSpec):
                     },
                 ],
             },
+            template("repeat")(
+                "$PARENT::dependencies",
+                {
+                    "id": "$PARENT::dependency",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "entries": [
+                        {
+                            "id": "$PARENT::entity",
+                            "repeatable": RepeatableSpecs().Once(),
+                            "include": template("include")("entity", is_static=True),
+                            "dependency-of": template("dependency")(
+                                "modifier",
+                                "$LOCAL_SPEC_ANCHOR"
+                            ),
+                        }
+                    ]
+                },
+                repeatable=RepeatableSpecs().Any(),
+                separator=None
+            ),
         ])
