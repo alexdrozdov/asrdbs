@@ -190,7 +190,8 @@ class SpecStateVirtForm(object):
         return info['parts_of_speech'] if info.has_key('parts_of_speech') else 'virt'
 
     def get_position(self):
-        return None
+        positions = self.__owner.get_positions()
+        return None if not positions else positions[0]
 
     def get_uniq(self):
         return self.__owner.get_aggregated_uniq()

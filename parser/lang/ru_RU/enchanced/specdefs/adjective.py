@@ -54,7 +54,7 @@ class AdjectiveSpec(SequenceSpec):
                         {
                             "id": "$PARENT::entity",
                             "repeatable": RepeatableSpecs().Once(),
-                            "include": template("include")("entity", is_static=True),
+                            "include": template("include")("entity-list", is_static=True),
                             "dependency-of": template("dependency")(
                                 "modifier",
                                 "$LOCAL_SPEC_ANCHOR"

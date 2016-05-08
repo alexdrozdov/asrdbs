@@ -277,7 +277,10 @@ class SequenceGraphGen(GraphGen):
         label = u'<TABLE>'
         label += u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(entry.get_name())
 
-        label += u'<TR><TD BGCOLOR="darkseagreen2">{0}</TD></TR>'.format(entry.get_form().get_word())
+        label += u'<TR><TD BGCOLOR="darkseagreen2">{0}: {1}</TD></TR>'.format(
+            entry.get_form().get_word(),
+            entry.get_form().get_position(),
+        )
         label += entry.get_form().format_table()
 
         for r in entry.get_rules():

@@ -1307,6 +1307,7 @@ class MatchedEntry(object):
         self.__name = rtme.get_name()
         self.__reliability = rtme.get_reliability()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
+        self.__is_virtual = isinstance(rtme, RtVirtualEntry)
         self.__rules = [mr.rule for mr in rtme.get_matched_rules()]
         self.__is_anchor = rtme.get_spec().is_anchor()
         self.__masters = []
@@ -1320,6 +1321,7 @@ class MatchedEntry(object):
         self.__name = me.__name
         self.__reliability = me.__reliability
         self.__is_hidden = me.__is_hidden
+        self.__is_virtual = me.__is_virtual
         self.__rules = [r for r in me.__rules]
         self.__is_anchor = me.__is_anchor and rtme.get_spec().is_anchor()
         if me.__is_anchor:
@@ -1338,6 +1340,7 @@ class MatchedEntry(object):
                 'word': self.__form.get_word(),
                 'reliability': self.__reliability,
                 'hidden': self.__is_hidden,
+                'virtual': self.__is_virtual,
                 'anchor': self.__is_anchor,
                 'form': self.__form.get_info(),
             },
@@ -1360,6 +1363,9 @@ class MatchedEntry(object):
 
     def is_anchor(self):
         return self.__is_anchor
+
+    def is_virtual(self):
+        return self.__is_virtual
 
     def get_reliability(self):
         return self.__reliability
@@ -1477,14 +1483,19 @@ class MatchedSequence(object):
     def get_name(self):
         return self.__name
 
-    def get_entries(self, hidden=False):
-        return self.__all_entries if hidden else self.__entries
+    def get_entries(self, hidden=False, virtual=True):
+        if virtual:
+            return self.__all_entries if hidden else self.__entries
+        return filter(
+            lambda e: not e.is_virtual(),
+            self.__all_entries if hidden else self.__entries
+        )
 
     def get_links(self, hidden=False):
         return self.__all_links if hidden else self.__links
 
-    def get_entry_count(self, hidden=False):
-        return len(self.get_entries(hidden=hidden))
+    def get_entry_count(self, hidden=False, virtual=True):
+        return len(self.get_entries(hidden=hidden, virtual=virtual))
 
     def get_reliability(self):
         return self.__reliability
@@ -2215,7 +2226,13 @@ class SequenceSpecMatcher(object):
     def __select_most_complete(self, ctx):
         max_entries = reduce(
             lambda prev_max, msq:
-                msq.get_entry_count(hidden=False) if prev_max < msq.get_entry_count(hidden=False) else prev_max,
+                msq.get_entry_count(
+                    hidden=False,
+                    virtual=False
+                ) if prev_max < msq.get_entry_count(
+                    hidden=False,
+                    virtual=False
+                ) else prev_max,
             ctx.matched_sqs,
             0
         )
@@ -2270,7 +2287,6 @@ class SequenceSpecMatcher(object):
         sentence += [parser.lang.common.SentenceFini(), ]
 
         for s in sentence:
-            # print "==========================", s.get_word(), "===================="
             s = [s, ]
             for matcher, m_ctx in ctx.ctxs:
                 self.__handle_ctx(matcher, m_ctx, s)
@@ -2747,6 +2763,7 @@ class RtVirtualEntry(object):
         self.__uniq = None
         self.__aggregated_info = None
         self.__word = None
+        self.__positions = []
         self.__modified = False
         self.__first_handle = True
         self.__closed = spec_state_def.is_closed()
@@ -2766,6 +2783,7 @@ class RtVirtualEntry(object):
         self.__referers = []
         self.__uniq = rtme.get_aggregated_uniq()
         self.__word = rtme.get_aggregated_word()
+        self.__positions = copy.deepcopy(rtme.get_positions())
         self.__aggregated_info = copy.deepcopy(rtme.get_aggregated_info())
         self.__modified = rtme.__modified
         self.__first_handle = rtme.__first_handle
@@ -2906,6 +2924,11 @@ class RtVirtualEntry(object):
             self.__recalculate_aggregated_props()
         return self.__word
 
+    def get_positions(self):
+        if self.__positions is None or not self.__positions:
+            self.__recalculate_aggregated_props()
+        return self.__positions
+
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -2999,6 +3022,7 @@ class RtVirtualEntry(object):
         self.__uniq = None
         self.__aggregated_info = None
         self.__word = None
+        self.__positions = []
         self.__modified = True
         return True
 
@@ -3012,6 +3036,8 @@ class RtVirtualEntry(object):
         self.__word = u'_'.join(
             sorted([r.get_form().get_word() for r in self.__referers])
         )
+
+        self.__positions = sorted([r.get_form().get_position() for r in self.__referers])
 
         self.__aggregated_info = reduce(
             lambda x, y: self.__merge_props(x, y),
@@ -3035,9 +3061,15 @@ class RtVirtualEntry(object):
             return x
         return None
 
+    def __merge_pos(self, x, y):
+        if x == y:
+            return x
+        return None
+
     @argres()
     def __merge_props(self, x, y):
         merge_fcn = {
+            'parts_of_speech': self.__merge_pos,
             'count': self.__merge_count,
             'case': self.__merge_case,
             'gender': self.__merge_gender,

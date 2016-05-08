@@ -55,7 +55,11 @@ class MatchResCmp(common.dictcmp.GraphCmp):
         super(MatchResCmp, self).__init__(
             d,
             lambda n:
-                hash((n['udata']['position'], n['udata']['word'])),
+                hash((
+                    n['udata']['position'],
+                    n['udata']['word'],
+                    n['udata']['name'] if n['udata'].has_key('virtual') and n['udata']['virtual'] else '',
+                )),
             lambda n:
                 not n['udata']['hidden'],
             [
