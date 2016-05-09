@@ -47,6 +47,58 @@ class RepeatableSpecs(object):
         return (None, None)
 
 
+class c__exclusive_with_spec(RtDynamicRule):
+    def __init__(self, anchor=None):
+        RtDynamicRule.__init__(self, True, False)
+        self.__anchor = RtMatchString(anchor)
+
+    def new_copy(self):
+        return c__exclusive_with_spec(self.__anchor)
+
+    def clone(self):
+        return c__exclusive_with_spec(self.__anchor)
+
+    def is_applicable(self, rtme, other_rtme):
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
+            return True
+        return False
+
+    def apply_on(self, rtme, other_rtme):
+        other_rtme.close_aggregator()
+        return RtRule.res_failed
+
+    def get_info(self, wrap=False):
+        s = u'exclusive-with{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
+        return s
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
+    def to_dict(self):
+        return {
+            'rule': 'c__exclusive_with_spec',
+            'res': MatchBool.defaultFalse,
+            'reliability': self.__weight if self.__weight is not None else 1.0,
+            'id_name': self.__anchor,
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+        }
+
+    def __repr__(self):
+        return "ExclusiveWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+    def __str__(self):
+        return "ExclusiveWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+
+
 class AnchorSpecs(object):
     no_anchor = 0
     local_spec_anchor = 1
@@ -58,6 +110,9 @@ class AnchorSpecs(object):
 
     def Tag(self, name):
         return (True, AnchorSpecs.local_spec_tag, name)
+
+    def ExclusiveWith(self, anchor):
+        return RtRuleFactory(c__exclusive_with_spec, anchor=anchor)
 
 
 class c__pos_check(RtStaticRule):
