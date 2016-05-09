@@ -61,7 +61,7 @@ def execute(opts):
         with timeit_ctx('loading database'):
             tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            srm = parser.specs.SequenceSpecMatcher(True, primary=opts.primary)
+            srm = parser.specs.SequenceSpecMatcher(False, primary=opts.primary)
 
         with timeit_ctx('tokenizing'):
             tokens = parser.sentparser.Tokenizer().tokenize(sentence)

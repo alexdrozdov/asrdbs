@@ -50,7 +50,7 @@ class AdjectiveSpec(SequenceSpec):
                 {
                     "id": "$PARENT::dependency",
                     "repeatable": RepeatableSpecs().Once(),
-                    "entries": [
+                    "uniq-items": [
                         {
                             "id": "$PARENT::entity",
                             "repeatable": RepeatableSpecs().Once(),

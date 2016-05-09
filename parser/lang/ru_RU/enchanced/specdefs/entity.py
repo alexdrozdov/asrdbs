@@ -13,27 +13,14 @@ class EntitySpec(SequenceSpec):
         self.__compared_with = {}
 
         self.spec = template("spec")([
-            # {
-            #     "id": "$PARENT::definitive",
-            #     # For adjectives and participals
-            # },
-            # {
-            #     "id": "$PARENT::ownership",
-            #     "repeatable": RepeatableSpecs().Any(),
-            #     "dependency-of": template("dependency")("ownership"),
-            #     "include": template("include")("entity-owner"),
-            # },
-            # {
-            #     "id": "$PARENT::from",
-            #     "dependency-of": template("dependency")("from"),
-            #     "include": template("include")("entity-list-neg"),
-            # },
-            # {
-            #     "id": "$PARENT::place",
-            # },
-            # {
-            #     "id": "$PARENT::part",
-            # },
+            {
+                "id": "$PARENT::definitive",
+                "repeatable": RepeatableSpecs().Any(),
+                "dependency-of": template("dependency")(
+                    "location"
+                ),
+                "include": template("include")("adjective"),
+            },
             {
                 "id": "$PARENT::core",
                 "repeatable": RepeatableSpecs().Once(),
@@ -90,38 +77,71 @@ class EntityListSpec(SequenceSpec):
         self.__compared_with = {}
 
         self.spec = template("spec")([
-            {
-                "id": "$PARENT::#pre#",
-                "repeatable": RepeatableSpecs().Never(),
-            },
             template("aggregate")(
                 "$PARENT::aggregate",
                 attributes={
                     "anchor": AnchorSpecs().LocalSpecAnchor(),
                 },
-                body=template("repeat")(
-                    "$PARENT::entity-list",
-                    {
-                        "id": "$PARENT::entity-list",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "entries": [
-                            # {
-                            #     "id": "$PARENT::#pre#",
-                            #     "repeatable": RepeatableSpecs().Never(),
-                            #     "dependency-of": "$PARENT::entity",
-                            # },
+                body={
+                    "id": "$PARENT::variants",
+                    "repeatable": RepeatableSpecs().Once(),
+                    "uniq-items": [
+                        {
+                            "id": "$PARENT::common-pre",
+                            "repeatable": RepeatableSpecs().Once(),
+                            "entries": [
+                                {
+                                    "id": "$PARENT::#pre#",
+                                    "repeatable": RepeatableSpecs().Never(),
+                                },
+                                template("repeat")(
+                                    "$PARENT::entity-list",
+                                    {
+                                        "id": "$PARENT::entity-list",
+                                        "repeatable": RepeatableSpecs().Once(),
+                                        "entries": [
+                                            {
+                                                "id": "$PARENT::#item#",
+                                                "repeatable": RepeatableSpecs().Once(),
+                                                "refers-to": template("refers-to")(),
+                                                "anchor": AnchorSpecs().Tag("object"),
+                                                "include": template("include")("entity-neg", is_static=True),
+                                            }
+                                        ]
+                                    },
+                                    repeatable=RepeatableSpecs().Once(),
+                                    separator=None
+                                ),
+                            ]
+                        },
+                        template("repeat")(
+                            "$PARENT::entity-list",
                             {
-                                "id": "$PARENT::entity",
+                                "id": "$PARENT::entity-list",
                                 "repeatable": RepeatableSpecs().Once(),
-                                "refers-to": template("refers-to")(),
-                                "anchor": AnchorSpecs().Tag("object"),
-                                "include": template("include")("entity-neg", is_static=True),
-                            }
-                        ]
-                    },
-                    repeatable=RepeatableSpecs().Once(),
-                    separator=None
-                ),
+                                "entries": [
+                                    {
+                                        "id": "$PARENT::#pre-internal#",
+                                        "repeatable": RepeatableSpecs().Never(),
+                                        "dependency-of": template("dependency")(
+                                            "location",
+                                            "$PARENT::#item#"
+                                        ),
+                                    },
+                                    {
+                                        "id": "$PARENT::#item#",
+                                        "repeatable": RepeatableSpecs().Once(),
+                                        "refers-to": template("refers-to")(),
+                                        "anchor": AnchorSpecs().Tag("object-int"),
+                                        "include": template("include")("entity-neg", is_static=True),
+                                    }
+                                ]
+                            },
+                            repeatable=RepeatableSpecs().Once(),
+                            separator=None
+                        ),
+                    ]
+                },
                 as_dict=True
             )
         ])
@@ -157,6 +177,7 @@ class EntityLocationSpec(SequenceSpec):
                     },
                     "extend": {
                         "id": "$PARENT::prepositions",
+                        "anchor": AnchorSpecs().Tag("pre"),
                         "repeatable": RepeatableSpecs().Once(),
                         "uniq-items": template("foreach")(
                             prototype={
@@ -166,6 +187,28 @@ class EntityLocationSpec(SequenceSpec):
                                     "location",
                                     "$TAG(object)"
                                 ),
+                            },
+                            items=[
+                                {"pos_type": [WordSpecs().IsWord([u'над']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'под']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'в']), ]},
+                                {"pos_type": [WordSpecs().IsWord([u'на']), ]},
+                            ]
+                        )
+                    }
+                },
+                {
+                    "find": {
+                        "id": ".*::#pre-internal#",
+                    },
+                    "extend": {
+                        "id": "$PARENT::prepositions",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "uniq-items": template("foreach")(
+                            prototype={
+                                "repeatable": RepeatableSpecs().Once(),
+                                "pos_type": [PosSpecs().IsPreposition(), ],
+                                "exclusive-with": AnchorSpecs().ExclusiveWith("$TAG(pre)"),
                             },
                             items=[
                                 {"pos_type": [WordSpecs().IsWord([u'над']), ]},
