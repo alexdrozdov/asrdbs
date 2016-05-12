@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs
+from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs, CaseSpecs
 from parser.named import template
 
 
@@ -41,13 +41,27 @@ class EntitySpec(SequenceSpec):
                 ],
             },
             {
-                "id": "$PARENT::location",
+                "id": "$PARENT::ownership",
                 "repeatable": RepeatableSpecs().Any(),
-                "dependency-of": template("dependency")(
-                    "location"
-                ),
-                "include": template("include")("entity-location"),
-            },
+                "uniq-items": [
+                    {
+                        "id": "$PARENT::location",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "dependency-of": template("dependency")(
+                            "location"
+                        ),
+                        "include": template("include")("entity-location"),
+                    },
+                    {
+                        "id": "$PARENT::ownership",
+                        "repeatable": RepeatableSpecs().Once(),
+                        "dependency-of": template("dependency")(
+                            "location"
+                        ),
+                        "include": template("include")("entity-ownership"),
+                    },
+                ]
+            }
         ])
 
 
@@ -217,6 +231,34 @@ class EntityLocationSpec(SequenceSpec):
                                 {"pos_type": [WordSpecs().IsWord([u'на']), ]},
                             ]
                         )
+                    }
+                },
+            ]
+        )
+
+
+class EntityOwnershipSpec(SequenceSpec):
+    def __init__(self):
+        SequenceSpec.__init__(self, 'entity-ownership')
+        self.__compared_with = {}
+
+        self.spec = template("subclass")(
+            base=EntityListSpec,
+            rewrite=[
+                {
+                    "find": {
+                        "id": ".*::common-pre",
+                    },
+                    "extend": {
+                        "repeatable": RepeatableSpecs().Never(),
+                    }
+                },
+                {
+                    "find": {
+                        "id": ".*::#item#",
+                    },
+                    "extend": {
+                        "case": [CaseSpecs().IsCase(["genitive", ]), ],
                     }
                 },
             ]
