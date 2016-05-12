@@ -363,16 +363,24 @@ class RtRuleFactory(object):
     def __init__(self, classname, *args, **kwargs):
         if isinstance(classname, RtRuleFactory):
             max_level = None
+            original_state = None
             if 'max_level' in kwargs:
                 max_level = kwargs['max_level']
-            self.__init_from_factory(classname, max_level=max_level)
+            if 'original_state' in kwargs:
+                original_state = kwargs['original_state']
+            self.__init_from_factory(
+                classname,
+                max_level=max_level,
+                original_state=original_state
+            )
         else:
             self.__init_from_params(classname, args, kwargs)
 
-    def __init_from_factory(self, rrf, max_level):
+    def __init_from_factory(self, rrf, max_level, original_state=None):
         assert not rrf.__created
         self.__classname = rrf.__classname
         self.__max_level = max_level if max_level is not None else rrf.__max_level
+        self.__original_state = original_state if rrf.__original_state is None else rrf.__original_state
         self.__args = rrf.__args
         self.__kwargs = {k: RtMatchString(w) if isinstance(w, RtMatchString) else w for k, w in rrf.__kwargs.items()}
         self.__created = False
@@ -380,6 +388,7 @@ class RtRuleFactory(object):
     def __init_from_params(self, classname, args, kwargs):
         self.__classname = classname
         self.__max_level = None
+        self.__original_state = None
         self.__args = args  # FIXME Some strange logic in the next line
         self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
         self.__created = False
@@ -387,6 +396,8 @@ class RtRuleFactory(object):
     def create(self, compiler, state):
         assert not self.__created
         self.__created = True
+        if self.__original_state is not None:
+            state = self.__original_state
         max_level = state.get_glevel() if self.__max_level is None else min(self.__max_level, state.get_glevel())
         kwargs = SameDictList()
         for k, w in self.__kwargs.items():

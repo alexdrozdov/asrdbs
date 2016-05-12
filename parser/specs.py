@@ -227,6 +227,7 @@ class SpecCompiler(object):
         self.__rule_bindins = {}
         self.__local_spec_anchors = []
         self.__local_spec_tags = {}
+        self.__name_remap = {}
 
     def __create_parent_path(self, st):
         parent = self.__spec.get_parent(st)
@@ -332,6 +333,21 @@ class SpecCompiler(object):
             print "Compile warning: $-definition is missing for", self.__spec_name, name
         return name
 
+    def __add_name_remap(self, original, target):
+        original = str(original)
+        targets = []
+        if self.__name_remap.has_key(original):
+            targets = self.__name_remap[original]
+        if not isinstance(target, list):
+            target = [target, ]
+        target = [str(t) for t in target]
+        targets.extend(target)
+        self.__name_remap[original] = list(set(targets))
+
+    def __copy_name_remap(self, compiled_spec):
+        for k, v in compiled_spec.get_name_remap().items():
+            self.__add_name_remap(k, v)
+
     def __add_state(self, state):
         self.__states.append(state)
         self.__name2state[str(state.get_name())] = state
@@ -356,6 +372,14 @@ class SpecCompiler(object):
             return
 
         self.__local_spec_anchors.append(state)
+
+    def __add_include_remap(self, state):
+        if state.includes_spec():
+            in_spec = state.get_included()
+            in_spec_anchors = in_spec.get_local_spec_anchors()
+            if in_spec_anchors:
+                for a in in_spec_anchors:
+                    self.__add_name_remap(state.get_name(), a)
 
     def __get_tag_entries_list(self, tag_name):
         if not self.__local_spec_tags.has_key(tag_name):
@@ -391,6 +415,7 @@ class SpecCompiler(object):
                 if parent_state.is_tagged():
                     state.force_tag(parent_state.get_tag())
                 state.inherit_parent_reliability(parent_state.get_reliability())
+                self.__add_name_remap(parent_state_name, state_name)
             else:
                 state.inherit_parent_reliability(self.get_reliability())
 
@@ -415,6 +440,7 @@ class SpecCompiler(object):
             if state.is_tagged():
                 self.__handle_tag_state(state)
 
+            self.__add_include_remap(state)
             self.__add_state(state)
 
     def __create_downgrading_trs(self, spec):
@@ -509,6 +535,41 @@ class SpecCompiler(object):
                     parent = parent.get_parent_state()
                     state.add_parent_trs(parent)
 
+    def __propagate_container_rules(self, spec):
+        deepest = spec.get_level_count()
+
+        for level in range(deepest):
+            spec_iter = spec.get_level_iter(level)
+            for st in spec_iter.get_all_entries():
+                state = self.__name2state[str(self.gen_state_name(st))]
+                if not state.is_container() and not state.is_uniq_container():
+                    continue
+                if not state.has_rules():
+                    continue
+                self.__propagate_rules_to_childs(spec, state)
+
+    def __propagate_rules_to_childs(self, spec, state):
+        rules_to_incapsulate = state.get_rules_list()
+
+        spec_iter = spec.get_hierarchical_iter(state.get_spec())
+        for s in spec_iter.get_all_entries():
+            c_state = self.__name2state[str(self.gen_state_name(s))]
+            c_state.extend_rules(
+                copy.deepcopy(rules_to_incapsulate),
+                state.get_glevel(),
+                original_state=state
+            )
+
+    def __rebind_rules(self, spec):
+        return
+        for state in self.__states:
+            if not state.has_rules():
+                continue
+            rules = state.get_rules_list()
+            for r, v in rules.items():
+                pass
+                # print r, v
+
     def __remove_containers(self):
         states = []
         for state in self.__states:
@@ -560,6 +621,7 @@ class SpecCompiler(object):
             ini[0].unlink_all()
             fini[0].unlink_all()
             state.unlink_all()
+            self.__copy_name_remap(compiled_in_spec)
             self.__states.remove(state)
 
     def __review_anchors(self):
@@ -587,6 +649,11 @@ class SpecCompiler(object):
             if not state.is_container() and not state.is_uniq_container() and not state.includes_spec():
                 return False
             return True
+        if self.__name_remap.has_key(str(binding)):
+            return True
+        print self.__parent_spec_name
+        print binding
+        print self.__name_remap.keys()
         raise RuntimeError('state name matching not implemented')
 
     def resolve_binding(self, binding):
@@ -604,6 +671,7 @@ class SpecCompiler(object):
                 in_spec_anchors = in_spec.get_local_spec_anchors()
                 assert in_spec_anchors is not None and len(in_spec_anchors) == 1
                 return in_spec_anchors[0].get_name()
+        print binding
         raise RuntimeError('state name matching not implemented')
 
     def compile(self, spec, parent_spec_name=''):
@@ -620,6 +688,8 @@ class SpecCompiler(object):
         self.__create_lower_level_trs(spec)
         self.__eval_local_final(spec)
         self.__create_upgrading_trs(spec)
+        self.__propagate_container_rules(spec)
+        self.__rebind_rules(spec)
         self.__remove_containers()
         self.__merge_transitions()
         self.__incapsulate_rules()
@@ -635,6 +705,7 @@ class SpecCompiler(object):
             self.__inis,
             self.__finis,
             self.__local_spec_anchors,
+            self.__name_remap,
             spec.get_validate() if self.__level == 0 else None
         )
         self.__stack.pop()
@@ -1035,11 +1106,15 @@ class SpecStateDef(object):
                 return False
         return True
 
-    def extend_rules(self, rules, max_level):
+    def extend_rules(self, rules, max_level, original_state=None):
         for r, rule_def in rules.items():
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [parser.lang.common.RtRuleFactory(rr, max_level=max_level) for rr in rule_def]
+            rule_def = [parser.lang.common.RtRuleFactory(
+                rr,
+                max_level=max_level,
+                original_state=original_state
+            ) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
             if not self.__spec_dict.has_key(r):
@@ -1106,7 +1181,7 @@ class SpecStateDef(object):
 
 
 class CompiledSpec(object):
-    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchors, validator):
+    def __init__(self, src_spec, name, states, inis, finis, local_spec_anchors, name_remap, validator):
         self.__src_spec = src_spec
         self.__name = name
         assert states, 'Spec without states'
@@ -1116,6 +1191,7 @@ class CompiledSpec(object):
         self.__inis = inis
         self.__finis = finis
         self.__local_spec_anchors = local_spec_anchors
+        self.__name_remap = name_remap
         self.__validator = validator
 
     def get_name(self):
@@ -1133,6 +1209,9 @@ class CompiledSpec(object):
     def get_local_spec_anchors(self):
         assert self.__local_spec_anchors, '"{0}" spec doesnt have anchor'.format(self.__name)
         return self.__local_spec_anchors
+
+    def get_name_remap(self):
+        return self.__name_remap
 
     def get_validate(self):
         return self.__validator
