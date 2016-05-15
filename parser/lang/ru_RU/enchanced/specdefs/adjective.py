@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs
+from parser.lang.defs import RepeatableSpecs
 from parser.named import template
 
 
@@ -12,57 +12,44 @@ class AdjectiveSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'adjective')
         self.__compared_with = {}
 
-        self.spec = template("spec")([
-            template("repeat")(
-                "$PARENT::modifiers",
-                {
-                    "id": "$PARENT::modifier",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "entries": [
-                        {
-                            "id": "$PARENT::adv",
-                            "repeatable": RepeatableSpecs().Once(),
-                            "include": template("include")("basic-adv", is_static=True),
-                            "dependency-of": template("dependency")(
-                                "modifier",
-                                "$LOCAL_SPEC_ANCHOR"
-                            ),
-                        }
-                    ]
-                },
-                repeatable=RepeatableSpecs().Any(),
-                separator=None
-            ),
-            {
-                "id": "$PARENT::core",
-                "repeatable": RepeatableSpecs().Once(),
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
-                "uniq-items": [
+        self.spec = template("@", "spec")(
+            [
+                template("repeat")(
+                    "$PARENT::modifiers",
                     {
-                        "id": "$PARENT::adj",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "include": template("include")("basic-adj", is_static=True),
+                        "id": "$PARENT::modifier",
+                        "@inherit": ["once", ],
+                        "entries": [
+                            {
+                                "id": "$PARENT::adv",
+                                "@inherit": ["basic-adv", "once"],
+                                "@dependency-of": ["modifier"],
+                            }
+                        ]
                     },
-                ],
-            },
-            template("repeat")(
-                "$PARENT::dependencies",
+                    repeatable=RepeatableSpecs().Any(),
+                    separator=None
+                ),
                 {
-                    "id": "$PARENT::dependency",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "uniq-items": [
-                        {
-                            "id": "$PARENT::entity",
-                            "repeatable": RepeatableSpecs().Once(),
-                            "include": template("include")("entity-list", is_static=True),
-                            "dependency-of": template("dependency")(
-                                "modifier",
-                                "$LOCAL_SPEC_ANCHOR"
-                            ),
-                        }
-                    ]
+                    "id": "$PARENT::core",
+                    "@inherit": ["basic-adj", "once", "anchor"],
                 },
-                repeatable=RepeatableSpecs().Any(),
-                separator=None
-            ),
-        ])
+                template("repeat")(
+                    "$PARENT::dependencies",
+                    {
+                        "id": "$PARENT::dependency",
+                        "@inherit": ["once", ],
+                        "uniq-items": [
+                            {
+                                "id": "$PARENT::entity",
+                                "@inherit": ["once", ],
+                                "@dependency-of": ["modifier"],
+                                "@includes": {"name": "entity-list", "is_static": True},
+                            }
+                        ]
+                    },
+                    repeatable=RepeatableSpecs().Any(),
+                    separator=None
+                ),
+            ]
+        )

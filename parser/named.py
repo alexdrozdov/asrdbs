@@ -37,5 +37,25 @@ def load_named_instances():
     tmpl = Named(parser.templates.load_templates())
 
 
-def template(name):
-    return tmpl[name]
+class SequentialFuncCall(object):
+    def __init__(self, func_list):
+        self.__func_list = func_list
+
+    def __call__(self, *args, **kwargs):
+        res = self.__func_list[0](*args, **kwargs)
+        for f in self.__func_list[1:]:
+            res = f(res)
+        return res
+
+
+def template(name, *args):
+    if not args:
+        return tmpl[name]
+    l = [name, ] + list(args)
+    l.reverse()
+    return SequentialFuncCall(
+        map(
+            lambda n: tmpl[n],
+            l
+        )
+    )

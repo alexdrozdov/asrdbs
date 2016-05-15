@@ -16,3 +16,15 @@ class DependencySpec(parser.templates.common.SpecTemplate):
         else:
             master = [DependencySpecs().DependencyOf(master), ]
         return master
+
+
+class DependencyOfSpec(parser.templates.common.SpecTemplate):
+    def __init__(self):
+        super(DependencyOfSpec, self).__init__('dependency-of')
+
+    def __call__(self, body, dependency_class, master=None):
+        if master is None:
+            master = [DependencySpecs().DependencyOf("$LOCAL_SPEC_ANCHOR"), ]
+        else:
+            master = [DependencySpecs().DependencyOf(master), ]
+        body['dependency-of'] = master

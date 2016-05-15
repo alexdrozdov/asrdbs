@@ -12,10 +12,10 @@ class EntitySpec(SequenceSpec):
         SequenceSpec.__init__(self, 'entity')
         self.__compared_with = {}
 
-        self.spec = template("spec")([
+        self.spec = template("@", "spec")([
             {
                 "id": "$PARENT::definitive",
-                "repeatable": RepeatableSpecs().Any(),
+                "@inherit": ["any"],
                 "dependency-of": template("dependency")(
                     "location"
                 ),
@@ -23,12 +23,12 @@ class EntitySpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::core",
-                "repeatable": RepeatableSpecs().Once(),
+                "@inherit": ["once", "anchor"],
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "uniq-items": [
                     {
                         "id": "$PARENT::noun",
-                        "repeatable": RepeatableSpecs().Once(),
+                        "@inherit": ["once"],
                         "include": template("include")("basic-noun", is_static=True),
                     },
                     # {
@@ -42,11 +42,11 @@ class EntitySpec(SequenceSpec):
             },
             {
                 "id": "$PARENT::ownership",
-                "repeatable": RepeatableSpecs().Any(),
+                "@inherit": ["any"],
                 "uniq-items": [
                     {
                         "id": "$PARENT::location",
-                        "repeatable": RepeatableSpecs().Once(),
+                        "@inherit": ["once"],
                         "dependency-of": template("dependency")(
                             "location"
                         ),
@@ -54,7 +54,7 @@ class EntitySpec(SequenceSpec):
                     },
                     {
                         "id": "$PARENT::ownership",
-                        "repeatable": RepeatableSpecs().Once(),
+                        "@inherit": ["once"],
                         "dependency-of": template("dependency")(
                             "location"
                         ),
@@ -70,12 +70,12 @@ class EntityNegSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'entity-neg')
         self.__compared_with = {}
 
-        self.spec = template("spec")([
+        self.spec = template("@", "spec")([
             template("neg")(
                 "$PARENT::entity-neg",
                 {
                     "id": "$PARENT::body",
-                    "repeatable": RepeatableSpecs().Once(),
+                    "@inherit": ["once", "anchor"],
                     "anchor": AnchorSpecs().LocalSpecAnchor(),
                     "include": template("include")("entity", is_static=True),
                 },
@@ -90,7 +90,7 @@ class EntityListSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'entity-list')
         self.__compared_with = {}
 
-        self.spec = template("spec")([
+        self.spec = template("@", "spec")([
             template("aggregate")(
                 "$PARENT::aggregate",
                 attributes={
@@ -98,7 +98,7 @@ class EntityListSpec(SequenceSpec):
                 },
                 body={
                     "id": "$PARENT::variants",
-                    "repeatable": RepeatableSpecs().Once(),
+                    "@inherit": ["once"],
                     "uniq-items": [
                         {
                             "id": "$PARENT::common-pre",
@@ -116,7 +116,7 @@ class EntityListSpec(SequenceSpec):
                                         "entries": [
                                             {
                                                 "id": "$PARENT::#item#",
-                                                "repeatable": RepeatableSpecs().Once(),
+                                                "@inherit": ["once"],
                                                 "refers-to": template("refers-to")(),
                                                 "anchor": AnchorSpecs().Tag("object"),
                                                 "include": template("include")("entity-neg", is_static=True),
@@ -132,7 +132,7 @@ class EntityListSpec(SequenceSpec):
                             "$PARENT::entity-list",
                             {
                                 "id": "$PARENT::entity-list",
-                                "repeatable": RepeatableSpecs().Once(),
+                                "@inherit": ["once"],
                                 "entries": [
                                     {
                                         "id": "$PARENT::#pre-internal#",
@@ -144,7 +144,7 @@ class EntityListSpec(SequenceSpec):
                                     },
                                     {
                                         "id": "$PARENT::#item#",
-                                        "repeatable": RepeatableSpecs().Once(),
+                                        "@inherit": ["once"],
                                         "refers-to": template("refers-to")(),
                                         "anchor": AnchorSpecs().Tag("object-int"),
                                         "include": template("include")("entity-neg", is_static=True),

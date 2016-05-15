@@ -15,3 +15,14 @@ class IncludeSpec(parser.templates.common.SpecTemplate):
                 "spec": spec_name,
                 "static-only": is_static,
             }
+
+
+class IncludesSpec(parser.templates.common.SpecTemplate):
+    def __init__(self):
+        super(IncludesSpec, self).__init__('includes')
+
+    def __call__(self, body, name, is_static=False):
+        body['include'] = {
+            "spec": name,
+            "static-only": is_static,
+        }
