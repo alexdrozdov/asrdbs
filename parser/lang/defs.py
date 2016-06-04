@@ -3,6 +3,7 @@
 
 
 import parser.matcher
+import parser.selectors
 from parser.matchcmn import MatchBool
 from parser.lang.common import RtStaticRule, RtDynamicRule, RtMatchString, RtRuleFactory, RtRule
 from argparse import Namespace as ns
@@ -143,6 +144,20 @@ class c__pos_check_inv(RtStaticRule):
         return u'not pos: {0}'.format(self.__pos_names[0])
 
 
+class c__placeholder(RtStaticRule):
+    def __init__(self, def_value):
+        self.__def_value = def_value
+
+    def new_copy(self):
+        return c__placeholder(self.__def_value)
+
+    def match(self, form):
+        return self.__def_value
+
+    def get_info(self, wrap=False):
+        return u'placeholder: {0}'.format(self.__def_value)
+
+
 class c__pos_syntax_check(RtStaticRule):
     def __init__(self, syntax_name):
         assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax {0}'.format(syntax_name)
@@ -174,6 +189,11 @@ class c__pos_syntax_check(RtStaticRule):
 
 
 class PosSpecs(object):
+    def IsPos(self, pos):
+        if not isinstance(pos, (list, tuple)):
+            pos = [pos, ]
+        return RtRuleFactory(c__pos_check, pos)
+
     def IsNoun(self):
         return RtRuleFactory(c__pos_check, ["noun", ])
 
@@ -203,6 +223,12 @@ class PosSpecs(object):
 
     def IsExcept(self, pos_names):
         return RtRuleFactory(c__pos_check_inv, pos_names)
+
+    def IsAnimated(self):
+        return RtRuleFactory(c__placeholder, False)
+
+    def IsInanimated(self):
+        return RtRuleFactory(c__placeholder, False)
 
 
 class c__word_check(RtStaticRule):
@@ -750,3 +776,22 @@ class AggregateSpecs(object):
 
     def CloseWith(self, anchor):
         return RtRuleFactory(c__aggregate_close_spec, anchor=anchor)
+
+
+class c__selector(RtStaticRule):
+    def __init__(self, selector):
+        self.__selector = selector
+
+    def new_copy(self):
+        return c__selector(self.__selector)
+
+    def match(self, form):
+        return self.__selector(form, can_modify=True)
+
+    def get_info(self, wrap=False):
+        return u'selector: {0}'.format(self.__selector)
+
+
+class SelectorSpecs(object):
+    def Selector(self, name):
+        return RtRuleFactory(c__selector, parser.selectors.selector(name))

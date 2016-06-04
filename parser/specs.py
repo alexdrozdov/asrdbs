@@ -801,7 +801,7 @@ class TrsDef(object):
 
 class SpecStateDef(object):
 
-    static_rules = ['pos_type', 'case']
+    static_rules = ['pos_type', 'case', 'selector']
     dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to', 'dependency-of', 'action', 'closed-with']
     all_rules = static_rules + dynamic_rules
 

@@ -1,0 +1,22 @@
+{
+    "selector": {
+        "clarifies": "#term",
+        "tag-base": "#object",
+        "clarify": [
+        {
+            "tag": "#noun",
+            "@pos": ["noun"],
+            "clarify": [
+            {
+                "tag": ["#alive", "#animated"],
+                "@animation": "animated"
+            },
+            {
+                "tag": "#inanimated",
+                "@animation": "inanimated"
+            }
+            ]
+        }
+        ]
+    }
+}

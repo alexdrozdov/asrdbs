@@ -7,7 +7,8 @@
     },
     "parser": {
         "specdefs": ["ru_RU/enchanced/specdefs"],
-        "linkdefs": ["ru_RU/enchanced/linkdefs"]
+        "linkdefs": ["ru_RU/enchanced/linkdefs"],
+        "templates": ["parser/templates"]
     },
     "tests": {
         "primary": "adjective"

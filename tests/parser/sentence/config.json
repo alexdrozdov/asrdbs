@@ -7,7 +7,8 @@
     },
     "parser": {
         "specdefs": ["ru_RU/default/specdefs"],
-        "linkdefs": ["ru_RU/default/linkdefs"]
+        "linkdefs": ["ru_RU/default/linkdefs"],
+        "templates": ["parser/templates"]
     },
     "tests": {
         "primary": "sentence"

@@ -430,6 +430,16 @@ class RtRuleFactory(object):
         return self.__created
 
 
+class SelectorRuleFactory(object):
+    def __init__(self, classname, *args, **kwargs):
+        self.__classname = classname
+        self.__args = args  # FIXME Some strange logic in the next line
+        self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+
+    def create(self):
+        return self.__classname(*self.__args, **self.__kwargs)
+
+
 class LinkWeight(object):
     def __init__(self, ref_name):
         self.__ref_name = ref_name

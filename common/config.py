@@ -30,6 +30,9 @@ class AppConfig(object):
             cfg = {}
             self.__obj[name] = cfg
 
+    def exists(self, path):
+        return self.__xpath_get(path) is not None
+
     def __xpath_get(self, path):
         elem = self.__obj
         try:

@@ -5,12 +5,8 @@
 import uuid
 import re
 import traceback
-import named
 import worddb.worddb
 from argparse import Namespace as ns
-
-
-named.load_named_instances()
 
 
 class SentenceEntry(object):
@@ -137,6 +133,12 @@ class WordFormInfo(object):
 
     def get_word(self):
         return self.word
+
+    def has_tag(self, tag):
+        return False
+
+    def add_tag(self, tag, value=None):
+        pass
 
     def __format_info(self, sep=None, head='', tail=''):
         short_names = {

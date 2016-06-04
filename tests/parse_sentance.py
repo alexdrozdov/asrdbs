@@ -109,6 +109,11 @@ if __name__ == '__main__':
             'parser': {
                 'specdefs': ['ru_RU/enchanced/specdefs', ],
                 'linkdefs': ['ru_RU/enchanced/linkdefs', ],
+                'selectors': ['parser/lang/ru_RU/enchanced/selectors', ],
+                'templates': [
+                    'parser/templates',
+                    'parser/lang/ru_RU/enchanced/templates/selectors'
+                ]
             },
         }
     )

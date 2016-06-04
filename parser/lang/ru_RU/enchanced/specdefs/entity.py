@@ -28,7 +28,7 @@ class EntitySpec(SequenceSpec):
                 "uniq-items": [
                     {
                         "id": "$PARENT::noun",
-                        "@inherit": ["once"],
+                        "@inherit": ["#object", "once"],
                         "include": template("include")("basic-noun", is_static=True),
                     },
                     # {

@@ -18,6 +18,7 @@ import parser.graph_span
 import parser.specs
 import common.dictcmp
 from common.output import output as oput
+from common.singleton import singleton
 
 sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -28,16 +29,6 @@ def timeit_ctx(name):
     yield
     elapsedTime = time.time() - startTime
     logging.info('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
-
-
-def singleton(class_):
-    instances = {}
-
-    def getinstance(*args, **kwargs):
-        if class_ not in instances:
-            instances[class_] = class_(*args, **kwargs)
-        return instances[class_]
-    return getinstance
 
 
 @singleton

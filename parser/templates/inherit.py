@@ -34,17 +34,9 @@ class DependencySpec(parser.templates.common.SpecTemplate):
             'anchor': {
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
+            '#object': {
+                "@selector": "#object",
+            }
         }
-        # b = {
-        #     "selector": [
-        #         {
-        #             "test": [
-        #                 {"pos_type": [PosSpecs().IsAdjective(), ]},
-        #             ],
-        #             "apply": [
-        #             ]
-        #         }
-        #     ]
-        # }
 
         return copy.deepcopy(bases[base])
