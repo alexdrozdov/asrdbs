@@ -17,7 +17,7 @@ import graph
 import common.output
 from argparse import Namespace as ns
 import logging
-import sentparser
+import api
 
 
 logs_enabled = False
@@ -1263,14 +1263,14 @@ class RtSequenceLinkEntry(object):
             raise ValueError('Unsupported initializer')
 
     def __init_on_spec(self, rule, link, weight):
-        assert isinstance(link, sentparser.Link)
+        assert isinstance(link, api.Link)
         assert link.get_master() is not None and link.get_slave() is not None
         self.__rule = rule
         self.__link = link
         self.__weight = weight
 
     def __init_on_rsle(self, rsle):
-        assert isinstance(rsle.__link, sentparser.Link)
+        assert isinstance(rsle.__link, api.Link)
         assert rsle.__link.get_master() is not None and rsle.__link.get_slave() is not None
         self.__rule = rsle.__rule
         self.__link = rsle.__link
@@ -2856,7 +2856,7 @@ class RtVirtualEntry(object):
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
-        self.__form = parser.lang.common.SpecStateVirtForm(self)
+        self.__form = parser.wordform.SpecStateVirtForm(self)
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability

@@ -11,7 +11,7 @@ import io
 import argparse
 import uuid
 import common.config
-import parser.sentparser
+import parser.api
 import parser.graph
 import parser.graph_span
 import parser.specs
@@ -59,12 +59,12 @@ def execute(opts):
 
     with timeit_ctx('total'):
         with timeit_ctx('loading database'):
-            tm = parser.sentparser.TokenMapper('./dbs/worddb.db')
+            tm = parser.api.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
             srm = parser.specs.SequenceSpecMatcher(False, primary=opts.primary)
 
         with timeit_ctx('tokenizing'):
-            tokens = parser.sentparser.Tokenizer().tokenize(sentence)
+            tokens = parser.api.Tokenizer().tokenize(sentence)
 
         with timeit_ctx('mapping word forms'):
             parsed_sentence = tm.map(tokens)

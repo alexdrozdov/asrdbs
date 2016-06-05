@@ -1,1 +1,1 @@
-__all__ = ['sentparser', 'matcher']
+__all__ = ['parser', 'matcher', 'named', 'wordform', 'selectors', 'specs', 'preprocessor']

@@ -12,7 +12,7 @@ import logging
 import argparse
 from contextlib import contextmanager
 import common.config
-import parser.sentparser
+import parser.api
 import parser.graph
 import parser.graph_span
 import parser.specs
@@ -32,7 +32,7 @@ def timeit_ctx(name):
 
 
 @singleton
-class TokenMapper(parser.sentparser.TokenMapper):
+class TokenMapper(parser.api.TokenMapper):
     pass
 
 
@@ -119,7 +119,7 @@ class ParserTestCase(unittest.TestCase):
         logging.info(u'Setting env for {0}'.format(self.sentence))
 
         with timeit_ctx('tokenizing'):
-            tokens = parser.sentparser.Tokenizer().tokenize(self.sentence)
+            tokens = parser.api.Tokenizer().tokenize(self.sentence)
 
         with timeit_ctx('mapping word forms'):
             parsed_sentence = self.tm.map(tokens)
