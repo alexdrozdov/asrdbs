@@ -7,6 +7,7 @@ import json
 import copy
 import re
 import common.config
+import parser.wordform
 import parser.lang.common
 import parser.lang.defs
 from parser.lang.common import RtRule, RtMatchString
@@ -1505,8 +1506,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.lang.common.SpecStateIniForm,
-                    parser.lang.common.SpecStateFiniForm
+                    parser.wordform.SpecStateIniForm,
+                    parser.wordform.SpecStateFiniForm
                 )
             ):
                 continue
@@ -1516,8 +1517,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.lang.common.SpecStateIniForm,
-                    parser.lang.common.SpecStateFiniForm
+                    parser.wordform.SpecStateIniForm,
+                    parser.wordform.SpecStateFiniForm
                 )
             ):
                 continue
@@ -2155,7 +2156,7 @@ class SpecMatcher(object):
                 ns(
                     matcher=self,
                     initial_entry=RtMatchEntry(None, ns(
-                        form=parser.lang.common.SpecStateIniForm(),
+                        form=parser.wordform.SpecStateIniForm(),
                         spec_state_def=ini_spec,
                         rtms_offset=0)
                     ),
@@ -2363,7 +2364,7 @@ class SequenceSpecMatcher(object):
             ctx = self.__create_ctx()
             self.__create_initial_ctxs(ctx)
 
-        sentence += [parser.lang.common.SentenceFini(), ]
+        sentence += [parser.wordform.SentenceFini(), ]
 
         for s in sentence:
             s = [s, ]
@@ -2556,7 +2557,7 @@ class RtMatchEntry(object):
                 forms.get_forms()
             )
         ) + map(
-            lambda trs: (parser.lang.common.SpecStateFiniForm(), trs),
+            lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         )
 
@@ -2833,7 +2834,7 @@ class RtVirtualEntry(object):
     def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
-        self.__form = parser.lang.common.SpecStateVirtForm(self)
+        self.__form = parser.wordform.SpecStateVirtForm(self)
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
@@ -3034,7 +3035,7 @@ class RtVirtualEntry(object):
                 forms.get_forms()
             )
         ) + map(
-            lambda trs: (parser.lang.common.SpecStateFiniForm(), trs),
+            lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         )
 
