@@ -252,16 +252,6 @@ class Term(object):
             'private': {},
         }
 
-    def format_info(self, crlf=False):
-        sep = '\r\n' if crlf else ' '
-        return self.__format_info(sep=sep)
-
-    def format_table(self, align=u'LEFT', bgcolor=u'white'):
-        return self.__format_info(
-            head=u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">'.format(align, bgcolor),
-            tail='</TD></TR>'
-        )
-
     def add_tag(self, tag, layer):
         assert self.__layers.has_key(layer) and layer != 'ro',\
             '{0} is missing or ro'.format(layer)
@@ -525,74 +515,30 @@ class WordForms(object):
         return self.__word
 
 
-class SpecStateIniForm(object):
+class SpecStateIniForm(Token):
     def __init__(self):
-        pass
-
-    def get_word(self):
-        return u'ini'
-
-    def get_info(self):
-        return u'ini'
-
-    def get_pos(self):
-        return u'ini'
-
-    def get_position(self):
-        return None
-
-    def get_uniq(self):
-        return 0
-
-    def clone_without_links(self):
-        return SpecStateIniForm()
-
-    def get_reliability(self):
-        return 1.0
-
-    def export_dict(self):
-        return {
-            'name': 'ini',
-            'reliability': 1.0,
-            'hidden': False,
-            'anchor': False,
-            'form': {},
-        }
+        super(SpecStateIniForm, self).__init__(
+            ns(
+                word=u'ini',
+                original_word=u'ini',
+                info={'parts_of_speech': u'ini'},
+                pos=None,
+                uniq=0
+            )
+        )
 
 
-class SpecStateFiniForm(object):
+class SpecStateFiniForm(Token):
     def __init__(self):
-        pass
-
-    def get_word(self):
-        return u'fini'
-
-    def get_info(self):
-        return u'fini'
-
-    def get_pos(self):
-        return u'fini'
-
-    def get_position(self):
-        return None
-
-    def get_uniq(self):
-        return 0
-
-    def clone_without_links(self):
-        return SpecStateIniForm()
-
-    def get_reliability(self):
-        return 1.0
-
-    def export_dict(self):
-        return {
-            'name': 'fini',
-            'reliability': 1.0,
-            'hidden': False,
-            'anchor': False,
-            'form': {},
-        }
+        super(SpecStateFiniForm, self).__init__(
+            ns(
+                word=u'fini',
+                original_word=u'fini',
+                info={'parts_of_speech': u'fini'},
+                pos=None,
+                uniq=0
+            )
+        )
 
 
 class SpecStateVirtForm(object):
@@ -618,9 +564,6 @@ class SpecStateVirtForm(object):
 
     def get_uniq(self):
         return self.__owner.get_aggregated_uniq()
-
-    def clone_without_links(self):
-        return SpecStateIniForm()
 
     def get_reliability(self):
         return 1.0
