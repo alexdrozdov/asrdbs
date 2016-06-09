@@ -8,11 +8,11 @@ import json
 import parser.named
 import common.config
 from common.singleton import singleton
-# from argparse import Namespace as ns
 
 
 class Selector(object):
     def __init__(self, tags, clarifies, rules):
+        assert None not in tags
         self.__tags = tags
         self.__clarifies = clarifies
         self.__rules = rules
@@ -50,6 +50,12 @@ class Selector(object):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
         return self.__apply(argc[0], test_only=test_only)
 
+    def __repr__(self):
+        return "Selector({0})".format(self.get_tags())
+
+    def __str__(self):
+        return "Selector({0})".format(self.get_tags())
+
 
 class SelectorHub(object):
     def __init__(self, tag):
@@ -81,6 +87,12 @@ class SelectorHub(object):
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
         return self.__apply(argc[0], test_only=test_only)
+
+    def __repr__(self):
+        return "SelectorHub({0})".format(self.get_tag())
+
+    def __str__(self):
+        return "SelectorHub({0})".format(self.get_tag())
 
 
 class _Preprocessor(object):
@@ -156,10 +168,14 @@ class _Compiler(object):
         return self.__compile(js[u'selector'], clarifies, base_tags)
 
     def __compile(self, js, clarifies, base_tags):
+        assert base_tags is None or None not in base_tags
         selectors = []
 
         tags = self.__get_property_list(js, u'tag')
-        base_tags = self.__as_list(base_tags) + self.__get_property_list(js, u'tag-base')
+        assert None not in tags
+        base_tags = self.__as_list(base_tags, none_is_empty=True) +\
+            self.__get_property_list(js, u'tag-base')
+        assert None not in base_tags
         clarifies = self.__as_list(clarifies)
 
         clarifies.extend(self.__get_property_list(js, u'clarifies'))
@@ -186,7 +202,9 @@ class _Compiler(object):
             v = self.__as_list(js[name])
         return v
 
-    def __as_list(self, v):
+    def __as_list(self, v, none_is_empty=False):
+        if none_is_empty and v is None:
+            return []
         if not isinstance(v, list):
             v = [v, ]
         return v

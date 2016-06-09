@@ -1422,7 +1422,7 @@ class MatchedEntry(object):
                 'hidden': self.__is_hidden,
                 'virtual': self.__is_virtual,
                 'anchor': self.__is_anchor,
-                'form': self.__form.get_info(),
+                'form': self.__form.format('dict-form'),
             },
         }
 

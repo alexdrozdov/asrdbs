@@ -789,7 +789,7 @@ class c__selector(RtStaticRule):
         return self.__selector(form, can_modify=True)
 
     def get_info(self, wrap=False):
-        return u'selector: {0}'.format(self.__selector)
+        return u'selector: {0}'.format(str(self.__selector))
 
 
 class SelectorSpecs(object):

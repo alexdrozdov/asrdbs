@@ -281,7 +281,7 @@ class SequenceGraphGen(GraphGen):
             entry.get_form().get_word(),
             entry.get_form().get_position(),
         )
-        label += entry.get_form().format_table()
+        label += entry.get_form().format('dot-html')
 
         for r in entry.get_rules():
             label += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format(
