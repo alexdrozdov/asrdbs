@@ -2834,16 +2834,12 @@ class RtVirtualEntry(object):
     def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
-        self.__form = parser.wordform.SpecStateVirtForm(self)
+        self.__form = parser.wordform.SpecStateVirtForm()
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
         self.__attributes = attributes
         self.__referers = []
-        self.__uniq = None
-        self.__aggregated_info = None
-        self.__word = None
-        self.__positions = []
         self.__modified = False
         self.__first_handle = True
         self.__closed = spec_state_def.is_closed()
@@ -2856,15 +2852,11 @@ class RtVirtualEntry(object):
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
-        self.__form = parser.wordform.SpecStateVirtForm(self)
+        self.__form = parser.wordform.SpecStateVirtForm(rtme.get_form())
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability
         self.__referers = []
-        self.__uniq = rtme.get_aggregated_uniq()
-        self.__word = rtme.get_aggregated_word()
-        self.__positions = copy.deepcopy(rtme.get_positions())
-        self.__aggregated_info = copy.deepcopy(rtme.get_aggregated_info())
         self.__modified = rtme.__modified
         self.__first_handle = rtme.__first_handle
         self.__closed = rtme.__closed
@@ -2989,26 +2981,6 @@ class RtVirtualEntry(object):
     def get_reliability(self):
         return self.__reliability
 
-    def get_aggregated_uniq(self):
-        if self.__uniq is None:
-            self.__recalculate_aggregated_props()
-        return self.__uniq
-
-    def get_aggregated_info(self):
-        if self.__aggregated_info is None or not self.__aggregated_info:
-            self.__recalculate_aggregated_props()
-        return self.__aggregated_info
-
-    def get_aggregated_word(self):
-        if self.__word is None or not self.__word:
-            self.__recalculate_aggregated_props()
-        return self.__word
-
-    def get_positions(self):
-        if self.__positions is None or not self.__positions:
-            self.__recalculate_aggregated_props()
-        return self.__positions
-
     @argres()
     def has_pending(self, required_only=False):
         if required_only:
@@ -3099,68 +3071,9 @@ class RtVirtualEntry(object):
     @argres()
     def attach_referer(self, rtme):
         self.__referers.append(rtme)
-        self.__uniq = None
-        self.__aggregated_info = None
-        self.__word = None
-        self.__positions = []
+        self.__form.add_form(rtme.get_form())
         self.__modified = True
         return True
-
-    @argres(show_result=False)
-    def __recalculate_aggregated_props(self):
-        referers_uuids = '.'.join(
-            sorted([r.get_form().get_uniq() for r in self.__referers])
-        )
-        self.__uniq = str(uuid.uuid3(uuid.NAMESPACE_DNS, referers_uuids))
-
-        self.__word = u'_'.join(
-            sorted([r.get_form().get_word() for r in self.__referers])
-        )
-
-        self.__positions = sorted([r.get_form().get_position() for r in self.__referers])
-
-        self.__aggregated_info = reduce(
-            lambda x, y: self.__merge_props(x, y),
-            map(
-                lambda r: r.get_form().get_info(),
-                self.__referers[1:]
-            ),
-            self.__referers[0].get_form().get_info()
-        ) if self.__referers else {}
-
-    def __merge_count(self, x, y):
-        return 'plural'
-
-    def __merge_case(self, x, y):
-        if x == y:
-            return x
-        return None
-
-    def __merge_gender(self, x, y):
-        if x == y:
-            return x
-        return None
-
-    def __merge_pos(self, x, y):
-        if x == y:
-            return x
-        return None
-
-    @argres()
-    def __merge_props(self, x, y):
-        merge_fcn = {
-            'parts_of_speech': self.__merge_pos,
-            'count': self.__merge_count,
-            'case': self.__merge_case,
-            'gender': self.__merge_gender,
-        }
-        res = {}
-        for k in merge_fcn.keys():
-            if x.has_key(k) and y.has_key(k):
-                r = merge_fcn[k](x[k], y[k])
-                if r is not None:
-                    res[k] = r
-        return res
 
     def __repr__(self):
         try:

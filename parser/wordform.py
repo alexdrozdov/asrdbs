@@ -10,6 +10,20 @@ from argparse import Namespace as ns
 from common.singleton import singleton
 
 
+class Restricted(object):
+    def __cmp__(self, other):
+        return 0
+
+    def __eq__(self, other):
+        return True
+
+    def __str__(self):
+        return "-restricted"
+
+    def __repr__(self):
+        return "-restricted"
+
+
 class Formatter(object):
     def __init__(self, cb, fmt):
         self.__cb = cb
@@ -216,7 +230,7 @@ class TermLayer(object):
 class Term(object):
     layer_order = ['ro', 'w_once', 'morf', 'ctx', 'sentence', 'private']
 
-    def __init__(self, info, layer_limit='morf', copy_layers=None):
+    def __init__(self, info, layer_limit=None, reuse_layers=None):
         assert isinstance(info, (dict, Term))
         if isinstance(info, dict):
             self.__init_from_info(info)
@@ -224,19 +238,23 @@ class Term(object):
             self.__init_from_term(
                 info,
                 layer_limit,
-                copy_layers if copy_layers is not None else set({})
+                reuse_layers if reuse_layers is not None else set({})
             )
 
-    def __init_from_term(self, term, layer_limit, copy_layers):
-        assert copy_layers is None or isinstance(copy_layers, set)
+    def __init_from_term(self, term, layer_limit, reuse_layers, preserve_existant=False, ignore=None):
+        assert reuse_layers is None or isinstance(reuse_layers, set)
+        assert ignore is None or isinstance(ignore, (list, set, dict))
+        if ignore is None:
+            ignore = set({})
         mk_empty = False
-        self.__layers = {}
+        if not preserve_existant:
+            self.__layers = {}
         for l in Term.layer_order:
             if not mk_empty:
-                if l in copy_layers:
-                    self.__layers[l] = copy.deepcopy(term.__layers[l])
-                else:
+                if l in reuse_layers:
                     self.__layers[l] = term.__layers[l]
+                else:
+                    self.__layers[l] = copy.deepcopy(term.__layers[l])
                 if layer_limit == l:
                     mk_empty = True
             else:
@@ -251,6 +269,15 @@ class Term(object):
             'sentence': {},
             'private': {},
         }
+
+    def copy(self, term, layer_limit=None, reuse_layers=None, ignore=None):
+        self.__init_from_term(
+            term,
+            layer_limit,
+            reuse_layers if reuse_layers is not None else set({}),
+            preserve_existant=True,
+            ignore=ignore
+        )
 
     def add_tag(self, tag, layer):
         assert self.__layers.has_key(layer) and layer != 'ro',\
@@ -269,6 +296,8 @@ class Term(object):
     def add_property(self, property, layer, value):
         assert self.__layers.has_key(layer) and layer != 'ro'
         assert layer != 'w_once' or not self.__layers[layer].has_key(property)
+        if self.__layers[layer].has_key(property) and self.__layers[layer][property] == Restricted():
+            return
         self.__layers[layer][property] = value
 
     def get_property(self, property, layer=None):
@@ -278,6 +307,16 @@ class Term(object):
             if self.__layers[l].has_key(property):
                 return self.__layers[l][property]
         raise KeyError('{0}:{1} doesnt exist'.format(layer, property))
+
+    def restrict_property(self, property, layer=None):
+        if layer is not None:
+            self.__layers[layer][property] = Restricted()
+            return
+        for l in reversed(Term.layer_order):
+            if self.__layers[l].has_key(layer):
+                self.__layers[layer][property] = Restricted()
+                return
+            self.__layers['ctx'][property] = Restricted()
 
     def layers(self):
         return self.__layers
@@ -417,32 +456,35 @@ class TermRoMethods(object):
         return self.term().get_property('parts_of_speech', 'ro')
 
     def get_case(self):
-        return self.term().get_property('case', 'ro')
+        return self.term().get_property('case')
 
     def get_gender(self):
-        return self.term().get_property('gender', 'ro')
+        return self.term().get_property('gender')
 
     def get_count(self):
-        return self.term().get_property('count'), 'ro'
+        return self.term().get_property('count')
 
     def get_time(self):
-        return self.term().get_property('time', 'ro')
+        return self.term().get_property('time')
 
     def get_word(self):
-        return self.term().get_property('word', 'ro')
+        return self.term().get_property('word')
 
 
 class TermWriteOnceMethods(object):
     def get_position(self):
-        return self.term().get_property('position', 'w_once')
+        position = self.term().get_property('position')
+        if isinstance(position, list):
+            return position[0]
+        return position
 
     def get_uniq(self):
-        return self.term().get_property('uniq', 'w_once')
+        return self.term().get_property('uniq')
 
 
 class TermCtxMethods(object):
     def get_reliability(self):
-        return self.term().get_property('reliability', 'ctx')
+        return self.term().get_property('reliability')
 
 
 class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
@@ -541,73 +583,112 @@ class SpecStateFiniForm(Token):
         )
 
 
-class SpecStateVirtForm(object):
-    def __init__(self, owner):
-        self.__owner = owner
+class SpecStateVirtForm(Token):
+    def __init__(self, form=None):
+        if form is None:
+            self.__init_default()
+        else:
+            self.__init_from_form(form)
 
-    def get_word(self):
-        w = self.__owner.get_aggregated_word()
-        if w:
-            return w
-        return u'virt_' + unicode(uuid.uuid1())
+    def __init_default(self):
+        word = u'virt_' + unicode(uuid.uuid1())
+        super(SpecStateVirtForm, self).__init__(
+            ns(
+                word=word,
+                original_word=word,
+                info={'parts_of_speech': u'virt'},
+                pos=None,
+                uniq=0
+            )
+        )
 
-    def get_info(self):
-        return self.__owner.get_aggregated_info()
+    def __init_from_form(self, form):
+        super(SpecStateVirtForm, self).__init__(form)
 
-    def get_pos(self):
-        info = self.__owner.get_aggregated_info()
-        return info['parts_of_speech'] if info.has_key('parts_of_speech') else 'virt'
+    def add_form(self, form):
+        if self.get_pos() == u'virt':
+            self.term().copy(form.term(), ignore=['uniq', ])
+            self.term().add_property(
+                'uniq',
+                'ctx',
+                str(uuid.uuid3(uuid.NAMESPACE_DNS, form.get_property('uniq')))
+            )
+            return
 
-    def get_position(self):
-        positions = self.__owner.get_positions()
-        return None if not positions else positions[0]
-
-    def get_uniq(self):
-        return self.__owner.get_aggregated_uniq()
-
-    def get_reliability(self):
-        return 1.0
-
-    def export_dict(self):
-        return {
-            'name': 'virt',
-            'reliability': 1.0,
-            'hidden': True,
-            'anchor': False,
-            'form': {},
+        resolvers = {
+            'parts_of_speech': self.__resolve_same,
+            'case': self.__resolve_same,
+            'count': self.__resolve_countable,
+            'gender': self.__resolve_same,
+            'position': self.__resolve_range,
+            'uniq': self.__resolve_uniq,
+            'word': lambda form, k: self.__resolve_cat(form, k, u'_')
         }
+        for k, v in resolvers.items():
+            v(form, k)
 
-    def __format_info(self, sep=None, head='', tail=''):
-        short_names = {
-            'parts_of_speech': 'pos',
-            'case': 'case',
-            'gender': 'gender',
-            'count': 'count',
-            'time': 'time',
-        }
-        if sep is None:
-            sep = tail + head
-        return head + sep.join(
-            map(
-                lambda (k, v): '{0}: {1}'.format(short_names[k], v),
-                filter(
-                    lambda (k, v): k in short_names,
-                    self.__owner.get_aggregated_info().items()
+    # def __resolve_hierarchical(self, form, k):
+    #     my_prop = self.term().get_property(k)
+    #     other_prop = form.term().get_property(k)
+    #     if my_prop == other_prop:
+    #         return
+    #     common = find_common(my_prop, other_prop)
+    #     for a, v in get_attributes(common).items():
+    #         self.term().add_property(a, 'ctx', v)
+
+    def __resolve_same(self, form, k):
+        my_prop = self.term().get_property(k)
+        other_prop = form.term().get_property(k)
+        if my_prop is None and other_prop is not None:
+            self.term().add_property(k, 'ctx', other_prop)
+        elif my_prop == other_prop:
+            return
+        else:
+            self.term().restrict_property(k)
+
+    def __resolve_countable(self, form, k):
+        my_prop = self.term().get_property(k)
+        other_prop = form.term().get_property(k)
+        if my_prop is None and other_prop is not None:
+            self.term().add_property(k, 'ctx', other_prop)
+        else:
+            self.term().add_property(k, 'ctx', 'plural')
+
+    def __resolve_range(self, form, k):
+        my_prop = self.term().get_property(k)
+        other_prop = form.term().get_property(k)
+        if my_prop is None and other_prop is not None:
+            self.term().add_property(k, 'ctx', other_prop)
+        else:
+            my_prop = my_prop if isinstance(my_prop, list) else [my_prop, ]
+            other_prop = other_prop if isinstance(other_prop, list) else [other_prop, ]
+            self.term().add_property(
+                k,
+                'ctx',
+                sorted(
+                    filter(lambda x: x is not None, list(set(my_prop + other_prop)))
                 )
             )
-        ) + tail
 
-    def format_table(self, align=u'LEFT', bgcolor=u'white'):
-        if self.__owner.get_aggregated_info() is None:
-            return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
-                align,
-                bgcolor,
-                u'virt'
-            )
-        return self.__format_info(
-            head=u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">'.format(align, bgcolor),
-            tail='</TD></TR>'
+    def __resolve_uniq(self, form, k):
+        my_uniq = self.term().get_property(k)
+        other_uniq = form.term().get_property(k)
+        referers_uuids = '.'.join(
+            sorted([my_uniq, other_uniq])
         )
+        self.term().add_property(
+            'uniq',
+            'ctx',
+            str(uuid.uuid3(uuid.NAMESPACE_DNS, referers_uuids))
+        )
+
+    def __resolve_cat(self, form, k, sep):
+        my_prop = self.term().get_property(k)
+        other_prop = form.term().get_property(k)
+        if my_prop is None and other_prop is not None:
+            self.term().add_property(k, 'ctx', other_prop)
+        else:
+            self.term().add_property(k, 'ctx', my_prop + sep + other_prop)
 
 
 class SentenceFini(object):
