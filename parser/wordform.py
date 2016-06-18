@@ -325,100 +325,6 @@ class Term(object):
         return TermLayer(self.__layers[name])
 
 
-class SentenceEntry(object):
-
-    word = 1
-    syntax = 2
-
-    def __init__(self, original_word, is_word=False, is_syntax=False):
-        assert original_word is not None
-        self.__original = original_word
-        if not is_word and not is_syntax:
-            raise ValueError("Undefined entry type")
-        if is_word and is_syntax:
-            raise ValueError("Undefined entry type")
-        if is_word:
-            self.__type = SentenceEntry.word
-            return
-        if is_syntax:
-            self.__type = SentenceEntry.syntax
-            return
-
-    def is_word(self):
-        return self.__type == SentenceEntry.word
-
-    def is_syntax(self):
-        return self.__type == SentenceEntry.syntax
-
-    def get_original(self):
-        return self.__original
-
-
-class SyntaxEntry(SentenceEntry):
-    def __init__(self, symbol, original_symbol, position, uniq):
-        SentenceEntry.__init__(self, original_word=original_symbol, is_syntax=True)
-        self.__symbol = symbol
-        self.__pos = position
-        self.__uniq = uniq
-
-    def is_comma(self):
-        return self.__symbol == ','
-
-    def is_dot(self):
-        return self.__symbol == '.'
-
-    def is_question(self):
-        return self.__symbol == '?'
-
-    def get_pos(self):
-        return 'syntax'
-
-    def get_word(self):
-        return self.__symbol
-
-    def get_position(self):
-        return self.__pos
-
-    def get_uniq(self):
-        return self.__uniq
-
-    def __format_info(self, sep=None, head='', tail=''):
-        short_names = {
-            'parts_of_speech': 'pos',
-            'case': 'case',
-            'gender': 'gender',
-            'count': 'count',
-            'time': 'time',
-        }
-        if sep is None:
-            sep = tail + head
-        return head + sep.join(
-            map(
-                lambda (k, v): '{0}: {1}'.format(short_names[k], v),
-                filter(
-                    lambda (k, v): k in short_names,
-                    self.info.items()
-                )
-            )
-        ) + tail
-
-    def format_info(self, crlf=True):
-        return self.__symbol
-
-    def format_table(self, align=u'LEFT', bgcolor=u'white'):
-        return u'<TR><TD ALIGN="{0}" BGCOLOR="{1}">{2}</TD></TR>'.format(
-            align,
-            bgcolor,
-            self.__symbol
-        )
-
-    def get_reliability(self):
-        return 1.0
-
-    def get_info(self, crlf=False):
-        return dict()
-
-
 class TokenBase(object):
     def __init__(self, info):
         if isinstance(info, dict):
@@ -451,6 +357,18 @@ class TermRoMethods(object):
 
     def is_preposition(self):
         return self.__test_pos('preposition')
+
+    def is_syntax(self):
+        return self.__test_pos('syntax')
+
+    def is_comma(self):
+        return self.get_word() == u','
+
+    def is_dot(self):
+        return self.get_word() == u'.'
+
+    def is_question(self):
+        return self.get_word() == u'?'
 
     def get_pos(self):
         return self.term().get_property('parts_of_speech', 'ro')
@@ -731,9 +649,16 @@ class WordFormFabric(object):
             return False
 
     def __create_syntax_entry(self, symbol, position):
-        se = SyntaxEntry(symbol, symbol, position, self.__form_uniq)
+        se = Token(
+            ns(
+                word=symbol,
+                original_word=symbol,
+                info={'parts_of_speech': u'syntax'},
+                pos=position,
+                uniq=str(uuid.uuid1())
+            )
+        )
         wf = WordForms(symbol, [se, ])
-        self.__form_uniq = str(uuid.uuid1())
         return wf
 
     def __create_word_entry(self, word, position):
