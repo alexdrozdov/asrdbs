@@ -645,15 +645,10 @@ class c__dependencyof_spec(RtDynamicRule):
         if res:
             if self.__dep_selector is None:
                 return RtRule.res_matched
-            # return RtRule.res_matched if self.__dep_selector(
-            #     rtme_form,
-            #     other_form
-            # ) else RtRule.res_failed
-            self.__dep_selector(
+            return RtRule.res_matched if self.__dep_selector(
                 rtme_form,
                 other_form
-            )
-            return RtRule.res_matched
+            ) else RtRule.res_failed
 
         return RtRule.res_failed
 

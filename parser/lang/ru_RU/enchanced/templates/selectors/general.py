@@ -3,7 +3,7 @@
 
 
 import parser.templates.common
-from parser.lang.sdefs import PosSpecs
+from parser.lang.sdefs import PosSpecs, RelationsSpecs
 
 
 class PosSpec(parser.templates.common.SpecTemplate):
@@ -54,7 +54,7 @@ class EqualPropsSpec(parser.templates.common.SpecTemplate):
     def __call__(self, body, sp):
         if not isinstance(sp, list):
             sp = [sp, ]
-        body["equal-properties"] = sp
+        body["equal-properties"] = [RelationsSpecs().EqualProps(sp), ]
 
 
 class PositionSpec(parser.templates.common.SpecTemplate):
@@ -62,7 +62,7 @@ class PositionSpec(parser.templates.common.SpecTemplate):
         super(PositionSpec, self).__init__('position', namespace='selectors')
 
     def __call__(self, body, sp):
-        body["position"] = sp
+        body["position"] = [RelationsSpecs().Position(sp), ]
 
 
 class LinkSpec(parser.templates.common.SpecTemplate):

@@ -108,7 +108,7 @@ class MultiSelector(object):
             # print 'True'
 
         for r in self.__rules:
-            if not r.match(form):
+            if not r.match(form, other_form):
                 return False
         self.__set_tags(s_form)
         return True
@@ -394,7 +394,10 @@ class _Compiler(object):
         return list(v)
 
     def __rules(self, js):
-        known_rules = ['pos_type', 'case', 'animation']
+        known_rules = [
+            'pos_type', 'case', 'animation',
+            'position', 'equal-properties'
+        ]
         return map(
             lambda k: (k, js[k]),
             filter(
