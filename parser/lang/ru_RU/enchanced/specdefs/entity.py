@@ -138,7 +138,7 @@ class EntityListSpec(SequenceSpec):
                                         "id": "$PARENT::#pre-internal#",
                                         "repeatable": RepeatableSpecs().Never(),
                                         "dependency-of": template("dependency")(
-                                            "location",
+                                            "#obj-preposition",
                                             "$PARENT::#item#"
                                         ),
                                     },
@@ -198,7 +198,7 @@ class EntityLocationSpec(SequenceSpec):
                                 "repeatable": RepeatableSpecs().Once(),
                                 "pos_type": [PosSpecs().IsPreposition(), ],
                                 "dependency-of": template("dependency")(
-                                    "location",
+                                    "#obj-preposition",
                                     "$TAG(object)"
                                 ),
                             },

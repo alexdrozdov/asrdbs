@@ -463,6 +463,30 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
         return "Token(word='{0}')".format(self.get_word().encode('utf8'))
 
 
+class TmpToken(object):
+    def __init__(self, term):
+        self.__base_term = term
+        self.__tmp_term = Term({})
+
+    def add_tag(self, tag, layer):
+        return self.__tmp_term.add_tag(tag, layer)
+
+    def has_tag(self, tag, layer=None):
+        return self.__tmp_term.has_tag(tag, layer) or self.__base_term.has_tag(tag, layer)
+
+    def add_property(self, property, layer, value):
+        self.__tmp_term.add_property(property, layer, value)
+
+    def get_property(self, property, layer=None):
+        try:
+            return self.__tmp_term.get_property(property, layer)
+        except KeyError:
+            return self.__base_term.get_property(property, layer)
+
+    def restrict_property(self, property, layer=None):
+        self.__tmp_term.restrict_property(property, layer)
+
+
 class WordForms(object):
     def __init__(self, word, forms):
         self.__word = word

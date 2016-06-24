@@ -1,0 +1,21 @@
+{
+    "multi": {
+        "tag-base": "#obj-preposition",
+        "master": "other",
+        "slave": "self",
+        "@self": {
+            "clarifies": "#preposition",
+            "clarify": {
+                "@equal-properties": ["case"],
+                "@position": ["left"],
+                "@link": {
+                    "label": "^obj-preposition",
+                    "attrs": "all"
+                }
+            }
+        },
+        "@other": {
+            "clarifies": "#object"
+        }
+    }
+}

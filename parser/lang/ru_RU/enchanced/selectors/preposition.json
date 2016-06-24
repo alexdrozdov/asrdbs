@@ -1,0 +1,12 @@
+{
+    "selector": {
+        "clarifies": "#term",
+        "tag-base": "#preposition",
+        "clarify": [
+        {
+            "tag": "#preposition",
+            "@pos": ["preposition"]
+        }
+        ]
+    }
+}

@@ -600,16 +600,29 @@ class RefersToSpecs(object):
 
 
 class c__dependencyof_spec(RtDynamicRule):
-    def __init__(self, anchor=None, weight=None):
+    def __init__(self, anchor=None, dependency_class=None, weight=None):
         RtDynamicRule.__init__(self, True, False)
         self.__anchor = RtMatchString(anchor)
+        self.__dep_class = dependency_class
+        if dependency_class is not None:
+            self.__dep_selector = parser.selectors.selector(dependency_class)
+        else:
+            self.__dep_selector = None
         self.__weight = weight
 
     def new_copy(self):
-        return c__dependencyof_spec(self.__anchor, self.__weight)
+        return c__dependencyof_spec(
+            self.__anchor,
+            self.__dep_class,
+            self.__weight
+        )
 
     def clone(self):
-        return c__dependencyof_spec(self.__anchor, self.__weight)
+        return c__dependencyof_spec(
+            self.__anchor,
+            self.__dep_class,
+            self.__weight
+        )
 
     def is_applicable(self, rtme, other_rtme):
         other_name = other_rtme.get_name()
@@ -629,7 +642,20 @@ class c__dependencyof_spec(RtDynamicRule):
                     ns(master=other_rtme, slave=rtme, details=self.to_dict()),
                 ]
             )
-        return RtRule.res_matched if res else RtRule.res_failed
+        if res:
+            if self.__dep_selector is None:
+                return RtRule.res_matched
+            # return RtRule.res_matched if self.__dep_selector(
+            #     rtme_form,
+            #     other_form
+            # ) else RtRule.res_failed
+            self.__dep_selector(
+                rtme_form,
+                other_form
+            )
+            return RtRule.res_matched
+
+        return RtRule.res_failed
 
     def get_info(self, wrap=False):
         s = u'dependency-of{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
@@ -662,8 +688,16 @@ class c__dependencyof_spec(RtDynamicRule):
 
 
 class DependencySpecs(object):
-    def DependencyOf(self, anchor, weight=None):
-        return RtRuleFactory(c__dependencyof_spec, anchor=anchor, weight=weight)
+    def DependencyOf(self, anchor, dependency_class=None, weight=None):
+        if not dependency_class.startswith('#'):
+            dependency_class = None
+
+        return RtRuleFactory(
+            c__dependencyof_spec,
+            anchor=anchor,
+            dependency_class=dependency_class,
+            weight=weight
+        )
 
 
 class c__aggregate_close_spec(RtDynamicRule):

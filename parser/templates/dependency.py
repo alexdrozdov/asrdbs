@@ -12,9 +12,9 @@ class DependencySpec(parser.templates.common.SpecTemplate):
 
     def __call__(self, dependency_class, master=None):
         if master is None:
-            master = [DependencySpecs().DependencyOf("$LOCAL_SPEC_ANCHOR"), ]
+            master = [DependencySpecs().DependencyOf("$LOCAL_SPEC_ANCHOR", dependency_class), ]
         else:
-            master = [DependencySpecs().DependencyOf(master), ]
+            master = [DependencySpecs().DependencyOf(master, dependency_class), ]
         return master
 
 
@@ -24,7 +24,7 @@ class DependencyOfSpec(parser.templates.common.SpecTemplate):
 
     def __call__(self, body, dependency_class, master=None):
         if master is None:
-            master = [DependencySpecs().DependencyOf("$LOCAL_SPEC_ANCHOR"), ]
+            master = [DependencySpecs().DependencyOf("$LOCAL_SPEC_ANCHOR", dependency_class), ]
         else:
-            master = [DependencySpecs().DependencyOf(master), ]
+            master = [DependencySpecs().DependencyOf(master, dependency_class), ]
         body['dependency-of'] = master
