@@ -43,11 +43,26 @@ class SelectorRes(object):
         return SelectorRes(False)
 
     def __add__(self, other):
-            return SelectorRes(
-                self.res,
-                dict(self.link_attrs.items() + other.link_attrs.items()),
-                dict(self.info.items() + other.info.items()),
-            )
+        r = SelectorRes(
+            self.res,
+            dict(self.link_attrs.items() + other.link_attrs.items()),
+            dict(self.info.items() + other.info.items()),
+        )
+        return r
+
+    def __str__(self):
+        return 'SelectorRes({0}, link_attrs={1}, info={2})'.format(
+            self.res,
+            self.link_attrs,
+            self.info
+        )
+
+    def __repr__(self):
+        return 'SelectorRes({0}, link_attrs={1}, info={2})'.format(
+            self.res,
+            self.link_attrs,
+            self.info
+        )
 
 
 class Selector(object):
@@ -135,7 +150,7 @@ class MultiSelector(object):
         self.__tags = tags
         self.__clarifies = clarifies
         self.__rules = rules
-        self.__link_attrs = {}
+        self.__link_attrs = link_attrs
         self.__reorder = reorder
 
     def get_tags(self):
@@ -188,9 +203,7 @@ class MultiSelector(object):
         )
 
     def __check_clarify(self, s_form, o_form, tag):
-        # print '__check_clarify called for', s_form.get_word()
         if s_form.has_tag(tag):
-            # print s_form.get_word(), 'has tag', tag
             return SelectorRes(True)
         selector = Selectors()[tag]
         return selector(s_form, o_form)
@@ -443,7 +456,6 @@ class _Compiler(object):
             {},
             reorder=lambda (x, y): (x, y)
         )
-        # print s
         return [s, ] + s_res.full_list + o_res.full_list
 
     def __tags(self, selectors):

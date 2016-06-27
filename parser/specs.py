@@ -2052,11 +2052,21 @@ class RtMatchSequence(object):
     def __mk_link(self, l):
         if not self.__links.has_key(l.master):
             self.__links[l.master] = {}
-        self.__links[l.master][l.slave] = [l.details, ]
+        self.__links[l.master][l.slave] = [
+            {
+                'qualifiers': l.qualifiers,
+                'details': l.debug,
+            }
+        ]
 
     @argres(show_result=False)
     def __extend_link(self, l):
-        self.__links[l.master][l.slave].append(l.details)
+        self.__links[l.master][l.slave].append(
+            {
+                'qualifiers': l.qualifiers,
+                'details': l.debug,
+            }
+        )
 
     def get_stack(self):
         return self.__stack.get_stack()
