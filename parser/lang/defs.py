@@ -635,22 +635,37 @@ class c__dependencyof_spec(RtDynamicRule):
         rtme_form = rtme.get_form()
         other_form = other_rtme.get_form()
         res = parser.matcher.match(other_form, rtme_form)
-        if res:
-            rtme.add_link(
-                [
-                    ns(master=other_rtme, slave=rtme, details=res.to_dict()),
-                    ns(master=other_rtme, slave=rtme, details=self.to_dict()),
-                ]
-            )
+        if not res:
+            return RtRule.res_failed
         if res:
             if self.__dep_selector is None:
+                self.__mk_unqualified_link(rtme, other_rtme, res)
                 return RtRule.res_matched
-            return RtRule.res_matched if self.__dep_selector(
+            sres = self.__dep_selector(
                 rtme_form,
                 other_form
-            ) else RtRule.res_failed
+            )
+            if not sres:
+                return RtRule.res_failed
+            self.__mk_qualified_link(rtme, other_rtme, res, sres)
+            return RtRule.res_matched
 
-        return RtRule.res_failed
+    def __mk_qualified_link(self, rtme, other_rtme, res, sres):
+        rtme.add_link(
+            [
+                ns(master=other_rtme, slave=rtme, details=res.to_dict()),
+                ns(master=other_rtme, slave=rtme, details=self.to_dict()),
+                ns(master=other_rtme, slave=rtme, details=sres.info),
+            ]
+        )
+
+    def __mk_unqualified_link(self, rtme, other_rtme, res):
+        rtme.add_link(
+            [
+                ns(master=other_rtme, slave=rtme, details=res.to_dict()),
+                ns(master=other_rtme, slave=rtme, details=self.to_dict()),
+            ]
+        )
 
     def get_info(self, wrap=False):
         s = u'dependency-of{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')

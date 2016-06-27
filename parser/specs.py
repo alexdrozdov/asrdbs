@@ -17,7 +17,6 @@ import graph
 import common.output
 from argparse import Namespace as ns
 import logging
-import api
 
 
 logs_enabled = False
@@ -1252,41 +1251,6 @@ class RtStackCounter(object):
     def get_stack(self):
         return self.__stack
 
-
-class RtSequenceLinkEntry(object):
-    def __init__(self, based_on):
-        if isinstance(based_on, ns):
-            self.__init_on_spec(based_on.rule, based_on.link, based_on.weight)
-        elif isinstance(based_on, RtSequenceLinkEntry):
-            self.__init_on_rsle(based_on)
-        else:
-            raise ValueError('Unsupported initializer')
-
-    def __init_on_spec(self, rule, link, weight):
-        assert isinstance(link, api.Link)
-        assert link.get_master() is not None and link.get_slave() is not None
-        self.__rule = rule
-        self.__link = link
-        self.__weight = weight
-
-    def __init_on_rsle(self, rsle):
-        assert isinstance(rsle.__link, api.Link)
-        assert rsle.__link.get_master() is not None and rsle.__link.get_slave() is not None
-        self.__rule = rsle.__rule
-        self.__link = rsle.__link
-        self.__weight = rsle.__weight
-
-    def get_link(self):
-        return self.__link
-
-    def get_master(self):
-        return self.__link.get_master()
-
-    def get_slave(self):
-        return self.__link.get_slave()
-
-    def get_weight(self):
-        return self.__weight
 
 argres_level = 0
 

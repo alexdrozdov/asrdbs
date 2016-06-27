@@ -9,8 +9,7 @@
                 "@equal-properties": ["case"],
                 "@position": ["left"],
                 "@link": {
-                    "label": "^obj-preposition",
-                    "attrs": "all"
+                    "label": "^obj-preposition"
                 }
             }
         },

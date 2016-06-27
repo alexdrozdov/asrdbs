@@ -12,6 +12,44 @@ from argparse import Namespace as ns
 from common.singleton import singleton
 
 
+class SelectorRes(object):
+    def __init__(self, res, link_attrs=None, info=None):
+        self.res = res
+        self.link_attrs = {} if link_attrs is None else link_attrs
+        self.info = {} if info is None else info
+
+    def __bool__(self):
+        return self.res
+
+    def __nonzero__(self):
+        return self.res
+
+    def __and__(self, other):
+        if self.res and other.res:
+            return SelectorRes(
+                True,
+                dict(self.link_attrs.items() + other.link_attrs.items()),
+                dict(self.info.items() + other.info.items()),
+            )
+        return SelectorRes(False)
+
+    def __or__(self, other):
+        if self.res or other.res:
+            return SelectorRes(
+                True,
+                dict(self.link_attrs.items() + other.link_attrs.items()),
+                dict(self.info.items() + other.info.items()),
+            )
+        return SelectorRes(False)
+
+    def __add__(self, other):
+            return SelectorRes(
+                self.res,
+                dict(self.link_attrs.items() + other.link_attrs.items()),
+                dict(self.info.items() + other.info.items()),
+            )
+
+
 class Selector(object):
     def __init__(self, tags, clarifies, rules):
         assert None not in tags
@@ -33,12 +71,31 @@ class Selector(object):
         for c in self.__clarifies:
             assert c is not None
             if not self.__check_clarify(form, c):
-                return False
+                return self.__failure()
         for r in self.__rules:
             if not r.match(form):
-                return False
+                return self.__failure()
         self.__set_tags(form)
-        return True
+        return SelectorRes(
+            True,
+            link_attrs={},
+            info=self.__list_rules()
+        )
+
+    def __list_rules(self):
+        return dict(
+            reduce(
+                lambda x, y: x + y,
+                map(
+                    lambda r: r.format('dict').items(),
+                    self.__rules
+                ),
+                []
+            )
+        )
+
+    def __failure(self):
+        return SelectorRes(False)
 
     def __check_clarify(self, form, tag):
         if form.has_tag(tag):
@@ -68,7 +125,7 @@ class Selector(object):
 
 
 class MultiSelector(object):
-    def __init__(self, tags, clarifies, rules, reorder=None):
+    def __init__(self, tags, clarifies, rules, link_attrs, reorder=None):
         assert None not in tags
         assert isinstance(clarifies, ns) and \
             None not in clarifies.s and \
@@ -78,6 +135,7 @@ class MultiSelector(object):
         self.__tags = tags
         self.__clarifies = clarifies
         self.__rules = rules
+        self.__link_attrs = {}
         self.__reorder = reorder
 
     def get_tags(self):
@@ -89,35 +147,51 @@ class MultiSelector(object):
     def test(self, form, other_form):
         return self.__apply(form, other_form, test_only=True)
 
+    def __failure(self):
+        return SelectorRes(False)
+
     def __apply(self, s_form, o_form, test_only=False):
         form, other_form = self.__reorder((s_form, o_form))
-        # print self, "called for", form.get_word(), other_form.get_word(), "pare"
 
+        res = SelectorRes(True)
         for c in self.__clarifies.s:
-            # print 'testing s clarify', c
-            if not self.__check_clarify(s_form, o_form, c):
-                # print 'False'
-                return False
-            # print 'True'
+            res = res and self.__check_clarify(s_form, o_form, c)
+            if not res:
+                return self.__failure()
 
         for c in self.__clarifies.o:
-            # print 'testing o clarify', c
-            if not self.__check_clarify(o_form, s_form, c):
-                # print 'False'
-                return False
-            # print 'True'
+            res = res and self.__check_clarify(o_form, s_form, c)
+            if not res:
+                return self.__failure()
 
         for r in self.__rules:
             if not r.match(form, other_form):
-                return False
+                return self.__failure()
         self.__set_tags(s_form)
-        return True
+
+        return res + SelectorRes(
+            False,
+            link_attrs=self.__link_attrs,
+            info=self.__list_rules()
+        )
+
+    def __list_rules(self):
+        return dict(
+            reduce(
+                lambda x, y: x + y,
+                map(
+                    lambda r: r.format('dict').items(),
+                    self.__rules
+                ),
+                []
+            )
+        )
 
     def __check_clarify(self, s_form, o_form, tag):
         # print '__check_clarify called for', s_form.get_word()
         if s_form.has_tag(tag):
             # print s_form.get_word(), 'has tag', tag
-            return True
+            return SelectorRes(True)
         selector = Selectors()[tag]
         return selector(s_form, o_form)
 
@@ -160,7 +234,7 @@ class SelectorHub(object):
                 lambda s: s(*argc, **argv),
                 self.__selectors
             ),
-            False
+            SelectorRes(False)
         )
 
     def apply(self, *argc, **argv):
@@ -305,12 +379,15 @@ class _Compiler(object):
             []
         )
 
+        link_attrs = js[u'link'] if u'link' in js else {}
+
         if tags:
             selectors.append(
                 MultiSelector(
                     tags + base_tags,
                     ns(s=clarifies, o=[]),
                     rules,
+                    link_attrs,
                     reorder
                 )
             )
@@ -363,6 +440,7 @@ class _Compiler(object):
                 o=self.__tags(o_res.primary)
             ),
             [],
+            {},
             reorder=lambda (x, y): (x, y)
         )
         # print s

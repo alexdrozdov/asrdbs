@@ -18,6 +18,10 @@ class c__pos_check(RtStaticRule):
     def get_info(self, wrap=False):
         return u'pos: {0}'.format(self.__pos_names[0])
 
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'pos': self.__pos_names}
+
 
 class c__equal_properties_check(RtStaticRule):
     def __init__(self, props):
@@ -37,6 +41,10 @@ class c__equal_properties_check(RtStaticRule):
     def get_info(self, wrap=False):
         return u'equal: {0}'.format(self.__props)
 
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'equal': self.__props}
+
 
 class c__position_check(RtStaticRule):
     def __init__(self, relative_position, cb):
@@ -54,6 +62,10 @@ class c__position_check(RtStaticRule):
     def get_info(self, wrap=False):
         return u'position: {0}'.format(self.__relative_position)
 
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'position': self.__relative_position}
+
 
 class c__placeholder(RtStaticRule):
     def __init__(self, def_value):
@@ -67,6 +79,10 @@ class c__placeholder(RtStaticRule):
 
     def get_info(self, wrap=False):
         return u'placeholder: {0}'.format(self.__def_value)
+
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'placeholder': self.__def_value}
 
 
 class PosSpecs(object):
