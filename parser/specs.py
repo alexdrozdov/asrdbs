@@ -1312,15 +1312,15 @@ def todict(obj, classkey=None):
 class Link(object):
     def __init__(self, master, slave, details):
         self.__uniq = str(uuid.uuid1())
-        self.__master = master
-        self.__slave = slave
+        self.__master = master.get_uniq()
+        self.__slave = slave.get_uniq()
         self.__details = details
 
     def get_uniq(self):
         return self.__uniq
 
     def get_csum(self):
-        return '{0}{1}'.format(self.__master.get_uniq(), self.__slave.get_uniq())
+        return '{0}{1}'.format(self.__master, self.__slave)
 
     def get_details(self):
         return self.__details
@@ -1333,8 +1333,8 @@ class Link(object):
 
     def export_dict(self):
         return {
-            'from': self.__master.get_uniq(),
-            'to': self.__slave.get_uniq(),
+            'from': self.__master,
+            'to': self.__slave,
             'udata': todict(self.__details),
         }
 
@@ -1416,7 +1416,7 @@ class MatchedEntry(object):
 
     def add_link(self, link):
         assert isinstance(link, Link)
-        assert link.get_master() == self or link.get_slave() == self
+        assert self.get_uniq() in [link.get_master(), link.get_slave()]
         if link.get_master() == self:
             self.__slaves.append(link)
             self.__slaves_csum.add(link.get_uniq())
@@ -1494,7 +1494,7 @@ class MatchedSequence(object):
                 l = Link(me_from, me_to, link.get_details())
                 me_from.add_link(l)
                 me_to.add_link(l)
-                self.__append_links(l)
+                self.__append_links(me_from, me_to, l)
 
     def __mk_link(self, master, slave, details):
         assert all((
@@ -1507,7 +1507,7 @@ class MatchedSequence(object):
         l = Link(me_from, me_to, details)
         me_from.add_link(l)
         me_to.add_link(l)
-        self.__append_links(l)
+        self.__append_links(me_from, me_to, l)
 
     def __append_entries(self, me):
         self.__all_entries.append(me)
@@ -1518,8 +1518,8 @@ class MatchedSequence(object):
         self.__uid2me[me.get_uniq()] = me
         self.__entries_csum.add(me.get_uniq())
 
-    def __append_links(self, link):
-        if not link.get_master().is_hidden() and not link.get_slave().is_hidden():
+    def __append_links(self, me_from, me_to, link):
+        if not me_from.is_hidden() and not me_to.is_hidden():
             self.__links.append(link)
         self.__all_links.append(link)
         self.__links_csum.add(link.get_csum())

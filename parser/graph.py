@@ -290,7 +290,7 @@ class SequenceGraphGen(GraphGen):
         label += u'</TABLE>'
 
         s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
-            self.get_obj_id(entry),
+            self.get_obj_id(entry.get_uniq()),
             label)
         return s
 
@@ -305,7 +305,7 @@ class SequenceGraphGen(GraphGen):
         s = u'digraph D {\r\n'
 
         for e in sequence.get_entries(hidden=False):
-            self.add_obj(e)
+            self.add_obj(e.get_uniq())
             s += self.__gen_entry(e)
 
         for l in sequence.get_links(hidden=False):
