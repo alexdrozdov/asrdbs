@@ -2,36 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
-import uuid
 import re
 from parser.wordform import WordFormFabric
-
-
-class Link(object):
-    def __init__(self, rule, master, slave, uniq=None):
-        self.__rule = rule
-        if uniq is None:
-            self.__uniq = str(uuid.uuid1())
-        else:
-            self.__uniq = uniq
-        self.__master = master
-        self.__slave = slave
-
-    def get_uniq(self):
-        return self.__uniq
-
-    def get_rule(self):
-        return self.__rule
-
-    def get_master(self):
-        return self.__master
-
-    def get_slave(self):
-        return self.__slave
-
-    def set_ms(self, master, slave):
-        self.__master = master
-        self.__slave = slave
 
 
 class Tokenizer(object):
