@@ -262,6 +262,9 @@ class GraphGen(object):
     def get_obj_id(self, obj):
         return self.__obj2id[obj]
 
+    def obj_exists(self, obj):
+        return self.__obj2id.has_key(obj)
+
 
 class SequenceGraphGen(GraphGen):
     def __init__(self):
@@ -314,6 +317,61 @@ class SequenceGraphGen(GraphGen):
 
         for l in sequence.get_links(hidden=False):
             s += self.__link_entries(l)
+
+        s += u'}\r\n'
+
+        return s
+
+
+class SelectorGraph(object):
+    def __init__(self, img_type='png'):
+        self.__out_type = img_type
+
+    def generate(self, selectors, outfile):
+        gen = SelectorGraphGen()
+        s = gen.generate(selectors)
+
+        tmp_file = outfile + '.tmp.graph'
+        with open(tmp_file, 'w') as f:
+            f.write(s.encode('utf8'))
+
+        os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
+
+
+class SelectorGraphGen(GraphGen):
+    def __init__(self):
+        super(SelectorGraphGen, self).__init__()
+
+    def __gen_selector(self, selector):
+        label = u'<TABLE>'
+        tags = ' '.join(selector.get_tags())
+        label += u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(tags)
+
+        label += selector.format('dot-html')
+
+        label += u'</TABLE>'
+
+        s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
+            self.get_obj_id(selector.get_uniq()),
+            label)
+        return s
+
+    # def __link_entries(self, link):
+    #     s = u'\t{0}->{1}->{2} [style="filled"];\r\n'.format(
+    #         self.get_obj_id(link.get_master()),
+    #         self.get_obj_id(link),
+    #         self.get_obj_id(link.get_slave()))
+    #     return s
+
+    def generate(self, selectors):
+        s = u'digraph D {\r\n'
+
+        for hub in selectors:
+            for selector in hub:
+                if self.obj_exists(selector.get_uniq()):
+                    continue
+                self.add_obj(selector.get_uniq())
+                s += self.__gen_selector(selector)
 
         s += u'}\r\n'
 

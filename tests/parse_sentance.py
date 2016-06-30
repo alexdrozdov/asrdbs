@@ -13,8 +13,8 @@ import uuid
 import common.config
 import parser.api
 import parser.graph
-import parser.graph_span
 import parser.specs
+import parser.selectors
 from contextlib import contextmanager
 from common.output import output as oput
 
@@ -63,6 +63,13 @@ def execute(opts):
         with timeit_ctx('building parser'):
             srm = parser.specs.SequenceSpecMatcher(False, primary=opts.primary)
 
+        base_dir = str(uuid.uuid1()) if opts.make_test else None
+        with timeit_ctx('dumping selectos'):
+            parser.graph.SelectorGraph(img_type='svg').generate(
+                parser.selectors.Selectors(),
+                oput.get_output_file([base_dir, 'imgs'], 'selector-{0}.svg'.format(0))
+            )
+
         with timeit_ctx('tokenizing'):
             tokens = parser.api.Tokenizer().tokenize(sentence)
 
@@ -71,8 +78,6 @@ def execute(opts):
 
         with timeit_ctx('matching sentences'):
             matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
-
-        base_dir = str(uuid.uuid1()) if opts.make_test else None
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
             sq.print_sequence()
