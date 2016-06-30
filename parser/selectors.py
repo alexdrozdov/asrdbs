@@ -8,7 +8,6 @@ import json
 import uuid
 import parser.named
 import common.config
-from argparse import Namespace as ns
 from common.singleton import singleton
 
 
@@ -69,12 +68,16 @@ class Selector(object):
     def __init__(self, tags, clarifies, rules):
         assert None not in tags
         assert None not in clarifies
+        self.__uniq = uuid.uuid1()
         self.__tags = tags
         self.__clarifies = clarifies
         self.__rules = rules
 
     def get_tags(self):
         return self.__tags
+
+    def get_uniq(self):
+        return self.__uniq
 
     def apply(self, form):
         return self.__apply(form, test_only=False)
@@ -126,6 +129,23 @@ class Selector(object):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
         return self.__apply(argc[0], test_only=test_only)
 
+    def format(self, fmt):
+        s = u'<TR><TD BGCOLOR="darkseagreen1">type:selector</TD></TR>'
+        s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
+            u' '.join(self.__clarifies)
+        )
+        s += reduce(
+            lambda x, y: x + y,
+            map(
+                lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+                    unicode(r.format('dict'))
+                ),
+                self.__rules
+            ),
+            u''
+        )
+        return s
+
     def __repr__(self):
         return "Selector(tags={0}, clarifies={1})".format(
             self.get_tags(),
@@ -140,49 +160,43 @@ class Selector(object):
 
 
 class MultiSelector(object):
-    def __init__(self, tags, clarifies, rules, link_attrs, reorder=None):
+    def __init__(self, tags, clarifies, rules, link_attrs, index):
         assert None not in tags
-        assert isinstance(clarifies, ns) and \
-            None not in clarifies.s and \
-            None not in clarifies.o
 
-        assert reorder is not None
+        self.__uniq = uuid.uuid1()
         self.__tags = tags
         self.__clarifies = clarifies
         self.__rules = rules
         self.__link_attrs = link_attrs
-        self.__reorder = reorder
+        self.__index = index
 
     def get_tags(self):
         return self.__tags
 
-    def apply(self, form, other_form):
-        return self.__apply(form, other_form, test_only=False)
+    def get_uniq(self):
+        return self.__uniq
 
-    def test(self, form, other_form):
-        return self.__apply(form, other_form, test_only=True)
+    def apply(self, *forms):
+        return self.__apply(forms, test_only=False)
+
+    def test(self, *form):
+        return self.__apply(form, test_only=True)
 
     def __failure(self):
         return SelectorRes(False)
 
-    def __apply(self, s_form, o_form, test_only=False):
-        form, other_form = self.__reorder((s_form, o_form))
-
-        res = SelectorRes(True)
-        for c in self.__clarifies.s:
-            res = res and self.__check_clarify(s_form, o_form, c)
+    def __apply(self, forms, test_only=False):
+        res = SelectorRes(True),
+        for c in self.__clarifies:
+            res = res and self.__check_clarify(forms, c)
             if not res:
                 return self.__failure()
 
-        for c in self.__clarifies.o:
-            res = res and self.__check_clarify(o_form, s_form, c)
-            if not res:
-                return self.__failure()
-
-        for r in self.__rules:
-            if not r.match(form, other_form):
-                return self.__failure()
-        self.__set_tags(s_form)
+        # for r in self.__rules:
+        #     if not r.match(form, other_form):
+        #         return self.__failure()
+        form = forms[self.__index]
+        self.__set_tags(form)
 
         return res + SelectorRes(
             False,
@@ -202,11 +216,13 @@ class MultiSelector(object):
             )
         )
 
-    def __check_clarify(self, s_form, o_form, tag):
-        if s_form.has_tag(tag):
+    def __check_clarify(self, forms, tag):
+        form = forms[self.__index]
+        if form.has_tag(tag):
             return SelectorRes(True)
         selector = Selectors()[tag]
-        return selector(s_form, o_form)
+        # fixed_index is required by SelectorHub with single form Selector
+        return selector.invoke(*forms, fixed_index=self.__index)
 
     def __set_tags(self, form):
         for t in self.__tags:
@@ -214,7 +230,24 @@ class MultiSelector(object):
 
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
-        return self.__apply(argc[0], argc[1], test_only=test_only)
+        return self.__apply(argc, test_only=test_only)
+
+    def format(self, fmt):
+        s = u'<TR><TD BGCOLOR="darkseagreen1">type: multiselector</TD></TR>'
+        s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
+            u' '.join(self.__clarifies)
+        )
+        s += reduce(
+            lambda x, y: x + y,
+            map(
+                lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+                    unicode(r.format('dict'))
+                ),
+                self.__rules
+            ),
+            u''
+        )
+        return s
 
     def __repr__(self):
         return "Selector(tags={0}, clarifies={1})".format(
@@ -233,11 +266,15 @@ class SelectorHub(object):
     def __init__(self, tag):
         self.__tag = tag
         self.__selectors = []
+        self.__is_single = None
 
     def get_tag(self):
         return self.__tag
 
     def add_selector(self, selector):
+        is_single = isinstance(selector, Selector)
+        assert self.__is_single is None or self.__is_single == is_single
+        self.__is_single = is_single
         self.__selectors.append(selector)
 
     def __apply(self, *argc, **argv):
@@ -250,11 +287,21 @@ class SelectorHub(object):
             SelectorRes(False)
         )
 
+    def __is_single_selector(self):
+        return self.__is_single
+
     def apply(self, *argc, **argv):
         return self.__apply(*argc, test_only=False)
 
     def test(self, *argc, **argv):
         return self.__apply(*argc, test_only=True)
+
+    def invoke(self, *args, **argv):
+        test_only = argv['test_only'] if 'test_only' in argv else False
+        fixed_index = argv['fixed_index'] if 'fixed_index' in argv else None
+        if self.__is_single_selector():
+            return self.__apply(args[fixed_index], test_only=test_only)
+        return self.__apply(*args, test_only=test_only)
 
     def __call__(self, *argc, **argv):
         return self.__apply(*argc, **argv)
@@ -264,6 +311,10 @@ class SelectorHub(object):
 
     def __str__(self):
         return "SelectorHub({0})".format(self.get_tag())
+
+    def __iter__(self):
+        for s in self.__selectors:
+            yield s
 
 
 class _Preprocessor(object):
@@ -339,8 +390,120 @@ class _Compiler(object):
         if u'selector' in js:
             return self.__compile(js[u'selector'], clarifies, base_tags)
         if u'multi' in js:
-            return self.__multi(js[u'multi'], clarifies, base_tags)
+            return self.__multi(js[u'multi'])
         raise KeyError('neither selector nor multi key found in selector spec')
+
+    def __multi(self, js):
+        terms_count = self.__eval_terms_count(js)
+        tag_base = self.__get_property_list(js, 'tag-base')
+        js = self.__reshape_js_base(js, terms_count)
+        index = self.__find_internal_layer(js, terms_count)
+        if index is not None:
+            index = js.keys()[0]
+            js = js[index]
+            index = int(index)
+            return self.__compile_layer(terms_count, index, js, base_tags=tag_base)
+        return []
+
+    def __compile_layer(self, terms_count, index, js, parent_tag=None, base_tags=None, derived_tags=None):
+        base_tags = self.__get_property_list(js, 'tag-base') + \
+            self.__as_list(base_tags, none_is_empty=True)
+        derived_tags = self.__as_list(derived_tags, none_is_empty=True)
+
+        tags = self.__get_property_list(js, 'tag')
+        clarifies = self.__get_property_list(js, 'clarifies') + \
+            self.__as_list(parent_tag, none_is_empty=True)
+
+        if 'link' in js:
+            link_attrs = js['link']
+        else:
+            link_attrs = {}
+
+        rules = reduce(
+            lambda x, y: x + y,
+            map(
+                lambda (r, v): self.__mk_rule(r, v),
+                self.__rules(js)
+            ),
+            []
+        )
+
+        auto_tag = u'#' + unicode(uuid.uuid1())
+        selector_tags = tags + [auto_tag, ]
+        if link_attrs or tags:
+            selector_tags += base_tags + derived_tags
+
+        s = [MultiSelector(
+            selector_tags,
+            clarifies,
+            rules,
+            link_attrs,
+            index=index
+        ), ]
+
+        i_index = self.__find_internal_layer(js, terms_count)
+        if i_index is not None:
+            i_js = js[unicode(i_index)]
+            s.extend(
+                self.__compile_layer(
+                    terms_count,
+                    i_index,
+                    i_js,
+                    auto_tag,
+                    base_tags,
+                    derived_tags
+                )
+            )
+
+        clarify = self.__get_property_list(js, 'clarify')
+        for c_js in clarify:
+            s.extend(
+                self.__compile_layer(
+                    terms_count,
+                    index,
+                    c_js,
+                    auto_tag,
+                    base_tags,
+                    derived_tags
+                )
+            )
+
+        return s
+
+    def __find_internal_layer(self, js, terms_count):
+        for i in range(terms_count):
+            if unicode(i) in js:
+                return i
+        return None
+
+    def __eval_terms_count(self, js):
+        n = 0
+        while unicode(n) in js:
+            n += 1
+        return n
+
+    def __find_deepest_term(self, js, max_count):
+        test_set = set(['clarify', ] + [unicode(x) for x in range(max_count)])
+        for i in range(max_count):
+            t = js[unicode(i)]
+            if test_set.intersection(t):
+                return i
+        raise ValueError('no one item with clarifies found')
+
+    def __reshape_js_base(self, js, terms_count):
+        if terms_count is None:
+            terms_count = self.__eval_terms_count(js)
+        deepest = self.__find_deepest_term(js, terms_count)
+        res = {
+            unicode(deepest): js[unicode(deepest)]
+        }
+        for i in range(terms_count):
+            if i == deepest:
+                continue
+            res = {
+                unicode(i): dict(js[unicode(i)].items() + res.items())
+            }
+        return res
 
     def __compile(self, js, clarifies, base_tags):
         assert base_tags is None or None not in base_tags
@@ -370,93 +533,6 @@ class _Compiler(object):
             selectors.extend(self.__compile(c, tags, base_tags))
 
         return selectors
-
-    def __compile_multi(self, js, clarifies, base_tags, reorder=None):
-        assert base_tags is None or None not in base_tags
-        selectors = []
-
-        tags = self.__get_property_list(js, u'tag', '#' + str(uuid.uuid1()))
-        assert None not in tags
-        base_tags = self.__as_list(base_tags, none_is_empty=True) +\
-            self.__get_property_list(js, u'tag-base')
-        assert None not in base_tags
-        clarifies = self.__as_list(clarifies)
-
-        clarifies.extend(self.__get_property_list(js, u'clarifies'))
-        rules = reduce(
-            lambda x, y: x + y,
-            map(
-                lambda (r, v): self.__mk_rule(r, v),
-                self.__rules(js)
-            ),
-            []
-        )
-
-        link_attrs = js[u'link'] if u'link' in js else {}
-
-        if tags:
-            selectors.append(
-                MultiSelector(
-                    tags + base_tags,
-                    ns(s=clarifies, o=[]),
-                    rules,
-                    link_attrs,
-                    reorder
-                )
-            )
-
-        for c in self.__get_property_list(js, u'clarify'):
-            selectors.extend(
-                self.__compile_multi(
-                    c,
-                    tags,
-                    base_tags,
-                    reorder=reorder
-                ).full_list
-            )
-
-        return ns(
-            primary=selectors[0:1],
-            full_list=selectors
-        )
-
-    def __compile_self(self, js, clarifies, base_tags):
-        return self.__compile_multi(
-            js,
-            clarifies,
-            base_tags,
-            reorder=lambda (x, y): (x, y)
-        )
-
-    def __compile_other(self, js, clarifies, base_tags):
-        return self.__compile_multi(
-            js,
-            clarifies,
-            base_tags,
-            reorder=lambda (x, y): (y, x)
-        )
-
-    def __multi(self, js, clarifies, base_tags):
-        assert base_tags is None or None not in base_tags
-
-        base_tags = self.__as_list(base_tags, none_is_empty=True) +\
-            self.__get_property_list(js, u'tag-base')
-        assert None not in base_tags
-        assert None not in clarifies
-
-        s_res = self.__compile_self(js['self'], clarifies, [])
-        o_res = self.__compile_other(js['other'], clarifies, [])
-        s = MultiSelector(
-            base_tags,
-            ns(
-                s=self.__tags(s_res.primary),
-                o=self.__tags(o_res.primary)
-            ),
-            [],
-            {},
-            reorder=lambda (x, y): (x, y)
-        )
-        return [s, ] + s_res.full_list + o_res.full_list
 
     def __tags(self, selectors):
         return sorted(list(set(
@@ -536,6 +612,10 @@ class _Selectors(object):
 
     def __getitem__(self, index):
         return self.__selectors[index]
+
+    def __iter__(self):
+        for v in self.__selectors.values():
+            yield v
 
 
 @singleton

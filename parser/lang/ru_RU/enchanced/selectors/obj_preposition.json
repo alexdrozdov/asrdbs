@@ -1,9 +1,7 @@
 {
     "multi": {
         "tag-base": "#obj-preposition",
-        "master": "other",
-        "slave": "self",
-        "@self": {
+        "0": {
             "clarifies": "#preposition",
             "clarify": {
                 "@equal-properties": ["case"],
@@ -13,7 +11,7 @@
                 }
             }
         },
-        "@other": {
+        "1": {
             "clarifies": "#object"
         }
     }
