@@ -186,9 +186,10 @@ class MultiSelector(object):
         return SelectorRes(False)
 
     def __apply(self, forms, test_only=False):
-        res = SelectorRes(True),
+        tag_suffix = u'/' + '+'.join(sorted([f.get_uniq() for f in forms]))
+        res = SelectorRes(True)
         for c in self.__clarifies:
-            res = res and self.__check_clarify(forms, c)
+            res = res and self.__check_clarify(forms, c, tag_suffix)
             if not res:
                 return self.__failure()
 
@@ -197,7 +198,7 @@ class MultiSelector(object):
                 return self.__failure()
 
         form = forms[self.__index]
-        self.__set_tags(form)
+        self.__set_tags(form, tag_suffix)
 
         return res + SelectorRes(
             False,
@@ -217,17 +218,17 @@ class MultiSelector(object):
             )
         )
 
-    def __check_clarify(self, forms, tag):
+    def __check_clarify(self, forms, tag, tag_suffix):
         form = forms[self.__index]
-        if form.has_tag(tag):
+        if form.has_tag(tag) or form.has_tag(tag + tag_suffix):
             return SelectorRes(True)
         selector = Selectors()[tag]
         # fixed_index is required by SelectorHub with single form Selector
         return selector.invoke(*forms, fixed_index=self.__index)
 
-    def __set_tags(self, form):
+    def __set_tags(self, form, tag_suffix):
         for t in self.__tags:
-            form.add_tag(t)
+            form.add_tag(t + tag_suffix)
 
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
