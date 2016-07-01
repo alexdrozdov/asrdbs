@@ -1,17 +1,17 @@
 {
     "multi": {
         "tag-base": "#obj-preposition",
-        "0": {
+        "@self": {
             "clarifies": "#preposition",
             "clarify": {
-                "@equal-properties": ["case"],
-                "@position": ["left"],
+                "@equal-properties": {"1": ["case"]},
+                "@position": {"1": "left"},
                 "@link": {
                     "label": "^obj-preposition"
                 }
             }
         },
-        "1": {
+        "@other": {
             "clarifies": "#object"
         }
     }

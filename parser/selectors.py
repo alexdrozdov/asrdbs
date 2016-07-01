@@ -192,9 +192,10 @@ class MultiSelector(object):
             if not res:
                 return self.__failure()
 
-        # for r in self.__rules:
-        #     if not r.match(form, other_form):
-        #         return self.__failure()
+        for r in self.__rules:
+            if not r.match(*forms):
+                return self.__failure()
+
         form = forms[self.__index]
         self.__set_tags(form)
 
@@ -331,15 +332,9 @@ class _Preprocessor(object):
         return rule
 
     def __handle_tmpl(self, d, k, v):
-        v = d.pop(k)
         k = k.replace('@', '')
         tmpl = parser.named.template(k, namespace='selectors')
-        if isinstance(v, dict):
-            tmpl(d, **v)
-        elif isinstance(v, (list, tuple)):
-            tmpl(d, *v)
-        else:
-            tmpl(d, v)
+        tmpl(d)
 
     def __handle_val_tmpl(self, v):
         return v
@@ -422,7 +417,7 @@ class _Compiler(object):
         rules = reduce(
             lambda x, y: x + y,
             map(
-                lambda (r, v): self.__mk_rule(r, v),
+                lambda (r, v): self.__mk_multi_rule(index, r, v),
                 self.__rules(js)
             ),
             []
@@ -520,7 +515,7 @@ class _Compiler(object):
         rules = reduce(
             lambda x, y: x + y,
             map(
-                lambda (r, v): self.__mk_rule(r, v),
+                lambda (r, v): self.__mk_single_rule(r, v),
                 self.__rules(js)
             ),
             []
@@ -561,7 +556,7 @@ class _Compiler(object):
 
     def __rules(self, js):
         known_rules = [
-            'pos_type', 'case', 'animation',
+            'pos', 'case', 'animation',
             'position', 'equal-properties'
         ]
         return map(
@@ -572,11 +567,19 @@ class _Compiler(object):
             )
         )
 
-    def __mk_rule(self, k, v):
+    def __mk_single_rule(self, k, v):
         if not isinstance(v, list):
-            return [v.create(), ]
+            return [v.create_single(), ]
         return map(
-            lambda vv: vv.create(),
+            lambda vv: vv.create_single(),
+            v
+        )
+
+    def __mk_multi_rule(self, index, k, v):
+        if not isinstance(v, list):
+            return [v.create_multi(index), ]
+        return map(
+            lambda vv: vv.create_multi(index),
             v
         )
 

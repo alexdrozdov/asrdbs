@@ -273,14 +273,50 @@ class RtRuleFactory(object):
         return self.__created
 
 
+class SingleToMultiRuleAdapter(object):
+    def __init__(self, rule_cls, indx):
+        self.__rule_cls = rule_cls
+        self.__indx = indx
+
+    def match(self, *args, **kwargs):
+        return self.__rule_cls(args[self.__indx])
+
+    def get_info(self, *args, **kwargs):
+        return self.__rule_cls.get_info(*args, **kwargs)
+
+    def format(self, *args, **kwargs):
+        return self.__rule_cls.format(*args, **kwargs)
+
+
 class SelectorRuleFactory(object):
     def __init__(self, classname, *args, **kwargs):
         self.__classname = classname
-        self.__args = args  # FIXME Some strange logic in the next line
-        self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+        self.__args = args
+        self.__kwargs = kwargs
 
-    def create(self):
+    def create_single(self):
         return self.__classname(*self.__args, **self.__kwargs)
+
+    def create_multi(self, ref_index):
+        return SingleToMultiRuleAdapter(
+            self.__classname(*self.__args, **self.__kwargs),
+            ref_index
+        )
+
+
+class MultiSelectorRuleFactory(object):
+    def __init__(self, classname, *args, **kwargs):
+        self.__classname = classname
+        self.__args = args
+        self.__kwargs = kwargs
+
+    def create_single(self):
+        raise RuntimeError(
+            'Tried to construct multi selector rule for single-value selector'
+        )
+
+    def create_multi(self, ref_index):
+        return self.__classname(ref_index, *self.__args, **self.__kwargs)
 
 
 class LinkWeight(object):
