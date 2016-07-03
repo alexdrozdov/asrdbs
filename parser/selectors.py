@@ -9,6 +9,7 @@ import uuid
 import parser.named
 import common.config
 from common.singleton import singleton
+from argparse import Namespace as ns
 
 
 class SelectorRes(object):
@@ -161,8 +162,6 @@ class Selector(object):
 
 class MultiSelector(object):
     def __init__(self, tags, clarifies, rules, link_attrs, index):
-        assert None not in tags
-
         self.__uniq = uuid.uuid1()
         self.__tags = tags
         self.__clarifies = clarifies
@@ -171,7 +170,7 @@ class MultiSelector(object):
         self.__index = index
 
     def get_tags(self):
-        return self.__tags
+        return [t.name for t in self.__tags]
 
     def get_uniq(self):
         return self.__uniq
@@ -228,7 +227,8 @@ class MultiSelector(object):
 
     def __set_tags(self, form, tag_suffix):
         for t in self.__tags:
-            form.add_tag(t + tag_suffix)
+            tag_name = t.name + tag_suffix if t.auto or t.base else t.name
+            form.add_tag(tag_name)
 
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
@@ -391,7 +391,14 @@ class _Compiler(object):
 
     def __multi(self, js):
         terms_count = self.__eval_terms_count(js)
-        tag_base = self.__get_property_list(js, 'tag-base')
+        tag_base = map(
+            lambda t: ns(
+                name=t,
+                auto=False,
+                base=True
+            ),
+            self.__get_property_list(js, 'tag-base')
+        )
         js = self.__reshape_js_base(js, terms_count)
         index = self.__find_internal_layer(js, terms_count)
         if index is not None:
@@ -401,12 +408,25 @@ class _Compiler(object):
             return self.__compile_layer(terms_count, index, js, base_tags=tag_base)
         return []
 
-    def __compile_layer(self, terms_count, index, js, parent_tag=None, base_tags=None, derived_tags=None):
-        base_tags = self.__get_property_list(js, 'tag-base') + \
-            self.__as_list(base_tags, none_is_empty=True)
-        derived_tags = self.__as_list(derived_tags, none_is_empty=True)
+    def __compile_layer(self, terms_count, index, js, parent_tag=None, base_tags=None):
+        base_tags = map(
+            lambda t: ns(
+                name=t,
+                auto=False,
+                base=True
+            ),
+            self.__get_property_list(js, 'tag-base')
+        ) + self.__as_list(base_tags, none_is_empty=True)
 
-        tags = self.__get_property_list(js, 'tag')
+        tags = map(
+            lambda t: ns(
+                name=t,
+                auto=False,
+                base=False
+            ),
+            self.__get_property_list(js, 'tag')
+        )
+
         clarifies = self.__get_property_list(js, 'clarifies') + \
             self.__as_list(parent_tag, none_is_empty=True)
 
@@ -424,10 +444,15 @@ class _Compiler(object):
             []
         )
 
-        auto_tag = u'#' + unicode(uuid.uuid1())
+        auto_tag = ns(
+            name=u'#' + unicode(uuid.uuid1()),
+            auto=True,
+            base=False
+        )
+
         selector_tags = tags + [auto_tag, ]
         if link_attrs or tags:
-            selector_tags += base_tags + derived_tags
+            selector_tags += base_tags
 
         s = [MultiSelector(
             selector_tags,
@@ -445,9 +470,8 @@ class _Compiler(object):
                     terms_count,
                     i_index,
                     i_js,
-                    auto_tag,
-                    base_tags,
-                    derived_tags
+                    auto_tag.name,
+                    base_tags
                 )
             )
 
@@ -458,9 +482,8 @@ class _Compiler(object):
                     terms_count,
                     index,
                     c_js,
-                    auto_tag,
-                    base_tags,
-                    derived_tags
+                    auto_tag.name,
+                    base_tags
                 )
             )
 

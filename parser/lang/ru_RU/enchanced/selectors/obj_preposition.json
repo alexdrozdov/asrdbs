@@ -8,6 +8,9 @@
                 "@position": {"1": "left"},
                 "@link": {
                     "label": "^obj-preposition"
+                },
+                "@other": {
+                    "tag": ["#location", "#time"]
                 }
             }
         },
