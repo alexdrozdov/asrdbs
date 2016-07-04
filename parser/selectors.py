@@ -124,7 +124,7 @@ class Selector(object):
 
     def __set_tags(self, form):
         for t in self.__tags:
-            form.add_tag(t)
+            form.add_tag(t, 'morf')
 
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False
@@ -228,7 +228,7 @@ class MultiSelector(object):
     def __set_tags(self, form, tag_suffix):
         for t in self.__tags:
             tag_name = t.name + tag_suffix if t.auto or t.base else t.name
-            form.add_tag(tag_name)
+            form.add_tag(tag_name, 'ctx')
 
     def __call__(self, *argc, **argv):
         test_only = argv['test_only'] if argv.has_key('test_only') else False

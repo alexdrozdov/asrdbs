@@ -1347,7 +1347,7 @@ class MatchedEntry(object):
             self.__init_from_me(me, rtme)
 
     def __init_from_rtme(self, rtme):
-        self.__form = rtme.get_form()
+        self.__form = rtme.get_form().copy({'ro', })
         self.__name = rtme.get_name()
         self.__reliability = rtme.get_reliability()
         self.__is_hidden = not rtme.get_spec().add_to_seq()
@@ -1361,7 +1361,7 @@ class MatchedEntry(object):
 
     def __init_from_me(self, me, rtme):
         assert rtme is not None
-        self.__form = me.__form
+        self.__form = me.__form.copy({'ro', })
         self.__name = me.__name
         self.__reliability = me.__reliability
         self.__is_hidden = me.__is_hidden
@@ -2392,7 +2392,7 @@ class RtMatchEntry(object):
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
-        self.__form = rtme.__form
+        self.__form = rtme.__form.copy({'ro', 'w_once', 'morf'})
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability

@@ -245,12 +245,12 @@ class Term(object):
         assert reuse_layers is None or isinstance(reuse_layers, set)
         assert ignore is None or isinstance(ignore, (list, set, dict))
         if ignore is None:
-            ignore = set({})
+            ignore = set({'private'})
         mk_empty = False
         if not preserve_existant:
             self.__layers = {}
         for l in Term.layer_order:
-            if not mk_empty:
+            if not mk_empty and l not in ignore:
                 if l in reuse_layers:
                     self.__layers[l] = term.__layers[l]
                 else:
@@ -326,11 +326,11 @@ class Term(object):
 
 
 class TokenBase(object):
-    def __init__(self, info):
+    def __init__(self, info, reuse_layers=None):
         if isinstance(info, dict):
             self.__term = Term(info)
         else:
-            self.__term = Term(info.__term)
+            self.__term = Term(info.__term, reuse_layers=reuse_layers)
 
     def term(self):
         return self.__term
@@ -406,7 +406,7 @@ class TermCtxMethods(object):
 
 
 class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
-    def __init__(self, based_on):
+    def __init__(self, based_on, reuse_layers=None):
         assert isinstance(based_on, ns) or isinstance(based_on, Token)
         if isinstance(based_on, ns):
             self.__init_from_params(
@@ -417,7 +417,7 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
                 based_on.uniq
             )
         else:
-            self.__init_from_wordform(based_on)
+            self.__init_from_wordform(based_on, reuse_layers=reuse_layers)
 
     def __init_from_params(self, word, original_word, info, pos, uniq):
         TokenBase.__init__(
@@ -429,8 +429,11 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
         self.term().add_property('uniq', 'w_once', uniq)
         self.term().add_property('reliability', 'ctx', 1.0)
 
-    def __init_from_wordform(self, token):
-        TokenBase.__init__(self, token)
+    def __init_from_wordform(self, token, reuse_layers):
+        TokenBase.__init__(self, token, reuse_layers=reuse_layers)
+
+    def copy(self, reuse_layers):
+        return Token(self, reuse_layers)
 
     def add_tag(self, tag, layer=None):
         assert tag is not None
@@ -500,7 +503,7 @@ class WordForms(object):
 
 
 class SpecStateIniForm(Token):
-    def __init__(self):
+    def __init__(self, *args, **argv):
         super(SpecStateIniForm, self).__init__(
             ns(
                 word=u'ini',
@@ -511,9 +514,12 @@ class SpecStateIniForm(Token):
             )
         )
 
+    def copy(self, reuse_layers=None):
+        return SpecStateIniForm(self, reuse_layers=set())
+
 
 class SpecStateFiniForm(Token):
-    def __init__(self):
+    def __init__(self, *args, **argv):
         super(SpecStateFiniForm, self).__init__(
             ns(
                 word=u'fini',
@@ -523,6 +529,9 @@ class SpecStateFiniForm(Token):
                 uniq=0
             )
         )
+
+    def copy(self, reuse_layers=None):
+        return SpecStateFiniForm(self, reuse_layers=set())
 
 
 class SpecStateVirtForm(Token):
@@ -546,6 +555,9 @@ class SpecStateVirtForm(Token):
 
     def __init_from_form(self, form):
         super(SpecStateVirtForm, self).__init__(form)
+
+    def copy(self, reuse_layers=None):
+        return SpecStateVirtForm(self)
 
     def add_form(self, form):
         if self.get_pos() == u'virt':
