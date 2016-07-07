@@ -1489,8 +1489,8 @@ class MatchedSequence(object):
             for link in me.get_master_links():
                 master = link.get_master()
                 slave = link.get_slave()
-                me_from = self.__uid2me[master.get_form().get_uniq()]
-                me_to = self.__uid2me[slave.get_form().get_uniq()]
+                me_from = self.__uid2me[master]
+                me_to = self.__uid2me[slave]
                 l = Link(me_from, me_to, link.get_details())
                 me_from.add_link(l)
                 me_to.add_link(l)

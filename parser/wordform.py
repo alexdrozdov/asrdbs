@@ -24,6 +24,20 @@ class Restricted(object):
         return "-restricted"
 
 
+class Missing(object):
+    def __cmp__(self, other):
+        return 0
+
+    def __eq__(self, other):
+        return True
+
+    def __str__(self):
+        return "-missing"
+
+    def __repr__(self):
+        return "-missing"
+
+
 class Formatter(object):
     def __init__(self, cb, fmt):
         self.__cb = cb
@@ -300,12 +314,16 @@ class Term(object):
             return
         self.__layers[layer][property] = value
 
-    def get_property(self, property, layer=None):
+    def get_property(self, property, layer=None, missing_is_none=False, missing_is_missing=False):
         if layer is not None:
             return self.__layers[layer][property]
         for l in reversed(Term.layer_order):
             if self.__layers[l].has_key(property):
                 return self.__layers[l][property]
+        if missing_is_none:
+            return None
+        if missing_is_missing:
+            return Missing()
         raise KeyError('{0}:{1} doesnt exist'.format(layer, property))
 
     def restrict_property(self, property, layer=None):
@@ -447,8 +465,13 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
     def add_property(self, property, layer, value):
         self.term().add_property(property, layer, value)
 
-    def get_property(self, property, layer=None):
-        return self.term().get_property(property, layer)
+    def get_property(self, property, layer=None, missing_is_none=False, missing_is_missing=False):
+        return self.term().get_property(
+            property,
+            layer,
+            missing_is_none=missing_is_none,
+            missing_is_missing=missing_is_missing
+        )
 
     def format(self, format_spec):
         if isinstance(format_spec, (str, unicode)):
@@ -591,10 +614,14 @@ class SpecStateVirtForm(Token):
     #         self.term().add_property(a, 'ctx', v)
 
     def __resolve_same(self, form, k):
-        my_prop = self.term().get_property(k)
-        other_prop = form.term().get_property(k)
-        if my_prop is None and other_prop is not None:
+        my_prop = self.term().get_property(k, missing_is_missing=True)
+        other_prop = form.term().get_property(k, missing_is_missing=True)
+        if my_prop == Restricted() or other_prop == Restricted():
+            self.term().restrict_property(k)
+        elif my_prop is None and other_prop is not None:
             self.term().add_property(k, 'ctx', other_prop)
+        elif my_prop == Missing() or other_prop == Missing():
+            self.term().restrict_property(k)
         elif my_prop == other_prop:
             return
         else:
