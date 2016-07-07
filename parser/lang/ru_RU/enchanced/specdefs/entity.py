@@ -48,7 +48,7 @@ class EntitySpec(SequenceSpec):
                         "id": "$PARENT::location",
                         "@inherit": ["once"],
                         "dependency-of": template("dependency")(
-                            "location"
+                            "#entity-entity"
                         ),
                         "include": template("include")("entity-location"),
                     },

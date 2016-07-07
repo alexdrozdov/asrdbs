@@ -7,6 +7,7 @@ import copy
 import json
 import uuid
 import parser.named
+import parser.relations
 import common.config
 from common.singleton import singleton
 from argparse import Namespace as ns
@@ -63,6 +64,37 @@ class SelectorRes(object):
             self.link_attrs,
             self.info
         )
+
+
+class _TagRelations(object):
+    def __init__(self):
+        pass
+
+    def add_tag(self, tag, subtags):
+
+        t_ns = ns(
+            namespace='selectors',
+            name=tag,
+            description=''
+        )
+        r_ns = ns(
+            namespace='selectors',
+            name='subtype',
+            description=''
+        )
+        parser.relations.Relations().create_term(t_ns)
+        parser.relations.Relations().create_term(r_ns)
+        for subtag in subtags:
+            st_ns = ns(
+                namespace='selectors',
+                name='subtype',
+                description=''
+            )
+            parser.relations.Relations().create_term(st_ns)
+            parser.relations.Relations().add_relation(
+                (t_ns, st_ns),
+                r_ns
+            )
 
 
 class Selector(object):
@@ -657,6 +689,11 @@ class Compiler(_Compiler):
 
 @singleton
 class Selectors(_Selectors):
+    pass
+
+
+@singleton
+class TagRelations(_TagRelations):
     pass
 
 

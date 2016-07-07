@@ -1,0 +1,20 @@
+{
+    "multi": {
+        "tag-base": "#entity-entity",
+        "@self": {
+            "clarifies": "#object",
+            "clarify": {
+                "clarifies": "#location",
+                "@link": {
+                    "label": "^obj-location"
+                },
+                "@other": {
+                    "tag": "#has-location"
+                }
+            }
+        },
+        "@other": {
+            "clarifies": "#object"
+        }
+    }
+}
