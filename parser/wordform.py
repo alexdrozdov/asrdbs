@@ -279,7 +279,9 @@ class Term(object):
             'ro': info,
             'w_once': {},
             'morf': {},
-            'ctx': {},
+            'ctx': {
+                'revision': str(uuid.uuid1())
+            },
             'sentence': {},
             'private': {},
         }
@@ -297,6 +299,9 @@ class Term(object):
         assert self.__layers.has_key(layer) and layer != 'ro',\
             '{0} is missing or ro'.format(layer)
 
+        if tag not in self.__layers[layer]:
+            self.__layers['ctx']['revision'] = str(uuid.uuid1())
+
         self.__layers[layer][tag] = True
 
     def has_tag(self, tag, layer=None):
@@ -310,11 +315,19 @@ class Term(object):
     def add_property(self, property, layer, value):
         assert self.__layers.has_key(layer) and layer != 'ro'
         assert layer != 'w_once' or not self.__layers[layer].has_key(property)
-        if self.__layers[layer].has_key(property) and self.__layers[layer][property] == Restricted():
+
+        if self.__layers[layer].has_key(property) and \
+                self.__layers[layer][property] == Restricted():
             return
+
+        if property not in self.__layers[layer] or \
+                self.__layers[layer][property] != value:
+            self.__layers['ctx']['revision'] = str(uuid.uuid1())
+
         self.__layers[layer][property] = value
 
-    def get_property(self, property, layer=None, missing_is_none=False, missing_is_missing=False):
+    def get_property(self, property, layer=None,
+                     missing_is_none=False, missing_is_missing=False):
         if layer is not None:
             return self.__layers[layer][property]
         for l in reversed(Term.layer_order):
@@ -352,6 +365,9 @@ class TokenBase(object):
 
     def term(self):
         return self.__term
+
+    def revision(self):
+        return self.term().get_property('revision', 'ctx')
 
 
 class TermRoMethods(object):
