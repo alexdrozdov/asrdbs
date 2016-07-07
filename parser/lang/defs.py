@@ -563,7 +563,7 @@ class c__refersto_spec(RtDynamicRule):
         aggregator_rtme.attach_referer(rtme)
         rtme.add_link(
             [
-                ns(master=aggregator_rtme, slave=rtme, qualifiers={}, debug=self.to_dict()),
+                ns(master=aggregator_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
             ]
         )
         return RtRule.res_matched
@@ -653,17 +653,17 @@ class c__dependencyof_spec(RtDynamicRule):
     def __mk_qualified_link(self, rtme, other_rtme, res, sres):
         rtme.add_link(
             [
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict()),
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict()),
-                ns(master=other_rtme, slave=rtme, qualifiers=sres.link_attrs, debug=sres.info),
+                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict(), track_revisions=False),
+                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
+                ns(master=other_rtme, slave=rtme, qualifiers=sres.link_attrs, debug=sres.info, track_revisions=True),
             ]
         )
 
     def __mk_unqualified_link(self, rtme, other_rtme, res):
         rtme.add_link(
             [
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict()),
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict()),
+                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict(), track_revisions=False),
+                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
             ]
         )
 

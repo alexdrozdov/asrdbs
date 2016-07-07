@@ -2043,26 +2043,22 @@ class RtMatchSequence(object):
         assert isinstance(links, list)
         for l in links:
             assert isinstance(l, ns)
-            try:
-                self.__extend_link(l)
-            except KeyError:
-                self.__mk_link(l)
+            self.__mk_link(l)
 
     @argres(show_result=False)
     def __mk_link(self, l):
-        if not self.__links.has_key(l.master):
+        if l.master not in self.__links:
             self.__links[l.master] = {}
-        self.__links[l.master][l.slave] = [
-            {
-                'qualifiers': l.qualifiers,
-                'details': l.debug,
-            }
-        ]
-
-    @argres(show_result=False)
-    def __extend_link(self, l):
+            self.__links[l.master][l.slave] = []
+        elif l.slave not in self.__links[l.master]:
+            self.__links[l.master][l.slave] = []
         self.__links[l.master][l.slave].append(
             {
+                'revisions': {
+                    'master': l.master.get_form().revision(),
+                    'slave': l.slave.get_form().revision(),
+                    'track': l.track_revisions,
+                },
                 'qualifiers': l.qualifiers,
                 'details': l.debug,
             }
