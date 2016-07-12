@@ -4,8 +4,7 @@
 
 import parser.matcher
 import parser.selectors
-from parser.matchcmn import MatchBool
-from parser.lang.common import RtStaticRule, RtDynamicRule, RtMatchString, RtRuleFactory, RtRule
+from parser.lang.common import RtRuleFactory, RtRule
 from argparse import Namespace as ns
 
 
@@ -48,34 +47,22 @@ class RepeatableSpecs(object):
         return (None, None)
 
 
-class c__exclusive_with_spec(RtDynamicRule):
-    def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, True, False)
-        self.__anchor = RtMatchString(anchor)
-
-    def new_copy(self):
-        return c__exclusive_with_spec(self.__anchor)
-
-    def clone(self):
-        return c__exclusive_with_spec(self.__anchor)
+class RtAnchorRelated(parser.lang.common.RtDynamicRule):
+    def __init__(self, anchor, optional=False, persistent=False):
+        super(RtAnchorRelated, self).__init__(
+            optional=optional, persistent=persistent
+        )
+        self.__anchor = parser.lang.common.RtMatchString(anchor)
 
     def is_applicable(self, rtme, other_rtme):
         other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
+        assert isinstance(other_name, parser.lang.common.RtMatchString)
         if other_name == self.__anchor:
             return True
         return False
 
-    def apply_on(self, rtme, other_rtme):
-        other_rtme.close_aggregator()
-        return RtRule.res_failed
-
-    def get_info(self, wrap=False):
-        s = u'exclusive-with{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
+    def anchor(self):
+        return self.__anchor
 
     def has_bindings(self):
         return True
@@ -83,21 +70,85 @@ class c__exclusive_with_spec(RtDynamicRule):
     def get_bindings(self):
         return [self.__anchor, ]
 
-    def to_dict(self):
+
+class BasicDynamicRule(RtAnchorRelated):
+    def __init__(self, name, friendly, anchor, optional, persistent, weight):
+        super(BasicDynamicRule, self).__init__(
+            anchor, optional=optional, persistent=persistent
+        )
+        self.__name = name
+        self.__friendly = friendly
+        self.__weight = weight
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def weight(self):
+        return self.__weight
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = u'<BR ALIGN="LEFT"/>'
+        s = u'{0}{1}'.format(self.name(), wrap)
+        s += u' anchor: {0}{1}'.format(self.anchor(), wrap)
+        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), wrap)
+        s += u' is_optional: {0}{1}'.format(self.is_optional(), wrap)
+        return s
+
+    def __format_dict(self):
         return {
-            'rule': 'c__exclusive_with_spec',
-            'res': MatchBool.defaultFalse,
-            'reliability': self.__weight if self.__weight is not None else 1.0,
-            'id_name': self.__anchor,
+            'rule': self.name(),
+            'friendly': self.friendly(),
+            'anchor': self.anchor(),
+            'reliability': self.weight(),
             'is_persistent': self.is_persistent(),
             'is_optional': self.is_optional(),
         }
 
     def __repr__(self):
-        return "ExclusiveWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
 
     def __str__(self):
-        return "ExclusiveWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+
+class c__exclusive_with_spec(BasicDynamicRule):
+    def __init__(self, anchor):
+        super(c__exclusive_with_spec, self).__init__(
+            name='exclusive-with',
+            friendly='ExclusiveWith',
+            anchor=anchor,
+            optional=True,
+            persistent=False,
+            weight=1.0
+        )
+
+    def new_copy(self):
+        return c__exclusive_with_spec(self.anchor())
+
+    def clone(self):
+        return c__exclusive_with_spec(self.anchor())
+
+    def apply_on(self, rtme, other_rtme, link_creators=None):
+        other_rtme.close_aggregator()
+        return RtRule.res_failed
 
 
 class AnchorSpecs(object):
@@ -116,8 +167,67 @@ class AnchorSpecs(object):
         return RtRuleFactory(c__exclusive_with_spec, anchor=anchor)
 
 
-class c__pos_check(RtStaticRule):
+class BasicStaticRule(parser.lang.common.RtStaticRule):
+    def __init__(self, name, friendly, fmt_info):
+        super(BasicStaticRule, self).__init__()
+        self.__name = name
+        self.__friendly = friendly
+        self.__fmt_info = fmt_info
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = u'<BR ALIGN="LEFT"/>'
+        s = u'{0}{1}'.format(self.name(), wrap)
+        s += wrap.join(
+            map(
+                lambda (k, v): u'{0}: {1}'.format(unicode(k), unicode(v)),
+                self.__fmt_info.items()
+            )
+        )
+        return s
+
+    def __format_dict(self):
+        return dict(
+            [
+                ('rule', self.name()),
+                ('friendly', self.friendly())
+            ] + self.__fmt_info.items()
+        )
+
+    def __repr__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+    def __str__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+
+class c__pos_check(BasicStaticRule):
     def __init__(self, pos_names):
+        super(c__pos_check, self).__init__(
+            name='pos',
+            friendly='IsPos',
+            fmt_info={u'pos': pos_names}
+        )
         self.__pos_names = pos_names
 
     def new_copy(self):
@@ -130,8 +240,13 @@ class c__pos_check(RtStaticRule):
         return u'pos: {0}'.format(self.__pos_names[0])
 
 
-class c__pos_check_inv(RtStaticRule):
+class c__pos_check_inv(BasicStaticRule):
     def __init__(self, pos_names):
+        super(c__pos_check_inv, self).__init__(
+            name='pos-inv',
+            friendly='IsNotPos',
+            fmt_info={u'pos': pos_names}
+        )
         self.__pos_names = pos_names
 
     def new_copy(self):
@@ -144,8 +259,13 @@ class c__pos_check_inv(RtStaticRule):
         return u'not pos: {0}'.format(self.__pos_names[0])
 
 
-class c__placeholder(RtStaticRule):
+class c__placeholder(BasicStaticRule):
     def __init__(self, def_value):
+        super(c__placeholder, self).__init__(
+            name='placeholder',
+            friendly='Placeholder',
+            fmt_info={u'value': def_value}
+        )
         self.__def_value = def_value
 
     def new_copy(self):
@@ -158,8 +278,13 @@ class c__placeholder(RtStaticRule):
         return u'placeholder: {0}'.format(self.__def_value)
 
 
-class c__pos_syntax_check(RtStaticRule):
+class c__pos_syntax_check(BasicStaticRule):
     def __init__(self, syntax_name):
+        super(c__pos_syntax_check, self).__init__(
+            name='syntax',
+            friendly='IsSyntax',
+            fmt_info={u'syntax': syntax_name}
+        )
         assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax {0}'.format(syntax_name)
         self.__syntax = syntax_name
         if syntax_name == 'comma':
@@ -231,8 +356,13 @@ class PosSpecs(object):
         return RtRuleFactory(c__placeholder, False)
 
 
-class c__word_check(RtStaticRule):
+class c__word_check(BasicStaticRule):
     def __init__(self, words):
+        super(c__word_check, self).__init__(
+            name='word',
+            friendly='IsWord',
+            fmt_info={u'word': words}
+        )
         self.__words = words
 
     def new_copy(self):
@@ -250,8 +380,13 @@ class WordSpecs(object):
         return RtRuleFactory(c__word_check, words)
 
 
-class c__case_check(RtStaticRule):
+class c__case_check(BasicStaticRule):
     def __init__(self, cases):
+        super(c__case_check, self).__init__(
+            name='case',
+            friendly='IsCase',
+            fmt_info={u'pos': cases}
+        )
         self.__cases = cases
 
     def new_copy(self):
@@ -273,67 +408,46 @@ class CaseSpecs(object):
         return RtRuleFactory(c__case_check, cases)
 
 
-class c__position_spec(RtDynamicRule):
-    def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
+class c__position_spec(BasicDynamicRule):
+    def __init__(self, anchor):
+        super(c__position_spec, self).__init__(
+            name='position',
+            friendly='Position',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
 
     def new_copy(self):
-        return c__position_spec(self.__anchor)
+        return c__position_spec(self.anchor())
 
     def clone(self):
-        return c__position_spec(self.__anchor)
+        return c__position_spec(self.anchor())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         return RtRule.res_matched if rtme.get_form().get_position() < other_rtme.get_form().get_position() else RtRule.res_failed
 
-    def get_info(self, wrap=False):
-        s = u'position{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
 
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-
-class c__position_fini(RtDynamicRule):
+class c__position_fini_spec(BasicDynamicRule):
     def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
+        super(c__position_fini_spec, self).__init__(
+            name='position-fini',
+            friendly='PositionFini',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
 
     def new_copy(self):
-        return c__position_spec(self.__anchor)
+        return c__position_fini_spec(self.anchor())
 
     def clone(self):
-        return c__position_spec(self.__anchor)
+        return c__position_fini_spec(self.anchor())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         return RtRule.res_matched if rtme.get_form().get_position() == other_rtme.get_form().get_position() else RtRule.res_failed
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
 
 
 class PositionSpecs(object):
@@ -341,49 +455,35 @@ class PositionSpecs(object):
         return RtRuleFactory(c__position_spec, anchor=anchor)
 
     def SequenceEnd(self, anchor='fini'):
-        return RtRuleFactory(c__position_fini, anchor=anchor)
+        return RtRuleFactory(c__position_fini_spec, anchor=anchor)
 
     def IsBeforeIfExists(self, anchor):
         return RtRuleFactory(c__position_spec, anchor=anchor)
 
 
-class c__sameas_spec(RtDynamicRule):
+class c__sameas_spec(BasicDynamicRule):
     def __init__(self, anchor=None, get_param_fcn=None, param_name=None):
+        super(c__sameas_spec, self).__init__(
+            name='same-as',
+            friendly='SameAs',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
+
         assert get_param_fcn is not None
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
         self.__get_param_fcn = get_param_fcn
         self.__param_name = param_name
 
     def new_copy(self):
-        return c__sameas_spec(self.__anchor, self.__get_param_fcn, self.__param_name)
+        return c__sameas_spec(self.anchor(), self.__get_param_fcn, self.__param_name)
 
     def clone(self):
-        return c__sameas_spec(self.__anchor, self.__get_param_fcn, self.__param_name)
+        return c__sameas_spec(self.anchor(), self.__get_param_fcn, self.__param_name)
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         return RtRule.res_matched if self.__get_param_fcn(rtme) == self.__get_param_fcn(other_rtme) else RtRule.res_failed
-
-    def get_info(self, wrap=False):
-        s = u'same_as{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' param: {0}{1}'.format(self.__param_name, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
 
 
 class SameAsSpecs(object):
@@ -420,88 +520,55 @@ class SameAsSpecs(object):
         )
 
 
-class c__slave_master_spec(RtDynamicRule):
+class c__slave_master_spec(BasicDynamicRule):
     def __init__(self, anchor=None, weight=None):
-        RtDynamicRule.__init__(self, True, False)
-        self.__anchor = RtMatchString(anchor)
-        self.__weight = weight
+        super(c__slave_master_spec, self).__init__(
+            name='master-slave',
+            friendly='MasterSlave',
+            anchor=anchor,
+            optional=True,
+            persistent=False,
+            weight=weight
+        )
 
     def new_copy(self):
-        return c__slave_master_spec(self.__anchor, self.__weight)
+        return c__slave_master_spec(self.anchor(), self.weight())
 
     def clone(self):
-        return c__slave_master_spec(self.__anchor, self.__weight)
+        return c__slave_master_spec(self.anchor(), self.weight())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         rtme_form = rtme.get_form()
         other_form = other_rtme.get_form()
         res = parser.matcher.match(other_form, rtme_form)
         if res:
             rtme.add_link(
                 [
-                    ns(master=other_rtme, slave=rtme, details=res.to_dict()),
-                    ns(master=other_rtme, slave=rtme, details=self.to_dict()),
+                    ns(master=other_rtme, slave=rtme, details=res.to_dict(), track_revisions=False),
+                    ns(master=other_rtme, slave=rtme, details=self.foramt('dict'), track_revisions=False),
                 ]
             )
         return RtRule.res_matched if res else RtRule.res_failed
 
-    def get_info(self, wrap=False):
-        s = u'master-slave{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
 
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-    def to_dict(self):
-        return {
-            'rule': 'c__slave_master_spec',
-            'res': MatchBool.defaultTrue,
-            'reliability': self.__weight if self.__weight is not None else 1.0,
-            'id_name': self.__anchor,
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def __repr__(self):
-        return "MasterSlave(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-    def __str__(self):
-        return "MasterSlave(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-
-class c__slave_master_unwanted_spec(RtDynamicRule):
+class c__slave_master_unwanted_spec(BasicDynamicRule):
     def __init__(self, anchor, weight=None):
-        RtDynamicRule.__init__(self, True, True)
-        self.__anchor = RtMatchString(anchor)
-        self.__weight = weight
+        super(c__slave_master_unwanted_spec, self).__init__(
+            name='unwanted-links',
+            friendly='UnwantedExcept',
+            anchor=anchor,
+            optional=True,
+            persistent=True,
+            weight=weight
+        )
 
     def new_copy(self):
-        return c__slave_master_unwanted_spec(self.__anchor, self.__weight)
+        return c__slave_master_unwanted_spec(self.anchor(), self.weight())
 
     def clone(self):
-        return c__slave_master_unwanted_spec(self.__anchor, self.__weight)
+        return c__slave_master_unwanted_spec(self.anchor(), self.weight())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         return RtRule.res_matched
 
         slave = rtme.get_form()
@@ -509,25 +576,6 @@ class c__slave_master_unwanted_spec(RtDynamicRule):
         for m, l in slave.get_masters():
             if m != master:
                 rtme.add_unwanted_link(l, weight=self.__weight, rule=self)
-
-    def get_info(self, wrap=False):
-        s = u'unwanted-links{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-    def __repr__(self):
-        return "UnwantedExcept(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-    def __str__(self):
-        return "UnwantedExcept(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
 
 
 class LinkSpecs(object):
@@ -541,54 +589,32 @@ class LinkSpecs(object):
         return RtRuleFactory(c__slave_master_unwanted_spec, ("__all_masters", ))
 
 
-class c__refersto_spec(RtDynamicRule):
-    def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
+class c__refersto_spec(BasicDynamicRule):
+    def __init__(self, anchor):
+        super(c__refersto_spec, self).__init__(
+            name='refers-to',
+            friendly='RefersTo',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
 
     def new_copy(self):
-        return c__refersto_spec(self.__anchor)
+        return c__refersto_spec(self.anchor())
 
     def clone(self):
-        return c__refersto_spec(self.__anchor)
+        return c__refersto_spec(self.anchor())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, aggregator_rtme):
+    def apply_on(self, rtme, aggregator_rtme, link_creators=None):
         aggregator_rtme.attach_referer(rtme)
         rtme.add_link(
             [
-                ns(master=aggregator_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
+                ns(master=aggregator_rtme, slave=rtme, qualifiers={},
+                   debug=self.format('dict'), track_revisions=False),
             ]
         )
         return RtRule.res_matched
-
-    def get_info(self, wrap=False):
-        s = u'refers-to{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
-
-    def to_dict(self):
-        return {
-            'rule': 'c__refersto_spec',
-            'res': MatchBool.defaultTrue,
-            'id_name': self.__anchor,
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
 
 
 class RefersToSpecs(object):
@@ -599,39 +625,38 @@ class RefersToSpecs(object):
         )
 
 
-class c__dependencyof_spec(RtDynamicRule):
-    def __init__(self, anchor=None, dependency_class=None, weight=None):
-        RtDynamicRule.__init__(self, True, False)
-        self.__anchor = RtMatchString(anchor)
+class c__dependencyof_spec(BasicDynamicRule):
+    def __init__(self, anchor=None, dependency_class=None, weight=1.0):
+        super(c__dependencyof_spec, self).__init__(
+            name='dependency-of',
+            friendly='DependencyOf',
+            anchor=anchor,
+            optional=True,
+            persistent=False,
+            weight=weight
+        )
+
         self.__dep_class = dependency_class
         if dependency_class is not None:
             self.__dep_selector = parser.selectors.selector(dependency_class)
         else:
             self.__dep_selector = None
-        self.__weight = weight
 
     def new_copy(self):
         return c__dependencyof_spec(
-            self.__anchor,
+            self.anchor(),
             self.__dep_class,
-            self.__weight
+            self.weight()
         )
 
     def clone(self):
         return c__dependencyof_spec(
-            self.__anchor,
+            self.anchor(),
             self.__dep_class,
-            self.__weight
+            self.weight()
         )
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         rtme_form = rtme.get_form()
         other_form = other_rtme.get_form()
         res = parser.matcher.match(other_form, rtme_form)
@@ -653,48 +678,50 @@ class c__dependencyof_spec(RtDynamicRule):
     def __mk_qualified_link(self, rtme, other_rtme, res, sres):
         rtme.add_link(
             [
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict(), track_revisions=False),
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
-                ns(master=other_rtme, slave=rtme, qualifiers=sres.link_attrs, debug=sres.info, track_revisions=True),
+                self.__mk_link(other_rtme, rtme, info=self.format('dict')),
+                self.__mk_link(other_rtme, rtme, created_by='grammatics',
+                               info=res.to_dict()
+                               ),
+                self.__mk_link(
+                    other_rtme,
+                    rtme,
+                    created_by=self.__dep_class,
+                    qualifiers=sres.link_attrs,
+                    info=sres.info,
+                    track_revisions=True
+                ),
             ]
         )
 
     def __mk_unqualified_link(self, rtme, other_rtme, res):
         rtme.add_link(
             [
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=res.to_dict(), track_revisions=False),
-                ns(master=other_rtme, slave=rtme, qualifiers={}, debug=self.to_dict(), track_revisions=False),
+                self.__mk_link(other_rtme, rtme, created_by='grammatics',
+                               info=self.format('dict')
+                               ),
+                self.__mk_link(other_rtme, rtme, info=res.to_dict()),
             ]
         )
 
-    def get_info(self, wrap=False):
-        s = u'dependency-of{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-    def to_dict(self):
-        return {
-            'rule': 'c__dependencyof_spec',
-            'res': MatchBool.defaultTrue,
-            'reliability': self.__weight if self.__weight is not None else 1.0,
-            'id_name': self.__anchor,
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def __repr__(self):
-        return "DependencyOf(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-    def __str__(self):
-        return "DependencyOf(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
+    def __mk_link(self, master, slave, created_by=None, qualifiers=None,
+                  info=None, track_revisions=False, rewrite_existing=True):
+        if created_by is not None:
+            created_by = self.__class__.__name__ + '/' + created_by
+        else:
+            created_by = self.__class__.__name__
+        if qualifiers is None:
+            qualifiers = {}
+        if info is None:
+            info = {}
+        return ns(
+            master=master,
+            slave=slave,
+            created_by=self.__class__.__name__,
+            qualifiers=qualifiers,
+            debug=info,
+            track_revisions=track_revisions,
+            rewrite_existing=rewrite_existing
+        )
 
 
 class DependencySpecs(object):
@@ -710,108 +737,48 @@ class DependencySpecs(object):
         )
 
 
-class c__aggregate_close_spec(RtDynamicRule):
+class c__aggregate_close_spec(BasicDynamicRule):
     def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
+        super(c__aggregate_close_spec, self).__init__(
+            name='aggregate-close',
+            friendly='CloseWith',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
 
     def new_copy(self):
-        return c__aggregate_close_spec(self.__anchor)
+        return c__aggregate_close_spec(self.anchor())
 
     def clone(self):
-        return c__aggregate_close_spec(self.__anchor)
+        return c__aggregate_close_spec(self.anchor())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         rtme.close_aggregator()
         return RtRule.res_matched
 
-    def get_info(self, wrap=False):
-        s = u'aggregate-close{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
 
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-    def to_dict(self):
-        return {
-            'rule': 'c__aggregate_close_spec',
-            'res': MatchBool.defaultTrue,
-            'reliability': self.__weight if self.__weight is not None else 1.0,
-            'id_name': self.__anchor,
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def __repr__(self):
-        return "CloseWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-    def __str__(self):
-        return "CloseWith(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-
-class c__aggregate_close_other_spec(RtDynamicRule):
+class c__aggregate_close_other_spec(BasicDynamicRule):
     def __init__(self, anchor=None):
-        RtDynamicRule.__init__(self, False, False)
-        self.__anchor = RtMatchString(anchor)
+        super(c__aggregate_close_other_spec, self).__init__(
+            name='aggregate-close-other',
+            friendly='CloseOther',
+            anchor=anchor,
+            optional=False,
+            persistent=False,
+            weight=1.0
+        )
 
     def new_copy(self):
-        return c__aggregate_close_other_spec(self.__anchor)
+        return c__aggregate_close_other_spec(self.anchor())
 
     def clone(self):
-        return c__aggregate_close_other_spec(self.__anchor)
+        return c__aggregate_close_other_spec(self.anchor())
 
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def apply_on(self, rtme, other_rtme):
+    def apply_on(self, rtme, other_rtme, link_creators=None):
         other_rtme.close_aggregator()
         return RtRule.res_matched
-
-    def get_info(self, wrap=False):
-        s = u'aggregate-close-other{0}'.format('<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' id_name: {0}{1}'.format(self.__anchor, '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), '<BR ALIGN="LEFT"/>' if wrap else ',')
-        return s
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-    def to_dict(self):
-        return {
-            'rule': 'c__aggregate_close_other_spec',
-            'res': MatchBool.defaultTrue,
-            'reliability': self.__weight if self.__weight is not None else 1.0,
-            'id_name': self.__anchor,
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def __repr__(self):
-        return "CloseOther(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
-
-    def __str__(self):
-        return "CloseOther(objid={0}, anchor='{1}')".format(hex(id(self)), self.__anchor)
 
 
 class AggregateSpecs(object):
@@ -822,8 +789,13 @@ class AggregateSpecs(object):
         return RtRuleFactory(c__aggregate_close_spec, anchor=anchor)
 
 
-class c__selector(RtStaticRule):
+class c__selector(BasicStaticRule):
     def __init__(self, selector):
+        super(c__selector, self).__init__(
+            name='selector',
+            friendly='Selector',
+            fmt_info={u'selector': selector}
+        )
         self.__selector = selector
 
     def new_copy(self):

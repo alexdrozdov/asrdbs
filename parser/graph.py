@@ -289,7 +289,7 @@ class SequenceGraphGen(GraphGen):
         for r in entry.get_rules():
             label += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format(
                 u'darkolivegreen1' if r.is_static() else u'burlywood1',
-                r.get_info(wrap=True))
+                r.format('dot-html'))
         label += u'</TABLE>'
 
         s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(

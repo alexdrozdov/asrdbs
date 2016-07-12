@@ -25,6 +25,9 @@ class RtRule(object):
     res_matched = 2
     res_continue = 3
 
+    def __init__(self):
+        super(RtRule, self).__init__()
+
     def match(self, form):
         raise RuntimeError('unimplemented')
 
@@ -40,7 +43,7 @@ class RtRule(object):
     def apply_on(self, rtme, other_rtme):
         raise RuntimeError('unimplemented')
 
-    def get_info(self, wrap=False):
+    def format(self, fmt):
         raise RuntimeError('unimplemented')
 
     def has_bindings(self):
@@ -79,6 +82,9 @@ class RtDynamicRule(RtRule):
 
 
 class RtStaticRule(RtRule):
+    def __init__(self):
+        super(RtStaticRule, self).__init__()
+
     def is_applicable(self, rtme, other_rtme):
         raise RuntimeError('not applicable')
 
