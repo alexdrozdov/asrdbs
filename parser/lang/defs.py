@@ -5,6 +5,7 @@
 import parser.matcher
 import parser.selectors
 from parser.lang.common import RtRuleFactory, RtRule
+from parser.selectors import SelectorRes
 from argparse import Namespace as ns
 
 
@@ -520,6 +521,72 @@ class SameAsSpecs(object):
         )
 
 
+class LinkingRule(BasicDynamicRule):
+    def __init__(self, *args, **kwargs):
+        super(LinkingRule, self).__init__(*args, **kwargs)
+        self.__creators = []
+
+    def add_creator(self, name, cb, track, rewrite, strict, break_on_failure=True):
+        self.__creators.append(
+            ns(
+                name=name,
+                cb=cb,
+                track_revisions=track,
+                rewrite_existing=rewrite,
+                strict=strict,
+                break_on_failure=break_on_failure
+            )
+        )
+
+    def apply_on(self, rtme, other_rtme, link_creators=None):
+        rtme_form = rtme.get_form()
+        other_form = other_rtme.get_form()
+        links = []
+        for c in self.__creators:
+            if link_creators is not None and c.name not in link_creators:
+                continue
+            res = c.cb(rtme_form, other_form)
+            if not res:
+                if c.strict:
+                    return RtRule.res_failed
+                if c.break_on_failure:
+                    break
+            links.append(
+                self.__mk_link(
+                    master=other_rtme,
+                    slave=rtme,
+                    created_by=c.name,
+                    qualifiers=res.link_attrs,
+                    info=res.info,
+                    track_revisions=c.track_revisions,
+                    rewrite_existing=c.rewrite_existing
+                )
+            )
+
+        rtme.add_link(links)
+        return RtRule.res_matched
+
+    def __mk_link(self, master, slave, created_by=None, qualifiers=None,
+                  info=None, track_revisions=False, rewrite_existing=True):
+        if created_by is not None:
+            created_by = self.__class__.__name__ + '/' + created_by
+        else:
+            created_by = self.__class__.__name__
+        if qualifiers is None:
+            qualifiers = {}
+        if info is None:
+            info = {}
+        return ns(
+            master=master,
+            slave=slave,
+            created_by=self.__class__.__name__,
+            qualifiers=qualifiers,
+            debug=info,
+            track_revisions=track_revisions,
+            rewrite_existing=rewrite_existing
+        )
+
+
 class c__slave_master_spec(BasicDynamicRule):
     def __init__(self, anchor=None, weight=None):
         super(c__slave_master_spec, self).__init__(
@@ -625,7 +692,7 @@ class RefersToSpecs(object):
         )
 
 
-class c__dependencyof_spec(BasicDynamicRule):
+class c__dependencyof_spec(LinkingRule):
     def __init__(self, anchor=None, dependency_class=None, weight=1.0):
         super(c__dependencyof_spec, self).__init__(
             name='dependency-of',
@@ -637,10 +704,34 @@ class c__dependencyof_spec(BasicDynamicRule):
         )
 
         self.__dep_class = dependency_class
-        if dependency_class is not None:
-            self.__dep_selector = parser.selectors.selector(dependency_class)
-        else:
-            self.__dep_selector = None
+
+        self.add_creator(None, self.my_info, track=False, rewrite=False, strict=True)
+        self.add_creator('grammar', self.grammar, track=False, rewrite=False, strict=True)
+
+        if self.__dep_class is not None:
+            self.add_creator(
+                self.__dep_class,
+                parser.selectors.selector(self.__dep_class),
+                track=True,
+                rewrite=True,
+                strict=False,
+                break_on_failure=True
+            )
+
+    def my_info(self, rtme_form, other_form):
+        return SelectorRes(
+            res=True,
+            link_attrs={},
+            info=self.format('dict')
+        )
+
+    def grammar(self, rtme_form, other_form):
+        res = parser.matcher.match(other_form, rtme_form)
+        return SelectorRes(
+            res=bool(res),
+            link_attrs={},
+            info=res.to_dict()
+        )
 
     def new_copy(self):
         return c__dependencyof_spec(
@@ -654,73 +745,6 @@ class c__dependencyof_spec(BasicDynamicRule):
             self.anchor(),
             self.__dep_class,
             self.weight()
-        )
-
-    def apply_on(self, rtme, other_rtme, link_creators=None):
-        rtme_form = rtme.get_form()
-        other_form = other_rtme.get_form()
-        res = parser.matcher.match(other_form, rtme_form)
-        if not res:
-            return RtRule.res_failed
-        if res:
-            if self.__dep_selector is None:
-                self.__mk_unqualified_link(rtme, other_rtme, res)
-                return RtRule.res_matched
-            sres = self.__dep_selector(
-                rtme_form,
-                other_form
-            )
-            if not sres:
-                return RtRule.res_failed
-            self.__mk_qualified_link(rtme, other_rtme, res, sres)
-            return RtRule.res_matched
-
-    def __mk_qualified_link(self, rtme, other_rtme, res, sres):
-        rtme.add_link(
-            [
-                self.__mk_link(other_rtme, rtme, info=self.format('dict')),
-                self.__mk_link(other_rtme, rtme, created_by='grammatics',
-                               info=res.to_dict()
-                               ),
-                self.__mk_link(
-                    other_rtme,
-                    rtme,
-                    created_by=self.__dep_class,
-                    qualifiers=sres.link_attrs,
-                    info=sres.info,
-                    track_revisions=True
-                ),
-            ]
-        )
-
-    def __mk_unqualified_link(self, rtme, other_rtme, res):
-        rtme.add_link(
-            [
-                self.__mk_link(other_rtme, rtme, created_by='grammatics',
-                               info=self.format('dict')
-                               ),
-                self.__mk_link(other_rtme, rtme, info=res.to_dict()),
-            ]
-        )
-
-    def __mk_link(self, master, slave, created_by=None, qualifiers=None,
-                  info=None, track_revisions=False, rewrite_existing=True):
-        if created_by is not None:
-            created_by = self.__class__.__name__ + '/' + created_by
-        else:
-            created_by = self.__class__.__name__
-        if qualifiers is None:
-            qualifiers = {}
-        if info is None:
-            info = {}
-        return ns(
-            master=master,
-            slave=slave,
-            created_by=self.__class__.__name__,
-            qualifiers=qualifiers,
-            debug=info,
-            track_revisions=track_revisions,
-            rewrite_existing=rewrite_existing
         )
 
 

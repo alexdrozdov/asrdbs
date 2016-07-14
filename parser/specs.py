@@ -2058,6 +2058,8 @@ class RtMatchSequence(object):
                     'master': l.master.get_form().revision(),
                     'slave': l.slave.get_form().revision(),
                     'track': l.track_revisions,
+                    'objids': [id(l.master), id(l.slave)],
+                    # 'created-by': l.created_by,
                 },
                 'qualifiers': l.qualifiers,
                 'details': l.debug,

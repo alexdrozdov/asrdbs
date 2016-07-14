@@ -39,6 +39,9 @@ class MatchBool(object):
     def __nonzero__(self):
         return self.is_true()
 
+    def __bool__(self):
+        return self.is_true()
+
 
 class PosMatchRes(object):
     def __init__(self, details):
