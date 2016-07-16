@@ -1417,7 +1417,7 @@ class MatchedEntry(object):
     def add_link(self, link):
         assert isinstance(link, Link)
         assert self.get_uniq() in [link.get_master(), link.get_slave()]
-        if link.get_master() == self:
+        if link.get_master() == self.get_uniq():
             self.__slaves.append(link)
             self.__slaves_csum.add(link.get_uniq())
         else:
@@ -1519,10 +1519,19 @@ class MatchedSequence(object):
         self.__entries_csum.add(me.get_uniq())
 
     def __append_links(self, me_from, me_to, link):
+        # assert not self.__link_exists(me_from, me_to)
         if not me_from.is_hidden() and not me_to.is_hidden():
             self.__links.append(link)
         self.__all_links.append(link)
         self.__links_csum.add(link.get_csum())
+
+    def __link_exists(self, me_from, me_to):
+        from_uniq = me_from.get_uniq()
+        to_uniq = me_to.get_uniq()
+        for l in self.__all_links:
+            if l.get_master() == from_uniq and l.get_slave() == to_uniq:
+                return True
+        return False
 
     def get_name(self):
         return self.__name
