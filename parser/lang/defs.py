@@ -587,7 +587,7 @@ class LinkingRule(BasicDynamicRule):
         )
 
 
-class c__slave_master_spec(BasicDynamicRule):
+class c__slave_master_spec(LinkingRule):
     def __init__(self, anchor=None, weight=None):
         super(c__slave_master_spec, self).__init__(
             name='master-slave',
@@ -598,24 +598,29 @@ class c__slave_master_spec(BasicDynamicRule):
             weight=weight
         )
 
+        self.add_creator(None, self.my_info, track=False, rewrite=False, strict=True)
+        self.add_creator('grammar', self.grammar, track=False, rewrite=False, strict=True)
+
     def new_copy(self):
         return c__slave_master_spec(self.anchor(), self.weight())
 
     def clone(self):
         return c__slave_master_spec(self.anchor(), self.weight())
 
-    def apply_on(self, rtme, other_rtme, link_creators=None):
-        rtme_form = rtme.get_form()
-        other_form = other_rtme.get_form()
+    def my_info(self, rtme_form, other_form):
+        return SelectorRes(
+            res=True,
+            link_attrs={},
+            info=self.format('dict')
+        )
+
+    def grammar(self, rtme_form, other_form):
         res = parser.matcher.match(other_form, rtme_form)
-        if res:
-            rtme.add_link(
-                [
-                    ns(master=other_rtme, slave=rtme, details=res.to_dict(), track_revisions=False),
-                    ns(master=other_rtme, slave=rtme, details=self.foramt('dict'), track_revisions=False),
-                ]
-            )
-        return RtRule.res_matched if res else RtRule.res_failed
+        return SelectorRes(
+            res=bool(res),
+            link_attrs={},
+            info=res.to_dict()
+        )
 
 
 class c__slave_master_unwanted_spec(BasicDynamicRule):
@@ -656,7 +661,7 @@ class LinkSpecs(object):
         return RtRuleFactory(c__slave_master_unwanted_spec, ("__all_masters", ))
 
 
-class c__refersto_spec(BasicDynamicRule):
+class c__refersto_spec(LinkingRule):
     def __init__(self, anchor):
         super(c__refersto_spec, self).__init__(
             name='refers-to',
@@ -666,6 +671,7 @@ class c__refersto_spec(BasicDynamicRule):
             persistent=False,
             weight=1.0
         )
+        self.add_creator(None, self.my_info, track=True, rewrite=False, strict=True)
 
     def new_copy(self):
         return c__refersto_spec(self.anchor())
@@ -673,15 +679,16 @@ class c__refersto_spec(BasicDynamicRule):
     def clone(self):
         return c__refersto_spec(self.anchor())
 
-    def apply_on(self, rtme, aggregator_rtme, link_creators=None):
-        aggregator_rtme.attach_referer(rtme)
-        rtme.add_link(
-            [
-                ns(master=aggregator_rtme, slave=rtme, qualifiers={},
-                   debug=self.format('dict'), track_revisions=False),
-            ]
+    def apply_on(self, rtme, other_rtme, link_creators=None):
+        other_rtme.attach_referer(rtme)
+        super(c__refersto_spec, self).apply_on(rtme, other_rtme, link_creators)
+
+    def my_info(self, rtme_form, other_form):
+        return SelectorRes(
+            res=True,
+            link_attrs={},
+            info=self.format('dict')
         )
-        return RtRule.res_matched
 
 
 class RefersToSpecs(object):
