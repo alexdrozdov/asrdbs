@@ -527,6 +527,10 @@ class LinkingRule(BasicDynamicRule):
         self.__creators = []
 
     def add_creator(self, name, cb, track, rewrite, strict, break_on_failure=True):
+        if name is not None:
+            name = self.__class__.__name__ + '/' + name
+        else:
+            name = self.__class__.__name__
         self.__creators.append(
             ns(
                 name=name,
@@ -566,12 +570,8 @@ class LinkingRule(BasicDynamicRule):
         rtme.add_link(links)
         return RtRule.res_matched
 
-    def __mk_link(self, master, slave, created_by=None, qualifiers=None,
+    def __mk_link(self, master, slave, created_by, qualifiers=None,
                   info=None, track_revisions=False, rewrite_existing=True):
-        if created_by is not None:
-            created_by = self.__class__.__name__ + '/' + created_by
-        else:
-            created_by = self.__class__.__name__
         if qualifiers is None:
             qualifiers = {}
         if info is None:
@@ -579,11 +579,12 @@ class LinkingRule(BasicDynamicRule):
         return ns(
             master=master,
             slave=slave,
-            created_by=self.__class__.__name__,
+            created_by=created_by,
             qualifiers=qualifiers,
             debug=info,
             track_revisions=track_revisions,
-            rewrite_existing=rewrite_existing
+            rewrite_existing=rewrite_existing,
+            rule=self
         )
 
 
@@ -671,7 +672,7 @@ class c__refersto_spec(LinkingRule):
             persistent=False,
             weight=1.0
         )
-        self.add_creator(None, self.my_info, track=True, rewrite=False, strict=True)
+        self.add_creator(None, self.my_info, track=True, rewrite=True, strict=True)
 
     def new_copy(self):
         return c__refersto_spec(self.anchor())

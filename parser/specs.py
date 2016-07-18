@@ -15,6 +15,7 @@ import parser.preprocessor
 import parser.matcher
 import graph
 import common.output
+import common.ifmodified
 from argparse import Namespace as ns
 import logging
 
@@ -1904,8 +1905,18 @@ class RtMatchSequence(object):
         if isinstance(rtme, RtVirtualEntry) and not rtme.closed():
             return True
 
-        rtme_pares = self.__find_affected_pares(rtme, find_all=True)
+        res = self.__test_rtme_rules(rtme)
+        if not res.valid:
+            return False
 
+        self.__update_affected_links(res. affected_links)
+
+        return True
+
+    @argres()
+    def __test_rtme_rules(self, rtme):
+        affected_links = []
+        rtme_pares = self.__find_affected_pares(rtme, find_all=True)
         while rtme_pares:
             e, ee = rtme_pares.pop(0)
             res = e.handle_rules(on_entry=ee)
@@ -1914,11 +1925,17 @@ class RtMatchSequence(object):
             if res.again:
                 rtme_pares.extend(self.__find_affected_pares(e, find_all=True))
             elif not res.valid:
-                return False
+                return ns(valid=False, affected_links=[])
             if ee.closed() and ee.modified():
                 rtme_pares.extend(self.__find_affected_pares(ee))
 
-        return True
+            affected_links.extend(res.affected_links)
+
+        return ns(valid=True, affected_links=affected_links)
+
+    def __update_affected_links(self, links):
+        for l in links:
+            l.rule.apply_on(l.rtme, l.other_rtme, [l.created_by, ])
 
     @argres()
     def __find_affected_pares(self, rtme, find_all=False):
@@ -2061,19 +2078,74 @@ class RtMatchSequence(object):
             self.__links[l.master][l.slave] = []
         elif l.slave not in self.__links[l.master]:
             self.__links[l.master][l.slave] = []
-        self.__links[l.master][l.slave].append(
-            {
-                'revisions': {
-                    'master': l.master.get_form().revision(),
-                    'slave': l.slave.get_form().revision(),
-                    'track': l.track_revisions,
-                    'objids': [id(l.master), id(l.slave)],
-                    # 'created-by': l.created_by,
-                },
-                'qualifiers': l.qualifiers,
-                'details': l.debug,
-            }
-        )
+        links = self.__links[l.master][l.slave]
+        if not l.rewrite_existing:
+            links.append(
+                {
+                    'revisions': {
+                        'master': l.master.get_form().revision(),
+                        'slave': l.slave.get_form().revision(),
+                        'track': l.track_revisions,
+                        'created-by': l.created_by,
+                        'rule': l.rule,
+                    },
+                    'qualifiers': l.qualifiers,
+                    'details': l.debug,
+                }
+            )
+        else:
+            offset = self.__link_exists(links, l)
+            if offset is None:
+                links.append(
+                    {
+                        'revisions': {
+                            'master': l.master.get_form().revision(),
+                            'slave': l.slave.get_form().revision(),
+                            'track': l.track_revisions,
+                            'created-by': l.created_by,
+                            'rule': l.rule,
+                        },
+                        'qualifiers': l.qualifiers,
+                        'details': l.debug,
+                    }
+                )
+            else:
+                links[offset] = {
+                    'revisions': {
+                        'master': l.master.get_form().revision(),
+                        'slave': l.slave.get_form().revision(),
+                        'track': l.track_revisions,
+                        'created-by': l.created_by,
+                        'rule': l.rule,
+                    },
+                    'qualifiers': l.qualifiers,
+                    'details': l.debug,
+                }
+
+    def __link_exists(self, links, l):
+        for i, ll in enumerate(links):
+            if ll['revisions']['created-by'] == l.created_by:
+                return i
+        return None
+
+    def get_trackable_links(self, rtme):
+        trackable = []
+        for master, slaves in self.__links.items():
+            for slave, links in slaves.items():
+                if slave is not rtme:
+                    continue
+                for link in links:
+                    if not link['revisions']['track']:
+                        continue
+                    trackable.append(
+                        ns(
+                            rtme=rtme,
+                            other_rtme=master,
+                            created_by=link['revisions']['created-by'],
+                            rule=link['revisions']['rule']
+                        )
+                    )
+        return trackable
 
     def get_stack(self):
         return self.__stack.get_stack()
@@ -2545,25 +2617,43 @@ class RtMatchEntry(object):
     @argres()
     def handle_rules(self, on_entry=None):
         pending = []
-        entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
+        affected_links = []
+
+        entries = map(
+            lambda e: common.ifmodified.IfModified(
+                e,
+                lambda v: v.get_form().revision()
+            ),
+            [on_entry, ] if on_entry is not None
+            else
+            self.__owner.get_entries(hidden=True, exclude=self)
+        )
+
         for r in self.__pending:
             applied = False
             for e in entries:
-                if self.__check_applicable(r, e):
+                if self.__check_applicable(r, e.get()):
                     applied = True
-                    if not self.__apply_on(r, e):
-                        return ns(later=False, again=False, valid=False)
+                    if not self.__apply_on(r, e.get()):
+                        return ns(later=False, again=False, valid=False, affected_links=[])
+
+                    if e.modified():
+                        affected_links.extend(e.get_trackable_links())
+
                     self.__decrease_rule_counters(r)
-                    self.__add_matched_rule(r, e)
+                    self.__add_matched_rule(r, e.get())
                     if not r.is_persistent():
                         break
             if not applied or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
-        return ns(later=False, again=False, valid=True)
+        return ns(later=False, again=False, valid=True, affected_links=affected_links)
 
     def modified(self):
         return False
+
+    def get_trackable_links(self):
+        return self.__owner.get_trackable_links(self)
 
     @argres(show_result=False)
     def __add_matched_rule(self, rule, rtme):
@@ -2699,7 +2789,7 @@ class RtTmpEntry(object):
 
     @argres()
     def handle_rules(self, on_entry=None):
-        return ns(later=False, again=False, valid=True)
+        return ns(later=False, again=False, valid=True, affected_links=[])
 
     def modified(self):
         return False
@@ -2995,33 +3085,51 @@ class RtVirtualEntry(object):
     @argres()
     def handle_rules(self, on_entry=None):
         if not self.closed():
-            return ns(later=True, again=False, valid=False)
+            return ns(later=True, again=False, valid=False, affected_links=[])
 
         if self.__first_handle:
             self.__first_handle = False
-            return ns(later=False, again=True, valid=False)
+            return ns(later=False, again=True, valid=False, affected_links=[])
 
         pending = []
-        entries = [on_entry, ] if on_entry is not None else self.__owner.get_entries(hidden=True, exclude=self)
+        affected_links = []
+
+        entries = map(
+            lambda e: common.ifmodified.IfModified(
+                e,
+                lambda v: v.get_form().revision()
+            ),
+            [on_entry, ] if on_entry is not None
+            else
+            self.__owner.get_entries(hidden=True, exclude=self)
+        )
+
         for r in self.__pending:
             applied = False
             for e in entries:
-                if self.__check_applicable(r, e):
+                if self.__check_applicable(r, e.get()):
                     applied = True
-                    if not self.__apply_on(r, e):
-                        return ns(later=False, again=False, valid=False)
+                    if not self.__apply_on(r, e.get()):
+                        return ns(later=False, again=False, valid=False, affected_links=[])
+
+                    if e.modified():
+                        affected_links.extend(e.get_trackable_links())
+
                     self.__decrease_rule_counters(r)
-                    self.__add_matched_rule(r, e)
+                    self.__add_matched_rule(r, e.get())
                     if not r.is_persistent():
                         break
             if not applied or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
         self.__modified = False
-        return ns(later=False, again=False, valid=True)
+        return ns(later=False, again=False, valid=True, affected_links=affected_links)
 
     def modified(self):
         return self.__modified
+
+    def get_trackable_links(self):
+        return self.__owner.get_trackable_links(self)
 
     def closed(self):
         return self.__closed
@@ -3051,6 +3159,8 @@ class RtVirtualEntry(object):
 
     @argres()
     def attach_referer(self, rtme):
+        if rtme in self.__referers:
+            return True
         self.__referers.append(rtme)
         self.__form.add_form(rtme.get_form())
         self.__modified = True
