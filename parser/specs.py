@@ -3159,9 +3159,8 @@ class RtVirtualEntry(object):
 
     @argres()
     def attach_referer(self, rtme):
-        if rtme in self.__referers:
-            return True
-        self.__referers.append(rtme)
+        if rtme not in self.__referers:
+            self.__referers.append(rtme)
         self.__form.add_form(rtme.get_form())
         self.__modified = True
         return True

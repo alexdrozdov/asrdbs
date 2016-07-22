@@ -56,7 +56,7 @@ class _PredefinedFormats(object):
             {
                 'layer-filter': lambda l: True,
                 'tag-filter': lambda t: True,
-                'property-filter': lambda p: True,
+                'property-filter': lambda p: p not in ['__forms'],
                 'aggregate-layer-tags': True,
                 'style': {
                     'align': 'LEFT',
@@ -89,7 +89,7 @@ class _PredefinedFormats(object):
 
         self.__register(
             'dict-form',
-            self.__format_dict,
+            self.__format_dict_form,
             {
                 'layer-filter': lambda l: l == 'ro',
                 'tag-filter': lambda t: True,
@@ -103,6 +103,8 @@ class _PredefinedFormats(object):
                 }
             }
         )
+
+        self.__register('dict', self.__format_dict, {})
 
     def __register(self, name, formatter, fmt):
         self.__formatters[name] = Formatter(formatter, fmt)
@@ -212,7 +214,7 @@ class _PredefinedFormats(object):
                 return l[key]
         return None
 
-    def __format_dict(self, fmt, term):
+    def __format_dict_form(self, fmt, term):
         layers, tags, properties = self.__prepare_data(fmt, term)
         res = {}
         for l in layers:
@@ -220,6 +222,9 @@ class _PredefinedFormats(object):
             for p, v in lprops.items():
                 res[p] = v
         return res
+
+    def __format_dict(self, fmt, term):
+        return copy.deepcopy(term.layers())
 
     def __getitem__(self, format):
         return self.__formatters[format]
@@ -244,9 +249,13 @@ class TermLayer(object):
 class Term(object):
     layer_order = ['ro', 'w_once', 'morf', 'ctx', 'sentence', 'private']
 
-    def __init__(self, info, layer_limit=None, reuse_layers=None):
-        assert isinstance(info, (dict, Term))
-        if isinstance(info, dict):
+    def __init__(self, info=None, dct=None, layer_limit=None, reuse_layers=None):
+        assert (dct is None and info is not None) or \
+            (dct is not None and info is None)
+        assert dct is not None or isinstance(info, (dict, Term))
+        if dct is not None:
+            self.__init_from_dict(dct)
+        elif isinstance(info, dict):
             self.__init_from_info(info)
         else:
             self.__init_from_term(
@@ -255,7 +264,8 @@ class Term(object):
                 reuse_layers if reuse_layers is not None else set({})
             )
 
-    def __init_from_term(self, term, layer_limit, reuse_layers, preserve_existant=False, ignore=None):
+    def __init_from_term(self, term, layer_limit, reuse_layers,
+                         preserve_existant=False, ignore=None):
         assert reuse_layers is None or isinstance(reuse_layers, set)
         assert ignore is None or isinstance(ignore, (list, set, dict))
         if ignore is None:
@@ -285,6 +295,9 @@ class Term(object):
             'sentence': {},
             'private': {},
         }
+
+    def __init_from_dict(self, dct):
+        self.__layers = dct
 
     def copy(self, term, layer_limit=None, reuse_layers=None, ignore=None):
         self.__init_from_term(
@@ -329,10 +342,12 @@ class Term(object):
     def get_property(self, property, layer=None,
                      missing_is_none=False, missing_is_missing=False):
         if layer is not None:
-            return self.__layers[layer][property]
-        for l in reversed(Term.layer_order):
-            if self.__layers[l].has_key(property):
-                return self.__layers[l][property]
+            if property in self.__layers[layer]:
+                return self.__layers[layer][property]
+        else:
+            for l in reversed(Term.layer_order):
+                if self.__layers[l].has_key(property):
+                    return self.__layers[l][property]
         if missing_is_none:
             return None
         if missing_is_missing:
@@ -359,15 +374,43 @@ class Term(object):
 class TokenBase(object):
     def __init__(self, info, reuse_layers=None):
         if isinstance(info, dict):
-            self.__term = Term(info)
+            self.__term = Term(info=info)
         else:
-            self.__term = Term(info.__term, reuse_layers=reuse_layers)
+            self.__term = Term(info=info.__term, reuse_layers=reuse_layers)
 
     def term(self):
         return self.__term
 
     def revision(self):
         return self.term().get_property('revision', 'ctx')
+
+
+class DictToken(object):
+    def __init__(self, dct):
+        self.__term = Term(dct=dct)
+
+    def term(self):
+        return self.__term
+
+    def revision(self):
+        return self.term().get_property('revision', 'ctx')
+
+    def get_property(self, property, layer=None, missing_is_none=False, missing_is_missing=False):
+        return self.term().get_property(
+            property,
+            layer,
+            missing_is_none=missing_is_none,
+            missing_is_missing=missing_is_missing
+        )
+
+    def format(self, format_spec):
+        if isinstance(format_spec, (str, unicode)):
+            return self.__predefined_format(str(format_spec))
+        assert isinstance(format_spec, dict)
+        return self.__custom_format(format_spec)
+
+    def __predefined_format(self, name):
+        return PredefinedFormats()[name](self.term())
 
 
 class TermRoMethods(object):
@@ -592,6 +635,18 @@ class SpecStateVirtForm(Token):
             )
         )
 
+    def __defaults(self):
+        word = u'virt_' + unicode(uuid.uuid1())
+        super(SpecStateVirtForm, self).__init__(
+            ns(
+                word=word,
+                original_word=word,
+                info={'parts_of_speech': u'virt'},
+                pos=None,
+                uniq=0
+            )
+        )
+
     def __init_from_form(self, form):
         super(SpecStateVirtForm, self).__init__(form)
 
@@ -599,6 +654,59 @@ class SpecStateVirtForm(Token):
         return SpecStateVirtForm(self)
 
     def add_form(self, form):
+        if self.__contains_form(form):
+            self.__replace_form(form)
+        else:
+            self.__add_form(form)
+
+    def __contains_form(self, form):
+        forms = self.term().get_property(
+            '__forms', 'ctx', missing_is_none=True
+        )
+        if forms is None or not forms:
+            return False
+        uniq = form.get_uniq()
+        for i, f in enumerate(forms):
+            if f['w_once']['uniq'] == uniq:
+                return True
+        return False
+
+    def __replace_form(self, form):
+        forms = self.__unroll_history(form)
+        self.__edit_history(forms, form)
+        self.__merge_history(forms)
+
+    def __unroll_history(self, form=None):
+        forms = self.term().get_property(
+            '__forms', 'ctx', missing_is_none=True
+        )
+        if forms is None:
+            return []
+        return forms
+
+    def __edit_history(self, forms, replace):
+        uniq = replace.get_uniq()
+        for i, f in enumerate(forms):
+            if f['w_once']['uniq'] == uniq:
+                forms[i] = replace.format('dict')
+                return
+        raise ValueError('form not found')
+
+    def __merge_history(self, forms):
+        self.__defaults()
+        for f in forms:
+            self.__add_form(DictToken(f))
+
+    def __append_history(self, form):
+        forms = self.term().get_property(
+            '__forms', 'ctx', missing_is_none=True
+        )
+        if forms is None:
+            self.term().add_property('__forms', 'ctx', [form.format('dict')])
+        else:
+            forms.append(form.format('dict'))
+
+    def __add_form(self, form):
         if self.get_pos() == u'virt':
             self.term().copy(form.term(), ignore=['uniq', ])
             self.term().add_property(
@@ -606,6 +714,7 @@ class SpecStateVirtForm(Token):
                 'ctx',
                 str(uuid.uuid3(uuid.NAMESPACE_DNS, form.get_property('uniq')))
             )
+            self.__append_history(form)
             return
 
         resolvers = {
@@ -619,6 +728,8 @@ class SpecStateVirtForm(Token):
         }
         for k, v in resolvers.items():
             v(form, k)
+
+        self.__append_history(form)
 
     # def __resolve_hierarchical(self, form, k):
     #     my_prop = self.term().get_property(k)
