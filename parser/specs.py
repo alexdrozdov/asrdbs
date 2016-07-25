@@ -1909,7 +1909,7 @@ class RtMatchSequence(object):
         if not res.valid:
             return False
 
-        self.__update_affected_links(res. affected_links)
+        self.__update_affected_links(res.affected_links)
 
         return True
 

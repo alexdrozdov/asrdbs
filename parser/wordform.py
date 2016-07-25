@@ -688,6 +688,7 @@ class SpecStateVirtForm(Token):
         uniq = replace.get_uniq()
         for i, f in enumerate(forms):
             if f['w_once']['uniq'] == uniq:
+                # self.__forms_equal(DictToken(f), replace, exit_on_difference=False)
                 forms[i] = replace.format('dict')
                 return
         raise ValueError('form not found')
@@ -715,6 +716,7 @@ class SpecStateVirtForm(Token):
                 str(uuid.uuid3(uuid.NAMESPACE_DNS, form.get_property('uniq')))
             )
             self.__append_history(form)
+            # assert self.__forms_equal(self, form)
             return
 
         resolvers = {
@@ -730,6 +732,38 @@ class SpecStateVirtForm(Token):
             v(form, k)
 
         self.__append_history(form)
+
+    def __forms_equal(self, form, other, exit_on_difference=True):
+        layers1 = form.term().layers()
+        layers2 = other.term().layers()
+        keys1 = set(layers1.keys()) - {'private'}
+        keys2 = set(layers2.keys()) - {'private'}
+        if keys1 != keys2:
+            # print 'differs in keys: {0} -> {1}'.format(keys1, keys2)
+            return False
+        for k, l1 in layers1.items():
+            l2 = layers2[k]
+            for kk, v1 in l1.items():
+                if kk in ['__forms', 'uniq', 'revision']:
+                    continue
+                try:
+                    v2 = l2[kk]
+                except:
+                    # print 'key {0}/{1}: is lost'.format(k, kk)
+                    if exit_on_difference:
+                        return False
+                    continue
+                if v1 is None and v2 is None:
+                    continue
+                if v1 == v2:
+                    continue
+                # print 'differs in {0}/{1}: {2} -> {3}'.format(
+                #     k, kk,
+                #     v1, v2
+                # )
+                if exit_on_difference:
+                    return False
+        return True
 
     # def __resolve_hierarchical(self, form, k):
     #     my_prop = self.term().get_property(k)
