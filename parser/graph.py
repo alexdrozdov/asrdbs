@@ -277,24 +277,16 @@ class SequenceGraphGen(GraphGen):
         return s
 
     def __gen_entry(self, entry):
-        label = u'<TABLE>'
-        label += u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(entry.get_name())
-
-        label += u'<TR><TD BGCOLOR="darkseagreen2">{0}: {1}</TD></TR>'.format(
-            entry.get_form().get_word(),
-            entry.get_form().get_position(),
-        )
-        label += entry.get_form().format('dot-html')
-
-        for r in entry.get_rules():
-            label += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}">{1}</TD></TR>'.format(
-                u'darkolivegreen1' if r.is_static() else u'burlywood1',
-                r.format('dot-html'))
-        label += u'</TABLE>'
-
-        s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
-            self.get_obj_id(entry.get_uniq()),
-            label)
+        s = (
+            u'\t"{0}" ['
+            'shape="plaintext", '
+            'label=< {1} >, '
+            'style="filled", '
+            'fillcolor="white"'
+            '];\r\n').format(
+                self.get_obj_id(entry.get_uniq()),
+                entry.format('dot-html-table')
+            )
         return s
 
     def __link_entries(self, link):

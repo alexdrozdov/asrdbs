@@ -51,13 +51,14 @@ class _PredefinedFormats(object):
     def __init__(self):
         self.__formatters = {}
         self.__register(
-            'dot-html',
+            'dot-html-rows',
             self.__format_html,
             {
-                'layer-filter': lambda l: True,
+                'layer-filter': lambda l: l not in ['private'],
                 'tag-filter': lambda t: True,
                 'property-filter': lambda p: p not in ['__forms'],
                 'aggregate-layer-tags': True,
+                'layer-order': ['ro', 'w_once', 'morf', 'ctx', 'sentence'],
                 'style': {
                     'align': 'LEFT',
                     'font-color': 'black',
@@ -66,6 +67,18 @@ class _PredefinedFormats(object):
                         'ro': {
                             'align': 'LEFT',
                             'font-color': 'black',
+                            'bg-color': 'palegoldenrod',
+                        },
+                        'w_once': {
+                            'bg-color': 'papayawhip',
+                        },
+                        'morf': {
+                            'bg-color': 'peachpuff',
+                        },
+                        'ctx': {
+                            'bg-color': 'lavenderblush',
+                        },
+                        'sentence': {
                             'bg-color': 'white',
                         },
                     },
@@ -74,12 +87,13 @@ class _PredefinedFormats(object):
                     'properties': {
                         'word': {
                             'font-color': 'black',
-                            'bg-color': 'white',
+                            # 'bg-color': 'white',
                         }
                     },
                 },
                 '__fmt': {
-                    'row-template': u'<TR><TD {align} {color} {bgcolor}>{rowdata}</TD></TR>',
+                    'layer-row-template': u'<TR><TD {align} {color} {bgcolor}>{rowdata}</TD><TD {align} {color} {bgcolor}></TD></TR>',
+                    'row-template': u'<TR><TD {align} {color} {bgcolor}></TD><TD {align} {color} {bgcolor}>{rowdata}</TD></TR>',
                     'color-template': u'COLOR="{color}"',
                     'bg-color-template': u'BGCOLOR="{bgcolor}"',
                     'align-template': 'ALIGN="{align}"',
@@ -104,15 +118,20 @@ class _PredefinedFormats(object):
             }
         )
 
+        self.__register('dot-html-table', self.__format_dot_html_table, {})
         self.__register('dict', self.__format_dict, {})
 
     def __register(self, name, formatter, fmt):
         self.__formatters[name] = Formatter(formatter, fmt)
 
     def __prepare_data(self, fmt, term):
+        layer_order = fmt['layer-order'] if 'layer-order' in fmt else term.layers().keys()
         layers = filter(
-            lambda l: fmt['layer-filter'](l),
-            term.layers()
+            lambda ll: ll in filter(
+                lambda l: fmt['layer-filter'](l),
+                term.layers()
+            ),
+            layer_order
         )
         tags = dict(
             map(
@@ -154,6 +173,7 @@ class _PredefinedFormats(object):
             ltags = tags[l]
             lstyle = self.__fmt(fmt, 'style', 'layers', l)
             self.__push_style_stack(style, lstyle)
+            res += self.__fmt_layer_row(fmt, style, l)
             for t in ltags:
                 tstyle = self.__fmt(fmt, 'style', 'tags', t)
                 self.__push_style_stack(style, tstyle)
@@ -187,6 +207,16 @@ class _PredefinedFormats(object):
 
     def __pop_style_stack(self, style):
         style.pop()
+
+    def __fmt_layer_row(self, fmt, style, t):
+        align = self.__style_get(style, 'align')
+        align = unicode(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else u''
+        color = self.__style_get(style, 'font-color')
+        color = unicode(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else u''
+        bgcolor = self.__style_get(style, 'bg-color')
+        bgcolor = unicode(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else u''
+        rowdata = unicode(t)
+        return self.__fmt(fmt, '__fmt', 'layer-row-template').format(align=align, color=color, bgcolor=bgcolor, rowdata=rowdata)
 
     def __fmt_tag_row(self, fmt, style, t):
         align = self.__style_get(style, 'align')
@@ -222,6 +252,12 @@ class _PredefinedFormats(object):
             for p, v in lprops.items():
                 res[p] = v
         return res
+
+    def __format_dot_html_table(self, fmt, term):
+        s = u'<TABLE CELLSPACING="0">'
+        s += self['dot-html-rows'](term)
+        s += u'</TABLE>'
+        return s
 
     def __format_dict(self, fmt, term):
         return copy.deepcopy(term.layers())

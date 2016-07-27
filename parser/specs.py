@@ -1440,6 +1440,35 @@ class MatchedEntry(object):
     def get_rules(self):
         return self.__rules
 
+    def format(self, fmt):
+        if fmt == 'dot-html-table':
+            return self.__fmt_dot_html_table()
+        if fmt == 'dict':
+            return self.export_dict()
+        raise ValueError('unsupported format {0}'.format(fmt))
+
+    def __fmt_dot_html_table(self):
+        s = u'<TABLE CELLSPACING="0">'
+        s += u'<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
+            self.get_name()
+        )
+
+        s += u'<TR><TD BGCOLOR="darkseagreen2"><FONT FACE="ARIAL"><B>{0}: {1}</B></FONT></TD></TR>'.format(
+            self.get_form().get_word(),
+            self.get_form().get_position(),
+        )
+
+        s += u'<TR><TD BGCOLOR="white"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
+            self.get_form().format('dot-html-table')
+        )
+
+        for r in self.get_rules():
+            s += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}"><FONT FACE="ARIAL">{1}</FONT></TD></TR>'.format(
+                u'darkolivegreen1' if r.is_static() else u'burlywood1',
+                r.format('dot-html'))
+        s += u'</TABLE>'
+        return s
+
 
 class MatchedSequence(object):
     def __init__(self, sq):
