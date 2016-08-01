@@ -271,16 +271,23 @@ class SequenceGraphGen(GraphGen):
         super(SequenceGraphGen, self).__init__()
 
     def __gen_link(self, link):
-        s = u'\t{0} [label = "{1}", shape="box", style="filled", fillcolor="orchid"];\r\n'.format(
-            self.get_obj_id(link),
-            self.dict_to_istr(link.get_details()))
+        s = (
+            u'\t{0} ['
+            'label =< {1} >, '
+            'shape="plaintext", '
+            'style="filled", '
+            'fillcolor="white"'
+            '];\r\n').format(
+                self.get_obj_id(link),
+                link.format('dot-html-table')
+            )
         return s
 
     def __gen_entry(self, entry):
         s = (
             u'\t"{0}" ['
-            'shape="plaintext", '
             'label=< {1} >, '
+            'shape="plaintext", '
             'style="filled", '
             'fillcolor="white"'
             '];\r\n').format(

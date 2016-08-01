@@ -1310,6 +1310,122 @@ def todict(obj, classkey=None):
         return obj
 
 
+class LineWrapper(object):
+    def __init__(self, prefered_length, max_length, splitters, indent=0, step=False):
+        self.__prefered_length = prefered_length
+        self.__max_length = max_length
+        if isinstance(splitters, (list, tuple)):
+            self.__wrapper_fcn = self.__wrap_sequence
+        elif isinstance(splitters, (str, unicode)):
+            self.__wrapper_fcn = self.__wrap_symbol
+        else:
+            raise ValueError(
+                'Unsupported splitters format {0}'.format(type(splitters))
+            )
+        self.__splitters = dict(
+            map(
+                lambda (i, s): (s, 1.0 / i),
+                enumerate(splitters, 1)
+            )
+        )
+        self.__indent = indent
+        self.__step = step
+
+    def wrap(self, line, linebreak=None, indent_char=None):
+        parts = self.__wrap(line)
+        if linebreak is None:
+            linebreak = '\r\n'
+        if indent_char is None:
+            indent_char = ' '
+        indent = indent_char * self.__indent
+        return linebreak.join(
+            map(
+                lambda (i, p): p if i == 0 else indent + p if i == 1 or not self.__step else indent * i + p,
+                enumerate(parts)
+            )
+        )
+
+    def __wrap(self, line, depth=0, indent=0):
+        return self.__wrapper_fcn(line, depth, indent)
+
+    def __wrap_symbol(self, line, depth=0, indent=0):
+        if self.__step and 1 < depth:
+            indent = indent * (depth - 1)
+        max_length = self.__max_length - indent
+        prefered_length = self.__prefered_length - indent
+
+        if len(line) < max_length:
+            return [line, ]
+
+        max_rate = {
+            'pos': max_length - 1,
+            'rate': 0.0
+        }
+        for i in range(0, max_length):
+            rate = {
+                'pos': i,
+                'rate': (self.__symbol_rate(line[i]) /
+                         max(1.0, abs(i - prefered_length)))
+            }
+            if max_rate['rate'] < rate['rate']:
+                max_rate = rate
+
+        r = [line[0:max_rate['pos']], ]
+        r.extend(
+            self.__wrap(
+                line[max_rate['pos']:],
+                depth=depth + 1,
+                indent=self.__indent
+            )
+        )
+        return r
+
+    def __wrap_sequence(self, line, depth=0, indent=0):
+        if self.__step and 1 < depth:
+            indent = indent * (depth - 1)
+        max_length = self.__max_length - indent
+        prefered_length = self.__prefered_length - indent
+
+        if len(line) < max_length:
+            return [line, ]
+
+        max_rate = {
+            'pos': max_length - 1,
+            'rate': 0.0
+        }
+        for i in range(0, max_length):
+            splitter = ''
+            for s in self.__splitters.keys():
+                if max_length <= len(s) + i:
+                    continue
+                if line[i:i+len(s)] == s:
+                    splitter = s
+                    break
+
+            rate = {
+                'pos': i + len(splitter),
+                'rate': (self.__symbol_rate(splitter) /
+                         max(1.0, abs(i - prefered_length)))
+            }
+            if max_rate['rate'] < rate['rate']:
+                max_rate = rate
+
+        r = [line[0:max_rate['pos']], ]
+        r.extend(
+            self.__wrap(
+                line[max_rate['pos']:],
+                depth=depth + 1,
+                indent=self.__indent
+            )
+        )
+        return r
+
+    def __symbol_rate(self, s):
+        if s in self.__splitters:
+            return self.__splitters[s]
+        return 0.0
+
+
 class Link(object):
     def __init__(self, master, slave, details):
         self.__uniq = str(uuid.uuid1())
@@ -1338,6 +1454,91 @@ class Link(object):
             'to': self.__slave,
             'udata': todict(self.__details),
         }
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.export_dict()
+        if fmt == 'dot-html-table':
+            return self.__fmt_dot_html_table()
+        raise ValueError('Unsupported fmt {0}'.format(fmt))
+
+    def __fmt_dot_html_table(self):
+        lw = LineWrapper(60, 70, [' ', '::'], 4, False)
+        s = u'<TABLE CELLSPACING="0">'
+        s += u'<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
+            self.get_uniq()
+        )
+        s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">master: {0}</FONT></TD></TR>'.format(
+            self.get_master()
+        )
+        s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">slave: {0}</FONT></TD></TR>'.format(
+            self.get_slave()
+        )
+
+        for d in self.get_details():
+            s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
+                self.__format_dot_html_dict(d, lw)
+            )
+        s += u'</TABLE>'
+        return s
+
+    def __format_dot_html_dict(self, d, line_wrapper):
+        s = u'<TABLE CELLSPACING="0">'
+        row_fmt = (u'<TR>'
+                   u'<TD {align} {valign} {bgcolor}>{k}</TD>'
+                   u'<TD {align} {valign} {bgcolor}>{v}</TD>'
+                   u'</TR>')
+        align = u'ALIGN="LEFT"'
+        valign = u'VALIGN="TOP"'
+        bgcolor = u'BGCOLOR="WHITE"'
+        for k, v in d.items():
+            if isinstance(v, dict) and v:
+                v_str = self.__format_dot_html_dict(v, line_wrapper)
+            elif isinstance(v, list) and v:
+                v_str = self.__format_dot_html_list(v, line_wrapper)
+            else:
+                v_str = line_wrapper.wrap(
+                    str(v),
+                    linebreak='<BR/>',
+                    indent_char='&nbsp;'
+                )
+            s += row_fmt.format(
+                align=align,
+                valign=valign,
+                bgcolor=bgcolor,
+                k=k,
+                v=v_str
+            )
+        s += u'</TABLE>'
+        return s
+
+    def __format_dot_html_list(self, l, line_wrapper):
+        s = u'<TABLE CELLSPACING="0">'
+        row_fmt = (u'<TR>'
+                   u'<TD {align} {valign} {bgcolor}>{v}</TD>'
+                   u'</TR>')
+        align = u'ALIGN="LEFT"'
+        valign = u'VALIGN="TOP"'
+        bgcolor = u'BGCOLOR="WHITE"'
+        for v in l:
+            if isinstance(v, dict) and v:
+                v_str = self.__format_dot_html_dict(v, line_wrapper)
+            elif isinstance(v, list) and v:
+                v_str = self.__format_dot_html_list(v, line_wrapper)
+            else:
+                v_str = line_wrapper.wrap(
+                    str(v),
+                    linebreak='<BR/>',
+                    indent_char='&nbsp;'
+                )
+            s += row_fmt.format(
+                align=align,
+                valign=valign,
+                bgcolor=bgcolor,
+                v=v_str
+            )
+        s += u'</TABLE>'
+        return s
 
 
 class MatchedEntry(object):
