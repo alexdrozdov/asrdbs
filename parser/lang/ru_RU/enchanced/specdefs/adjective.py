@@ -14,14 +14,14 @@ class AdjectiveSpec(SequenceSpec):
         self.spec = template("@", "spec")(
             [
                 {
-                    "id": "$PARENT::modifiers",
+                    "@id": "modifiers",
                     "@repeats": ["any", "separator::strict"],
                     "body": {
-                        "id": "$PARENT::modifier",
+                        "@id": "modifier",
                         "@inherit": ["once", ],
                         "entries": [
                             {
-                                "id": "$PARENT::adv",
+                                "@id": "adv",
                                 "@inherit": ["basic-adv", "once"],
                                 "@dependency-of": ["modifier"],
                             }
@@ -29,18 +29,18 @@ class AdjectiveSpec(SequenceSpec):
                     },
                 },
                 {
-                    "id": "$PARENT::core",
+                    "@id": "core",
                     "@inherit": ["basic-adj", "once", "anchor"],
                 },
                 {
-                    "id": "$PARENT::dependencies",
+                    "@id": "dependencies",
                     "@repeats": ["any", "separator::strict"],
                     "body": {
-                        "id": "$PARENT::dependency",
+                        "@id": "dependency",
                         "@inherit": ["once", ],
                         "uniq-items": [
                             {
-                                "id": "$PARENT::entity",
+                                "@id": "entity",
                                 "@inherit": ["once", ],
                                 "@dependency-of": ["modifier"],
                                 "@includes": {"name": "entity-list", "is_static": True},

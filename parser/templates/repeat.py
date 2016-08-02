@@ -112,10 +112,17 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
     def __unroll_dict_attrs(self, attrs):
         raise ValueError('Unsupported dict format')
 
+    def __get_id_pair(self, body):
+        if 'id' in body:
+            return 'id', body['id']
+        if '@id' in body:
+            return '@id', body['@id']
+        raise KeyError('Neither id nor @id found')
+
     def __call__(self, body, *args):
         attrs = body.pop('@repeats')
         inner_body = body.pop('body')
-        entry_id = body['id']
+        id_k, id_v = self.__get_id_pair(body)
 
         repeatable, separator = self.__unroll_attrs(attrs)
         assert repeatable is not None
@@ -123,7 +130,7 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
         if isinstance(inner_body, list):
             inner_body = \
                 {
-                    "id": entry_id,
+                    id_k: id_v,
                     "repeatable": RepeatableSpecs().Once(),
                     "entries": body
                 }
