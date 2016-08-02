@@ -18,15 +18,19 @@ class TemplateAt(parser.templates.common.SpecTemplate):
                 self.__iter_list(e)
 
     def __handle_key_tmpl(self, d, k):
-        v = d.pop(k)
-        k = k.replace('@', '')
-        tmpl = parser.named.template(k)
-        if isinstance(v, dict):
-            tmpl(d, **v)
-        elif isinstance(v, (list, tuple)):
-            tmpl(d, *v)
+        tmpl_name = k.replace('@', '')
+        tmpl = parser.named.template(tmpl_name)
+        if tmpl.args_mode() == \
+                parser.templates.common.SpecTemplate.ARGS_MODE_UNROLL:
+            v = d.pop(k)
+            if isinstance(v, dict):
+                tmpl(d, **v)
+            elif isinstance(v, (list, tuple)):
+                tmpl(d, *v)
+            else:
+                tmpl(d, v)
         else:
-            tmpl(d, v)
+            tmpl(d)
 
     def __handle_dict(self, d):
         modified = False

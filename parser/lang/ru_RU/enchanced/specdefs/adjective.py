@@ -3,7 +3,6 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs
 from parser.named import template
 
 
@@ -14,9 +13,10 @@ class AdjectiveSpec(SequenceSpec):
 
         self.spec = template("@", "spec")(
             [
-                template("repeat")(
-                    "$PARENT::modifiers",
-                    {
+                {
+                    "id": "$PARENT::modifiers",
+                    "@repeats": ["any", "separator::strict"],
+                    "body": {
                         "id": "$PARENT::modifier",
                         "@inherit": ["once", ],
                         "entries": [
@@ -27,16 +27,15 @@ class AdjectiveSpec(SequenceSpec):
                             }
                         ]
                     },
-                    repeatable=RepeatableSpecs().Any(),
-                    separator=None
-                ),
+                },
                 {
                     "id": "$PARENT::core",
                     "@inherit": ["basic-adj", "once", "anchor"],
                 },
-                template("repeat")(
-                    "$PARENT::dependencies",
-                    {
+                {
+                    "id": "$PARENT::dependencies",
+                    "@repeats": ["any", "separator::strict"],
+                    "body": {
                         "id": "$PARENT::dependency",
                         "@inherit": ["once", ],
                         "uniq-items": [
@@ -48,8 +47,6 @@ class AdjectiveSpec(SequenceSpec):
                             }
                         ]
                     },
-                    repeatable=RepeatableSpecs().Any(),
-                    separator=None
-                ),
+                },
             ]
         )
