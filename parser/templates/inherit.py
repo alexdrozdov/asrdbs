@@ -15,7 +15,21 @@ class DependencySpec(parser.templates.common.SpecTemplate):
         for base in args:
             bb = self.__get_base(base)
             for k, v in bb.items():
-                body[k] = v
+                self.__extend_attr(body, k, v)
+
+    def __extend_attr(self, body, attr, val):
+        if not isinstance(val, list):
+            body[attr] = val
+            return
+
+        if attr in body:
+            v = body[attr]
+            if not isinstance(v, list):
+                v = [v, ]
+        else:
+            v = []
+        v.extend(val)
+        body[attr] = v
 
     def __get_base(self, base):
         bases = {
@@ -24,6 +38,15 @@ class DependencySpec(parser.templates.common.SpecTemplate):
             },
             'basic-adv': {
                 "pos_type": [PosSpecs().IsAdverb(), ]
+            },
+            'basic-noun': {
+                "pos_type": [PosSpecs().IsNoun(), ]
+            },
+            'union': {
+                "pos_type": [PosSpecs().IsUnion(), ]
+            },
+            'comma': {
+                "pos_type": [PosSpecs().IsComma(), ]
             },
             'once': {
                 "repeatable": RepeatableSpecs().Once(),

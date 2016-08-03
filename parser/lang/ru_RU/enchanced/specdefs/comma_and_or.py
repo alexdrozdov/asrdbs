@@ -3,7 +3,6 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, PosSpecs, AnchorSpecs, WordSpecs
 from parser.named import template
 
 
@@ -12,27 +11,25 @@ class CommaAndOrSpec(SequenceSpec):
         SequenceSpec.__init__(self, 'comma-and-or')
         self.__compared_with = {}
 
-        self.spec = template("spec")(
+        self.spec = template("@", "spec")(
             {
-                "repeatable": RepeatableSpecs().Once(),
-                "id": "$PARENT:or",
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
+                "@id": "or",
+                "@inherit": ["once", "anchor"],
                 "uniq-items": [
                     {
-                        "id": "$PARENT::comma",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [PosSpecs().IsComma(), ],
+                        "@id": "comma",
+                        "@inherit": ["comma", "once"],
                         "merges-with": ["comma", ],
                     },
                     {
-                        "id": "$PARENT::and",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [WordSpecs().IsWord([u'и', ]), PosSpecs().IsUnion()],
+                        "@id": "and",
+                        "@inherit": ["once", "union"],
+                        "@word": [u'и', ],
                     },
                     {
-                        "id": "$PARENT::or",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [WordSpecs().IsWord([u'или', ]), ],
+                        "@id": "or",
+                        "@inherit": ["once", "union"],
+                        "@word": [u'или', ],
                     }
                 ]
             }
