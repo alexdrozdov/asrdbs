@@ -613,7 +613,8 @@ class _Compiler(object):
     def __rules(self, js):
         known_rules = [
             'pos', 'case', 'animation',
-            'position', 'equal-properties'
+            'position', 'equal-properties',
+            'word',
         ]
         return map(
             lambda k: (k, js[k]),

@@ -94,6 +94,24 @@ class c__placeholder(RtStaticRule):
         return {u'placeholder': self.__def_value}
 
 
+class c__word_check(RtStaticRule):
+    def __init__(self, words):
+        self.__words = words
+
+    def new_copy(self):
+        return c__word_check(self.__word)
+
+    def match(self, *args, **kwargs):
+        return args[0].get_word() in self.__words
+
+    def get_info(self, wrap=False):
+        return u'pos: {0}'.format(self.__words)
+
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'pos': self.__words}
+
+
 class PosSpecs(object):
     def IsPos(self, pos):
         if not isinstance(pos, (list, tuple)):
@@ -105,6 +123,11 @@ class PosSpecs(object):
 
     def IsInanimated(self):
         return SelectorRuleFactory(c__placeholder, False)
+
+
+class WordSpecs(object):
+    def IsWord(self, words):
+        return SelectorRuleFactory(c__word_check, words)
 
 
 class RelationsSpecs(object):

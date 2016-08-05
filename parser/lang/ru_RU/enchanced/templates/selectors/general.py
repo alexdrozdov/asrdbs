@@ -3,7 +3,7 @@
 
 
 import parser.templates.common
-from parser.lang.sdefs import PosSpecs, RelationsSpecs
+from parser.lang.sdefs import PosSpecs, WordSpecs, RelationsSpecs
 
 
 class PosSpec(parser.templates.common.SpecTemplate):
@@ -15,6 +15,17 @@ class PosSpec(parser.templates.common.SpecTemplate):
         if not isinstance(names, list):
             names = [names, ]
         body['pos'] = [PosSpecs().IsPos(names), ]
+
+
+class WordSpec(parser.templates.common.SpecTemplate):
+    def __init__(self):
+        super(WordSpec, self).__init__('word', namespace='selectors')
+
+    def __call__(self, body):
+        words = body.pop('@word')
+        if not isinstance(words, list):
+            words = [words, ]
+        body['word'] = [WordSpecs().IsWord(words), ]
 
 
 class AnimationSpec(parser.templates.common.SpecTemplate):
