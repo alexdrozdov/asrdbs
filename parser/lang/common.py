@@ -285,7 +285,7 @@ class SingleToMultiRuleAdapter(object):
         self.__indx = indx
 
     def match(self, *args, **kwargs):
-        return self.__rule_cls(args[self.__indx])
+        return self.__rule_cls.match(args[self.__indx])
 
     def get_info(self, *args, **kwargs):
         return self.__rule_cls.get_info(*args, **kwargs)

@@ -1,0 +1,52 @@
+// Basic object preposition rule (just test case equality and position
+{
+    "multi": {
+        "tag-base": "#obj-preposition",
+        "@self": {
+            "clarifies": "#preposition",
+            "clarify": {
+                "tag": "#obj-preposition-link",
+                "@equal-properties": {"1": ["case"]},
+                "@position": {"1": "left"}
+            }
+        },
+        "@other": {
+            "clarifies": "#object"
+        }
+    }
+}
+
+// In
+{
+    "multi": {
+        "tag-base": "#obj-preposition",
+        "@self": {
+            "clarifies": "#obj-preposition-link",
+            "clarify": {
+                "@word": "в",
+                "clarify": [
+                    {
+                        "@case": "prepositional",
+                        "@link": {
+                            "label": "#provides-location-presence"
+                        },
+                        "@other": {
+                            "tag": ["#location-presence", "#time-presence"]
+                        }
+                    },
+                    {
+                        "@case": "accusative",
+                        "@link": {
+                            "label": "#provides-location-destination"
+                        },
+                        "@other": {
+                            "tag": ["#location-destination", "#time-destination"]
+                        }
+                    }
+                ]
+            }
+        },
+        "@other": {
+        }
+    }
+}

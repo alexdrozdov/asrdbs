@@ -4,7 +4,7 @@
         "@self": {
             "clarifies": "#object",
             "clarify": {
-                "clarifies": "#location",
+                "clarifies": "#location-presence",
                 "@link": {
                     "label": "^obj-location"
                 },

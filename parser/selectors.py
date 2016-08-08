@@ -4,6 +4,7 @@
 
 import os
 import copy
+import re
 import json
 import uuid
 import parser.named
@@ -656,9 +657,26 @@ class _Selectors(object):
                 lambda fname: fname.endswith('.json'),
                 os.listdir(d)
             ):
-                with open(os.path.join(d, f)) as fp:
-                    res = Compiler().compile(json.load(fp))
-                    self.__add_selectors(res)
+                path = os.path.join(d, f)
+                if path.endswith('.multi.json'):
+                    self.__load_multi(path)
+                else:
+                    self.__load_single(path)
+
+    def __load_single(self, path):
+        with open(path) as fp:
+            res = Compiler().compile(json.load(fp))
+            self.__add_selectors(res)
+
+    def __load_multi(self, path):
+        with open(path) as fp:
+            data = fp.read()
+            for s in filter(
+                None,
+                re.split('^//.*\n', data, flags=re.MULTILINE)
+            ):
+                res = Compiler().compile(json.loads(s))
+                self.__add_selectors(res)
 
     def __add_selectors(self, r):
         for s in r:

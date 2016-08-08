@@ -23,6 +23,28 @@ class c__pos_check(RtStaticRule):
         return {u'pos': self.__pos_names}
 
 
+class c__case_check(RtStaticRule):
+    def __init__(self, cases):
+        self.__cases = cases
+
+    def new_copy(self):
+        return c__case_check(self.__cases)
+
+    def match(self, *args, **kwargs):
+        try:
+            return args[0].get_case() in self.__cases
+        except:
+            pass
+        return False
+
+    def get_info(self, wrap=False):
+        return u'case: {0}'.format(self.__cases[0])
+
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {u'case': self.__cases}
+
+
 class c__equal_properties_check(RtStaticRule):
     def __init__(self, indx0, indx1, props):
         self.__indx0 = indx0
@@ -123,6 +145,11 @@ class PosSpecs(object):
 
     def IsInanimated(self):
         return SelectorRuleFactory(c__placeholder, False)
+
+
+class CaseSpecs(object):
+    def IsCase(self, cases):
+        return SelectorRuleFactory(c__case_check, cases)
 
 
 class WordSpecs(object):
