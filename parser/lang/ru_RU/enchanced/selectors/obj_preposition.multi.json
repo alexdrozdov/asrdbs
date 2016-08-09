@@ -24,29 +24,38 @@
             "clarifies": "#obj-preposition-link",
             "clarify": {
                 "@word": "в",
-                "clarify": [
-                    {
-                        "@case": "prepositional",
-                        "@link": {
-                            "label": "#provides-location-presence"
-                        },
-                        "@other": {
-                            "tag": ["#location-presence", "#time-presence"]
-                        }
-                    },
-                    {
-                        "@case": "accusative",
-                        "@link": {
-                            "label": "#provides-location-destination"
-                        },
-                        "@other": {
-                            "tag": ["#location-destination", "#time-destination"]
-                        }
-                    }
-                ]
+                "@break": "obj-preposition-link[в]"
             }
         },
         "@other": {
+        }
+    }
+}
+
+// In
+{
+    "@continue": "obj-preposition-link[в]",
+    "clarify": {
+        "@case": "prepositional",
+        "@link": {
+            "label": "#provides-location-presence"
+        },
+        "@other": {
+            "tag": ["#location-presence", "#time-presence"]
+        }
+    }
+}
+
+// In
+{
+    "@continue": "obj-preposition-link[в]",
+    "clarify": {
+        "@case": "accusative",
+        "@link": {
+            "label": "#provides-location-destination"
+        },
+        "@other": {
+            "tag": ["#location-destination", "#time-destination"]
         }
     }
 }

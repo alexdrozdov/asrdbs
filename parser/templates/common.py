@@ -21,3 +21,7 @@ class SpecTemplate(object):
 
     def args_mode(self):
         return self.__args_mode
+
+
+class ErrorRerun(Exception):
+    pass

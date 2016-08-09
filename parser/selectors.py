@@ -359,9 +359,14 @@ class _Preprocessor(object):
     def preprocess(self, rule):
         rule = copy.deepcopy(rule)
 
-        for d, k, v in self.__iterspec(rule, exclude='clarify'):
-            if k[0] == '@':
-                self.__handle_tmpl(d, k, v)
+        while True:
+            try:
+                for d, k, v in self.__iterspec(rule, exclude='clarify'):
+                    if k[0] == '@':
+                        self.__handle_tmpl(d, k, v)
+                break
+            except parser.templates.common.ErrorRerun:
+                continue
 
         return rule
 
@@ -540,7 +545,9 @@ class _Compiler(object):
             t = js[unicode(i)]
             if test_set.intersection(t):
                 return i
-        raise ValueError('no one item with clarifies found')
+        raise ValueError(
+            'no one item with clarifies found in {0}'.format(js)
+        )
 
     def __reshape_js_base(self, js, terms_count):
         if terms_count is None:
