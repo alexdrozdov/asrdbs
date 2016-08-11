@@ -10,4 +10,5 @@ imgs/*
 output/*
 tags
 vim_session.vim
+*.bak
 
