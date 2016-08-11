@@ -78,7 +78,7 @@ class Preprocessor(object):
                     type(value)
                 )
             )
-        if not value.has_key('spec'):
+        if 'spec' not in value:
             raise PreprocessorError(
                 ctx,
                 'Include dict requires at least "spec" key to be specified'
@@ -129,9 +129,9 @@ class Preprocessor(object):
             ctx.pop_stack()
 
     def __validate_dict(self, ctx, d):
-        if not d.has_key('id'):
+        if 'id' not in d:
             raise PreprocessorError(ctx, "Required key 'id' is missing")
-        if not d.has_key('repeatable') and not d.has_key('required'):
+        if 'repeatable' not in d and 'required' not in d:
             raise PreprocessorError(
                 ctx,
                 "Required key 'repeatable' or 'required' are missing"

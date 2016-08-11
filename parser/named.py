@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import functools
 import common.config
 from common.singleton import singleton
 
@@ -29,9 +30,9 @@ class Named(object):
         if self.__reusable:
             return self.__objs[name]
         else:
-            if self.__objs.has_key(name):
+            if name in self.__objs:
                 return self.__objs[name]()
-            if self.__objs.has_key((name[0], None)):
+            if (name[0], None) in self.__objs:
                 return self.__objs[(name[0], None)]
             raise KeyError('Key {0}:{1} not found'.format(name[1], name[0]))
 
@@ -42,7 +43,7 @@ class _Templates(Named):
 
     def __load_templates(self):
         cfg = common.config.Config()
-        return reduce(
+        return functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda tmpl_dir: self.__load_module(tmpl_dir).load_templates(),
@@ -83,7 +84,7 @@ class SequentialFuncCall(object):
 
 
 def template(name, *args, **kwargs):
-    if kwargs.has_key('namespace'):
+    if 'namespace' in kwargs:
         namespace = kwargs['namespace']
     else:
         namespace = None

@@ -7,6 +7,7 @@ import copy
 import re
 import json
 import uuid
+import functools
 import parser.named
 import parser.relations
 import common.config
@@ -136,7 +137,7 @@ class Selector(object):
 
     def __list_rules(self):
         return dict(
-            reduce(
+            functools.reduce(
                 lambda x, y: x + y,
                 map(
                     lambda r: r.format('dict').items(),
@@ -160,7 +161,7 @@ class Selector(object):
             form.add_tag(t, 'morf')
 
     def __call__(self, *argc, **argv):
-        test_only = argv['test_only'] if argv.has_key('test_only') else False
+        test_only = argv['test_only'] if 'test_only' in argv else False
         return self.__apply(argc[0], test_only=test_only)
 
     def format(self, fmt):
@@ -168,7 +169,7 @@ class Selector(object):
         s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
             u' '.join(self.__clarifies)
         )
-        s += reduce(
+        s += functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
@@ -240,7 +241,7 @@ class MultiSelector(object):
 
     def __list_rules(self):
         return dict(
-            reduce(
+            functools.reduce(
                 lambda x, y: x + y,
                 map(
                     lambda r: r.format('dict').items(),
@@ -264,7 +265,7 @@ class MultiSelector(object):
             form.add_tag(tag_name, 'ctx')
 
     def __call__(self, *argc, **argv):
-        test_only = argv['test_only'] if argv.has_key('test_only') else False
+        test_only = argv['test_only'] if 'test_only' in argv else False
         return self.__apply(argc, test_only=test_only)
 
     def format(self, fmt):
@@ -272,7 +273,7 @@ class MultiSelector(object):
         s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
             u' '.join(self.__clarifies)
         )
-        s += reduce(
+        s += functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
@@ -313,7 +314,7 @@ class SelectorHub(object):
         self.__selectors.append(selector)
 
     def __apply(self, *argc, **argv):
-        return reduce(
+        return functools.reduce(
             lambda x, y: x or y,
             map(
                 lambda s: s(*argc, **argv),
@@ -473,7 +474,7 @@ class _Compiler(object):
         else:
             link_attrs = {}
 
-        rules = reduce(
+        rules = functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda (r, v): self.__mk_multi_rule(index, r, v),
@@ -576,7 +577,7 @@ class _Compiler(object):
         clarifies = self.__as_list(clarifies)
 
         clarifies.extend(self.__get_property_list(js, u'clarifies'))
-        rules = reduce(
+        rules = functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda (r, v): self.__mk_single_rule(r, v),
@@ -595,7 +596,7 @@ class _Compiler(object):
 
     def __tags(self, selectors):
         return sorted(list(set(
-            reduce(
+            functools.reduce(
                 lambda x, y: x + y,
                 map(
                     lambda s: s.get_tags(),
@@ -607,7 +608,7 @@ class _Compiler(object):
 
     def __get_property_list(self, js, name, default=None):
         v = [] if default is None else self.__as_list(default)
-        if js.has_key(name):
+        if name in js:
             v = self.__as_list(js[name])
         return v
 
@@ -688,7 +689,7 @@ class _Selectors(object):
     def __add_selectors(self, r):
         for s in r:
             for t in s.get_tags():
-                if self.__selectors.has_key(t):
+                if t in self.__selectors:
                     sh = self.__selectors[t]
                 else:
                     sh = SelectorHub(t)

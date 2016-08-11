@@ -26,17 +26,17 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
 
     def __iterall(self, l):
         for e in l:
-            if e.has_key('entries'):
+            if 'entries' in e:
                 for ee in self.__iterall(e['entries']):
                     yield ee
-            if e.has_key('uniq-items'):
+            if 'uniq-items' in e:
                 for ee in self.__iterall(e['uniq-items']):
                     yield ee
             yield e
 
     def __rule_matched(self, e, r):
         for k, v in r.items():
-            if not e.has_key(k):
+            if k not in e:
                 return False
             if re.match(v, e[k]) is None:
                 return False

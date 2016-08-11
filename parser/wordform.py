@@ -5,6 +5,7 @@
 import uuid
 import copy
 import traceback
+import functools
 import worddb.worddb
 from argparse import Namespace as ns
 from common.singleton import singleton
@@ -190,7 +191,7 @@ class _PredefinedFormats(object):
     def __fmt(self, fmt, *args):
         assert isinstance(fmt, dict) and args
         for a in args:
-            if not fmt.has_key(a):
+            if a not in fmt:
                 return {}
             fmt = fmt[a]
         return fmt
@@ -240,7 +241,7 @@ class _PredefinedFormats(object):
 
     def __style_get(self, style, key):
         for l in reversed(style):
-            if l.has_key(key):
+            if key in l:
                 return l[key]
         return None
 
@@ -345,7 +346,7 @@ class Term(object):
         )
 
     def add_tag(self, tag, layer):
-        assert self.__layers.has_key(layer) and layer != 'ro',\
+        assert layer in self.__layers and layer != 'ro',\
             '{0} is missing or ro'.format(layer)
 
         if tag not in self.__layers[layer]:
@@ -355,17 +356,17 @@ class Term(object):
 
     def has_tag(self, tag, layer=None):
         if layer is not None:
-            return self.__layers[layer].has_key(tag)
+            return tag in self.__layers[layer]
         for l in reversed(Term.layer_order):
-            if self.__layers[l].has_key(tag):
+            if tag in self.__layers[l]:
                 return True
         return False
 
     def add_property(self, property, layer, value):
-        assert self.__layers.has_key(layer) and layer != 'ro'
-        assert layer != 'w_once' or not self.__layers[layer].has_key(property)
+        assert layer in self.__layers and layer != 'ro'
+        assert layer != 'w_once' or property not in self.__layers[layer]
 
-        if self.__layers[layer].has_key(property) and \
+        if property in self.__layers[layer] and \
                 self.__layers[layer][property] == Restricted():
             return
 
@@ -382,7 +383,7 @@ class Term(object):
                 return self.__layers[layer][property]
         else:
             for l in reversed(Term.layer_order):
-                if self.__layers[l].has_key(property):
+                if property in self.__layers[l]:
                     return self.__layers[l][property]
         if missing_is_none:
             return None
@@ -395,7 +396,7 @@ class Term(object):
             self.__layers[layer][property] = Restricted()
             return
         for l in reversed(Term.layer_order):
-            if self.__layers[l].has_key(layer):
+            if layer in self.__layers[l]:
                 self.__layers[layer][property] = Restricted()
                 return
             self.__layers['ctx'][property] = Restricted()
@@ -928,7 +929,7 @@ class WordFormFabric(object):
         assert isinstance(info, list), u"No info avaible for {0}".format(word)
         for form in filter(
             lambda form: self.__validate_info(form),
-            reduce(
+            functools.reduce(
                 lambda x, y: x + y,
                 map(
                     lambda i: i['form'],

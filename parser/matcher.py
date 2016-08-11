@@ -34,11 +34,11 @@ class WordMatcher(object):
         self.__add_cmp(pos1_name, pos2_name, matcher)
 
     def __add_cmp(self, p1, p2, matcher):
-        if self.match_dict.has_key(p1):
+        if p1 in self.match_dict:
             d = self.match_dict[p1]
         else:
             d = self.match_dict[p1] = {}
-        if d.has_key(p2):
+        if p2 in d:
             d[p2].append(matcher)
         else:
             d[p2] = [matcher, ]

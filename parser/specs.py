@@ -6,6 +6,7 @@ import uuid
 import json
 import copy
 import re
+import functools
 import common.config
 import parser.wordform
 import parser.lang.common
@@ -52,19 +53,19 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         return self.__validate
 
     def __index_subentries(self, item, level):
-        if item.has_key("entries"):
+        if "entries" in item:
             for st in item["entries"]:
                 self.__set_state_uid(st)
                 self.__set_state_level(st, level)
                 self.__all_entries.append(st)
-                if st.has_key("entries") or st.has_key("uniq-items"):
+                if "entries" in st or "uniq-items" in st:
                     self.__index_subentries(st, level + 1)
-        if item.has_key("uniq-items"):
+        if "uniq-items" in item:
             for st in item["uniq-items"]:
                 self.__set_state_uid(st)
                 self.__set_state_level(st, level)
                 self.__all_entries.append(st)
-                if st.has_key("entries") or st.has_key("uniq-items"):
+                if "entries" in st or "uniq-items" in st:
                     self.__index_subentries(st, level + 1)
 
     def __index_all_entries(self):
@@ -74,7 +75,7 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
             self.__set_state_uid(st)
             self.__set_state_level(st, level)
             self.__all_entries.append(st)
-            if st.has_key("entries") or st.has_key("uniq-items"):
+            if "entries" in st or "uniq-items" in st:
                 self.__index_subentries(st, level + 1)
 
     def __create_entry_copy(self, entry, order, set_order=False, repeatable=False, required=False):
@@ -83,13 +84,13 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
             entry["id"] += "[{0}]".format(order)
         entry["repeatable"] = repeatable
         entry["required"] = required
-        if entry.has_key("entries"):
+        if "entries" in entry:
             entries = []
             for st in entry["entries"]:
                 sub_specs = self.__unroll_entry(st)
                 entries.extend(sub_specs)
             entry["entries"] = entries
-        if entry.has_key("uniq-items"):
+        if "uniq-items" in entry:
             entries = []
             for st in entry["uniq-items"]:
                 sub_specs = self.__unroll_entry(st)
@@ -98,7 +99,7 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         return entry
 
     def __unroll_entry(self, entry):
-        if not entry.has_key("repeatable") or not isinstance(entry["repeatable"], tuple):
+        if "repeatable" not in entry or not isinstance(entry["repeatable"], tuple):
             return [copy.deepcopy(entry), ]
 
         min_count = entry["repeatable"][0]
@@ -144,9 +145,9 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         l_list = self.__layers[layer]
         for st in subspec:
             l_list.append(st)
-            if st.has_key("entries"):
+            if "entries" in st:
                 self.__index_layer(st["entries"], layer=layer+1)
-            if st.has_key("uniq-items"):
+            if "uniq-items" in st:
                 self.__index_layer(st["uniq-items"], layer=layer+1)
 
     def __index_layers(self):
@@ -154,7 +155,7 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         self.__index_layer(self.__basic_spec)
 
     def __set_state_uid(self, state):
-        if state.has_key("uid"):
+        if "uid" in state:
             return
         state["uid"] = str(uuid.uuid1())
 
@@ -166,12 +167,12 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
 
     def __index_item_entries(self, item):
         l = []
-        if item.has_key("entries"):
+        if "entries" in item:
             for st in item["entries"]:
                 l.append(st)
                 self.__add_child_to_parent(st, item)
                 self.__index_item_entries(st)
-        if item.has_key("uniq-items"):
+        if "uniq-items" in item:
             for st in item["uniq-items"]:
                 l.append(st)
                 self.__add_child_to_parent(st, item)
@@ -195,7 +196,7 @@ class IterableSequenceSpec(parser.lang.common.SequenceSpec):
         return SequenceSpecIter(self.__all_entries)
 
     def get_parent(self, item):
-        if self.__parents.has_key(item["uid"]):
+        if item["uid"] in self.__parents:
             return self.__parents[item["uid"]]
         return None
 
@@ -256,7 +257,7 @@ class SpecCompiler(object):
             m = re.search('\$TAG\((.+?)\)', name)
             assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
             tag = m.group(1)
-            assert self.__local_spec_tags.has_key(tag), 'tag {0} not defined for spec {1}'.format(tag, self.__spec_name)
+            assert tag in self.__local_spec_tags, 'tag {0} not defined for spec {1}'.format(tag, self.__spec_name)
             return len(self.__local_spec_tags[tag])
         return 1
 
@@ -288,7 +289,7 @@ class SpecCompiler(object):
             assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
             tag = m.group(1)
 
-            assert self.__local_spec_tags.has_key(tag), 'Tried to resolve tag {0} for spec "{1}" without such tag'.format(
+            assert tag in self.__local_spec_tags, 'Tried to resolve tag {0} for spec "{1}" without such tag'.format(
                 tag,
                 self.__spec_name
             )
@@ -316,7 +317,7 @@ class SpecCompiler(object):
         if '$TAG' in name:
             name = self.__resolve_name_tag(ref_state, name, var_num)
         if '$INCAPSULATED' in name:
-            assert ref_state.has_key('include') and len(ref_state['include']) == 1
+            assert 'include' in ref_state and len(ref_state['include']) == 1
             name = name.replace('$INCAPSULATED', ref_state['include'][0])
         if '$THIS' in name:
             assert '$THIS' not in ref_state['id'], 'Recursive name with $THIS spec'
@@ -337,7 +338,7 @@ class SpecCompiler(object):
     def __add_name_remap(self, original, target):
         original = str(original)
         targets = []
-        if self.__name_remap.has_key(original):
+        if original in self.__name_remap:
             targets = self.__name_remap[original]
         if not isinstance(target, list):
             target = [target, ]
@@ -383,7 +384,7 @@ class SpecCompiler(object):
                     self.__add_name_remap(state.get_name(), a)
 
     def __get_tag_entries_list(self, tag_name):
-        if not self.__local_spec_tags.has_key(tag_name):
+        if tag_name not in self.__local_spec_tags:
             self.__local_spec_tags[tag_name] = []
         return self.__local_spec_tags[tag_name]
 
@@ -645,12 +646,12 @@ class SpecCompiler(object):
 
     def binding_needs_resolve(self, binding):
         assert isinstance(binding, RtMatchString)
-        if self.__name2state.has_key(str(binding)):
+        if str(binding) in self.__name2state:
             state = self.__name2state[str(binding)]
             if not state.is_container() and not state.is_uniq_container() and not state.includes_spec():
                 return False
             return True
-        if self.__name_remap.has_key(str(binding)):
+        if str(binding) in self.__name_remap:
             return True
         print self.__parent_spec_name
         print binding
@@ -659,7 +660,7 @@ class SpecCompiler(object):
 
     def resolve_binding(self, binding):
         assert isinstance(binding, RtMatchString)
-        if self.__name2state.has_key(str(binding)):
+        if str(binding) in self.__name2state:
             state = self.__name2state[str(binding)]
             if state.is_container():
                 raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for containers')
@@ -816,21 +817,21 @@ class SpecStateDef(object):
         self.__rtransitions = []
         self.__spec_dict = spec_dict
         self.__parent = parent
-        self.__is_container = spec_dict.has_key("entries")
-        self.__is_uniq_container = spec_dict.has_key("uniq-items")
+        self.__is_container = "entries" in spec_dict
+        self.__is_uniq_container = "uniq-items" in spec_dict
         self.__is_contained = False
         if self.__parent:
             self.__is_contained = True
-        self.__is_required = spec_dict.has_key("required") and spec_dict["required"]
-        self.__is_repeatable = spec_dict.has_key("repeatable") and spec_dict["repeatable"]
+        self.__is_required = "required" in spec_dict and spec_dict["required"]
+        self.__is_repeatable = "repeatable" in spec_dict and spec_dict["repeatable"]
         self.__is_local_final = False
-        self.__is_init = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.init
-        self.__is_fini = spec_dict.has_key("fsm") and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.fini
-        self.__is_virtual = spec_dict.has_key("virtual") and spec_dict["virtual"]
+        self.__is_init = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.init
+        self.__is_fini = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.fini
+        self.__is_virtual = "virtual" in spec_dict and spec_dict["virtual"]
         self.__uid = str(uuid.uuid1())
-        if spec_dict.has_key('include'):
+        if 'include' in spec_dict:
             self.__incapsulate_spec_name = spec_dict['include']['spec']
-            self.__static_only_include = spec_dict['include']['static-only'] if spec_dict['include'].has_key('static-only') else False
+            self.__static_only_include = spec_dict['include']['static-only'] if 'static-only' in spec_dict['include'] else False
         else:
             self.__incapsulate_spec_name = None
             self.__static_only_include = False
@@ -839,21 +840,21 @@ class SpecStateDef(object):
         self.__rt_rules = []
         self.__level = spec_dict['level']
         self.__glevel = compiler.get_level() + self.__level
-        if spec_dict.has_key('anchor') and isinstance(spec_dict['anchor'], list):
+        if 'anchor' in spec_dict and isinstance(spec_dict['anchor'], list):
             spec_dict['anchor'] = spec_dict['anchor'][0]
-        self.__is_local_anchor = spec_dict.has_key('anchor') and spec_dict['anchor'][1] in [
+        self.__is_local_anchor = 'anchor' in spec_dict and spec_dict['anchor'][1] in [
             parser.lang.defs.AnchorSpecs.local_spec_anchor,
             parser.lang.defs.AnchorSpecs.global_anchor
         ]
-        if spec_dict.has_key('anchor') and spec_dict['anchor'][1] == parser.lang.defs.AnchorSpecs.local_spec_tag:
+        if 'anchor' in spec_dict and spec_dict['anchor'][1] == parser.lang.defs.AnchorSpecs.local_spec_tag:
             self.__tag = spec_dict['anchor'][2]
         else:
             self.__tag = None
         self.__transitions_merged = False
-        self.__add_to_seq = spec_dict['add-to-seq'] if spec_dict.has_key('add-to-seq') else True
-        self.__reliability = spec_dict['reliability'] if spec_dict.has_key('reliability') else 1.0
-        self.__merges_with = set(spec_dict['merges-with']) if spec_dict.has_key('merges-with') else set()
-        self.__closed = spec_dict['closed'] if spec_dict.has_key('closed') else True
+        self.__add_to_seq = spec_dict['add-to-seq'] if 'add-to-seq' in spec_dict else True
+        self.__reliability = spec_dict['reliability'] if 'reliability' in spec_dict else 1.0
+        self.__merges_with = set(spec_dict['merges-with']) if 'merges-with' in spec_dict else set()
+        self.__closed = spec_dict['closed'] if 'closed' in spec_dict else True
         self.__fixed = True
 
     def get_name(self):
@@ -1046,7 +1047,7 @@ class SpecStateDef(object):
 
     def __create_rule_list(self, compiler, is_static, rule_list, target_list):
         for r in rule_list:
-            if self.__spec_dict.has_key(r):
+            if r in self.__spec_dict:
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
@@ -1079,7 +1080,7 @@ class SpecStateDef(object):
 
     def has_noncreated_rules(self):
         for r in SpecStateDef.all_rules:
-            if self.__spec_dict.has_key(r):
+            if r in self.__spec_dict:
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
@@ -1118,7 +1119,7 @@ class SpecStateDef(object):
             ) for rr in rule_def]
             for rr in rule_def:
                 assert not rr.created()
-            if not self.__spec_dict.has_key(r):
+            if r not in self.__spec_dict:
                 self.__spec_dict[r] = rule_def
             else:
                 if isinstance(self.__spec_dict[r], list):
@@ -1146,10 +1147,10 @@ class SpecStateDef(object):
         return len(set(SpecStateDef.dynamic_rules).intersection(self.__spec_dict.keys())) > 0
 
     def get_rules_list(self):
-        return {r: self.__spec_dict[r] for r in SpecStateDef.all_rules if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in SpecStateDef.all_rules if r in self.__spec_dict}
 
     def get_rt_rules_list(self):
-        return {r: self.__spec_dict[r] for r in SpecStateDef.dynamic_rules if self.__spec_dict.has_key(r)}
+        return {r: self.__spec_dict[r] for r in SpecStateDef.dynamic_rules if r in self.__spec_dict}
 
     def includes_spec(self):
         return self.__incapsulate_spec is not None
@@ -1866,7 +1867,7 @@ class MatcherContext(object):
 
     def __create_fcns(self, fcns):
         self.__fcns = {
-            target: fcns[source] if fcns.has_key(source) else default_fcn for source, target, default_fcn in MatcherContext.fcns_map
+            target: fcns[source] if source in fcns else default_fcn for source, target, default_fcn in MatcherContext.fcns_map
         }
 
     def set_sequences(self, sequences):
@@ -2587,7 +2588,7 @@ class SequenceSpecMatcher(object):
             g.generate(sp.get_compiled_spec().get_states(), file_name)
 
     def __select_most_complete(self, ctx):
-        max_entries = reduce(
+        max_entries = functools.reduce(
             lambda prev_max, msq:
                 msq.get_entry_count(
                     hidden=False,
@@ -2826,7 +2827,7 @@ class RtMatchEntry(object):
 
     @argres()
     def find_transitions(self, forms):
-        return reduce(
+        return functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda form:
@@ -2900,7 +2901,7 @@ class RtMatchEntry(object):
         return rule.apply_on(self, other_rtme) != RtRule.res_failed
 
     def has_attribute(self, name):
-        return self.__attributes.has_key(name)
+        return name in self.__attributes
 
     def get_attribute(self, name):
         return self.__attributes[name]
@@ -3294,7 +3295,7 @@ class RtVirtualEntry(object):
 
     @argres()
     def find_transitions(self, forms):
-        return reduce(
+        return functools.reduce(
             lambda x, y: x + y,
             map(
                 lambda form:

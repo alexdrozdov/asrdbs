@@ -45,9 +45,9 @@ class TemplateAt(parser.templates.common.SpecTemplate):
                     modified = True
 
     def __descend_dict(self, d):
-        if d.has_key('entries'):
+        if 'entries' in d:
             self.__iter_list(d['entries'])
-        if d.has_key('uniq-items'):
+        if 'uniq-items' in d:
             self.__iter_list(d['uniq-items'])
 
     def __call__(self, d):

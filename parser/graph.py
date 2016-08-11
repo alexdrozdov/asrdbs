@@ -263,7 +263,7 @@ class GraphGen(object):
         return self.__obj2id[obj]
 
     def obj_exists(self, obj):
-        return self.__obj2id.has_key(obj)
+        return obj in self.__obj2id
 
 
 class SequenceGraphGen(GraphGen):

@@ -95,7 +95,7 @@ class ShadowStats(object):
 
     def incr_load(self):
         self.__load_count += 1
-        self.__entry_count +=1
+        self.__entry_count += 1
         self.__hitcount = self.__get_object_count - self.__load_count
         self.__hitrate = float(self.__hitcount) / float(self.__get_object_count)
         self.__one_min.incr_load()
@@ -132,7 +132,7 @@ class ShadowStats(object):
 class Shadow(object):
     def __init__(self, lru_len=100000, no_reorder=False):
         self.__lru_max_len = lru_len
-        self.__no_reorder=no_reorder
+        self.__no_reorder = no_reorder
         self.__stats = ShadowStats(repr(type(self)), lru_len)
         self.reset()
 
@@ -209,7 +209,7 @@ class Shadow(object):
 
     def __get_object(self, objid, cache_none=True):
         self.__stats.incr_get_object()
-        if self.__cache.has_key(objid):
+        if objid in self.__cache:
             lru = self.__cache[objid]
             if lru != self.__lru_head and not self.__no_reorder:
                 self.__extract_lru(lru)

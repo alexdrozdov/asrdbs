@@ -13,7 +13,7 @@ class OutputPath(object):
         self.__defpath = os.path.join(self.__defpath, time.asctime().replace(' ', '_').replace(':', '-'))
 
     def get_output_dir(self, subpath):
-        if self.__pathes.has_key(subpath):
+        if subpath in self.__pathes:
             return self.__pathes[subpath]
         path = os.path.join(self.__defpath, subpath)
         if not os.path.exists(path):

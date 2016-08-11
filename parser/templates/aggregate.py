@@ -39,7 +39,7 @@ class TemplateAggregate(parser.templates.common.SpecTemplate):
             "add-to-seq": False,
         }
 
-        if not agg_open.has_key('anchor'):
+        if 'anchor' not in agg_open:
             agg_open['anchor'] = AnchorSpecs().Tag("agg-open")
             agg_close['action'] = AggregateSpecs().Close("agg-open")
         elif agg_open['anchor'][1] == 1:  # local_spec_anchor
