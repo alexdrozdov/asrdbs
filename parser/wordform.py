@@ -356,9 +356,21 @@ class Term(object):
 
     def has_tag(self, tag, layer=None):
         if layer is not None:
-            return tag in self.__layers[layer]
+            return tag in self.__layers[layer] and \
+                self.__layers[layer][tag] != Restricted()
         for l in reversed(Term.layer_order):
-            if tag in self.__layers[l]:
+            if tag in self.__layers[l] and \
+                    self.__layers[l][tag] != Restricted():
+                return True
+        return False
+
+    def restricted(self, tag, layer=None):
+        if layer is not None:
+            return tag in self.__layers[layer] and \
+                self.__layers[layer][tag] == Restricted()
+        for l in reversed(Term.layer_order):
+            if tag in self.__layers[l] and \
+                    self.__layers[l][tag] == Restricted():
                 return True
         return False
 
@@ -558,6 +570,9 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
     def has_tag(self, tag, layer=None):
         return self.term().has_tag(tag, layer)
 
+    def restricted(self, tag, layer=None):
+        return self.term().restricted(tag, layer)
+
     def add_property(self, property, layer, value):
         self.term().add_property(property, layer, value)
 
@@ -568,6 +583,9 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
             missing_is_none=missing_is_none,
             missing_is_missing=missing_is_missing
         )
+
+    def restrict_property(self, property, layer=None):
+        self.term().restrict_property(property, layer)
 
     def format(self, format_spec):
         if isinstance(format_spec, (str, unicode)):

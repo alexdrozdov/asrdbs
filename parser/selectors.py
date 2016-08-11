@@ -255,9 +255,15 @@ class MultiSelector(object):
         form = forms[self.__index]
         if form.has_tag(tag) or form.has_tag(tag + tag_suffix):
             return SelectorRes(True)
+        if form.restricted(tag) or form.restricted(tag + tag_suffix):
+            return SelectorRes(False)
         selector = Selectors()[tag]
         # fixed_index is required by SelectorHub with single form Selector
-        return selector.invoke(*forms, fixed_index=self.__index)
+        r = selector.invoke(*forms, fixed_index=self.__index)
+        if not r:
+            # Here we can be shure this tag is inapplicable
+            form.restrict_property(tag + tag_suffix)
+        return r
 
     def __set_tags(self, form, tag_suffix):
         for t in self.__tags:
