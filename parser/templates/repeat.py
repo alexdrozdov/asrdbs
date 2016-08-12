@@ -30,8 +30,8 @@ class TemplateRepeat(parser.templates.common.SpecTemplate):
                     },
                 }
         elif isinstance(separator, dict):
-            optional = separator.has_key('always') and not separator['always']
-            separator = separator['separator'] if separator.has_key('separator') else None
+            optional = 'always' in separator and not separator['always']
+            separator = separator['separator'] if 'separator' in separator else None
             if separator is None:
                 separator = \
                     {

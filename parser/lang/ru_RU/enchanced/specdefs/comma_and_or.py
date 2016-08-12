@@ -24,12 +24,12 @@ class CommaAndOrSpec(SequenceSpec):
                     {
                         "@id": "and",
                         "@inherit": ["once", "union"],
-                        "@word": [u'и', ],
+                        "@word": ['и', ],
                     },
                     {
                         "@id": "or",
                         "@inherit": ["once", "union"],
-                        "@word": [u'или', ],
+                        "@word": ['или', ],
                     }
                 ]
             }

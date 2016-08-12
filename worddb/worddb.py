@@ -3,7 +3,7 @@
 
 
 import os
-import base
+from . import base
 
 
 class Worddb(base.Worddb):

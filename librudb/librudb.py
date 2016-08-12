@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import base
+from . import base
 
 
 class Librudb(base.Librudb):

@@ -14,7 +14,7 @@ class ForEachSpec(parser.templates.common.SpecTemplate):
         r = []
         for i, item in enumerate(items):
             p = copy.deepcopy(prototype)
-            for k, v in item.items():
+            for k, v in list(item.items()):
                 if k in p and isinstance(p[k], list):
                     p[k].extend(v)
                 else:

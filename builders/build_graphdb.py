@@ -41,7 +41,7 @@ def execute(opts):
         if not os.path.exists(opts.worddb):
             raise ValueError('File ' + opts.worddb + ' not found')
         wddb = adaptors.wordb.WorddbBlobsAdapter(opts.worddb)
-        gdb.add_alphabet(u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+        gdb.add_alphabet("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
         gdb.add_words(wddb, max_count=opts.limit)
     if opts.hardlinks:
         gdb.generate_hardlinks(max_count=opts.limit)

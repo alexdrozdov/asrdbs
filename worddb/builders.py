@@ -3,7 +3,7 @@
 
 
 import json
-import base
+from . import base
 import common.shadow
 import traceback
 import gc
@@ -12,68 +12,68 @@ import gc
 class Forms:
     terms = {
         "parts_of_speech": {
-            "noun": u"сущ",
-            "adjective": u"прл",
-            "verb": u"гл",
-            "participal": u"прч",
-            "transgressive": u"дееп",
-            "union": [u"союз", u"межд", u"предик"],
-            "particle": u"част",
-            "numeral": u"числ",
-            "pronoun": u"мест",
-            "adverb": u"нар",
-            "preposition": u"предл",
-            "inp": u"ввод",
+            "noun": "сущ",
+            "adjective": "прл",
+            "verb": "гл",
+            "participal": "прч",
+            "transgressive": "дееп",
+            "union": ["союз", "межд", "предик"],
+            "particle": "част",
+            "numeral": "числ",
+            "pronoun": "мест",
+            "adverb": "нар",
+            "preposition": "предл",
+            "inp": "ввод",
         },
 
         "count": {
-            "singilar": u"ед",
-            "plural": u"мн"
+            "singilar": "ед",
+            "plural": "мн"
         },
 
         "gender": {
-            "male": u"муж",
-            "female": u"жен",
-            "neuter": u"ср"
+            "male": "муж",
+            "female": "жен",
+            "neuter": "ср"
         },
 
         "animation": {
-            "animated": u"одуш",
-            "inanimated": u"неод"
+            "animated": "одуш",
+            "inanimated": "неод"
         },
 
         "case": {
-            "nominative": u"им",
-            "genitive": u"род",
-            "dative": u"дат",
-            "accusative": u"вин",
-            "ablative": u"тв",
-            "prepositional": u"пр"
+            "nominative": "им",
+            "genitive": "род",
+            "dative": "дат",
+            "accusative": "вин",
+            "ablative": "тв",
+            "prepositional": "пр"
         },
 
         "verb_form": {
-            "perfect": u"несов",
-            "imperfect": u"сов"
+            "perfect": "несов",
+            "imperfect": "сов"
         },
 
         "time": {
-            "infinitive": u"инф",
-            "past": u"прош",
-            "present": u"наст",
-            "future": u"буд"
+            "infinitive": "инф",
+            "past": "прош",
+            "present": "наст",
+            "future": "буд"
         },
 
         "clause": {
-            "imperative": u"пов",
-            "indicative": u"изъяв"
+            "imperative": "пов",
+            "indicative": "изъяв"
         }
     }
 
     def __init__(self):
         self.transforms = {}
         self.unknown = {}
-        for term_name, term_values in Forms.terms.items():
-            for term_value, term_code in term_values.items():
+        for term_name, term_values in list(Forms.terms.items()):
+            for term_value, term_code in list(term_values.items()):
                 if isinstance(term_code, list):
                     for c in term_code:
                         self.transforms[c] = {"term": term_name, "value": term_value, "code": c}
@@ -91,15 +91,15 @@ class Forms:
                 term = self.transforms[i]
                 res[term["term"]] = term["value"]
             except:
-                if self.unknown.has_key(i):
+                if i in self.unknown:
                     self.unknown[i] += 1
                 else:
                     self.unknown[i] = 1
         return res
 
     def print_unknowns(self):
-        for k, v in self.unknown.items():
-            print k.encode("utf8"), v
+        for k, v in list(self.unknown.items()):
+            print(k.encode("utf8"), v)
 
 
 class MorfWordGroup(object):
@@ -304,8 +304,8 @@ class WorddbBuilder(base.Worddb):
         try:
             pos = word_group.primary[1]['parts_of_speech']
         except:
-            print traceback.format_exc()
-            print word_group.primary[0], word_group.primary[1]
+            print(traceback.format_exc())
+            print(word_group.primary[0], word_group.primary[1])
             return
         info = {'word': word}
         info['pos_info'] = word_group.primary[1]
@@ -316,7 +316,7 @@ class WorddbBuilder(base.Worddb):
         self.commit()
 
     def __build_word_index(self):
-        print "Building words index..."
+        print("Building words index...")
         self.execute('CREATE INDEX IF NOT EXISTS words_idx ON words (word) ;')
         self.execute('CREATE INDEX IF NOT EXISTS words_root_idx ON words (root) ;')
         self.execute('CREATE INDEX IF NOT EXISTS words_class_idx ON words (class_id) ;')
@@ -324,28 +324,28 @@ class WorddbBuilder(base.Worddb):
         self.commit()
 
     def __drop_word_index(self):
-        print "Dropping words index..."
+        print("Dropping words index...")
         self.execute('DROP INDEX IF EXISTS words_idx;')
         self.execute('DROP INDEX IF EXISTS words_root_idx;')
         self.execute('DROP INDEX IF EXISTS words_class_idx;')
         self.execute('DROP INDEX IF EXISTS primaries_idx;')
 
     def __build_wordlist_index(self):
-        print "Building wordlist index..."
+        print("Building wordlist index...")
         self.execute('CREATE INDEX IF NOT EXISTS wordslist_idx ON wordlist (word) ;')
         self.commit()
 
     def __recreate_wordlist(self):
-        print "Dropping wordlist index..."
+        print("Dropping wordlist index...")
         self.execute('DROP INDEX IF EXISTS wordlist_idx;')
         self.execute('DROP TABLE IF EXISTS wordlist;')
         self.execute('CREATE TABLE IF NOT EXISTS wordlist (uword_id INTEGER PRIMARY KEY, word TEXT, word_ids TEXT, cnt INTEGER, UNIQUE(word));')
 
     def build_wordlist(self, max_count=None):
-        print "Building full word list..."
+        print("Building full word list...")
         self.__recreate_wordlist()
 
-        print "Selecting complete word list..."
+        print("Selecting complete word list...")
         query = 'SELECT DISTINCT word FROM words;'
         self.execute(query)
         words = self.fetchall()
@@ -360,7 +360,7 @@ class WorddbBuilder(base.Worddb):
 
             word_cnt += 1
             if word_cnt % print_step == 0:
-                print "Ready", word_cnt*100/word_count, "%"
+                print("Ready", word_cnt*100/word_count, "%")
 
         self.__build_wordlist_index()
 
@@ -428,7 +428,7 @@ class WorddbBuilder(base.Worddb):
                 self.add_primary(wf)
                 wf = MorfWordGroup()
                 if count % 1000 == 0:
-                    print "Inserted", count, "lines"
+                    print("Inserted", count, "lines")
                 continue
 
             w, i = self.line_to_form(line)
@@ -472,34 +472,34 @@ class OptimizedDbBuilder(common.db.Db):
         self.execute('INSERT INTO word_blobs (word, word_id, blob) VALUES (?, ?, ?)', (word, word_id, blob))
 
     def __drop_optimized_table(self):
-        print "Dropping existing optimized tables..."
+        print("Dropping existing optimized tables...")
         self.execute('DROP INDEX IF EXISTS word_blobs_bw_idx;')
         self.execute('DROP INDEX IF EXISTS word_blobs_bi_idx;')
         self.execute('DROP TABLE IF EXISTS word_blobs;')
         self.commit()
 
-        print "Running vacuum..."
+        print("Running vacuum...")
         self.execute('VACUUM;')
         self.commit()
 
     def __create_optimized_table(self):
-        print "Creating new optimized tables..."
+        print("Creating new optimized tables...")
         self.execute('CREATE TABLE IF NOT EXISTS word_blobs (word TEXT, word_id INTEGER, blob TEXT);')
         self.commit()
 
     def __disable_synchronous_mode(self):
-        print "Disabling synchronous mode..."
+        print("Disabling synchronous mode...")
         self.mksync()
 
     def __build_index(self):
-        print "Creating index on words..."
+        print("Creating index on words...")
         self.execute('CREATE INDEX IF NOT EXISTS word_blobs_bw_idx ON word_blobs (word) ;')
-        print "Creating index on word ids..."
+        print("Creating index on word ids...")
         self.execute('CREATE INDEX IF NOT EXISTS word_blobs_bi_idx ON word_blobs (word_id) ;')
         self.commit()
 
     def __build_blobs(self, max_count=None, chunk_size=10000):
-        print "Building word blobs..."
+        print("Building word blobs...")
         offset = 0
         while True:
             self.execute('SELECT word, uword_id FROM wordlist LIMIT ? OFFSET ?;', (chunk_size, offset))
@@ -513,12 +513,12 @@ class OptimizedDbBuilder(common.db.Db):
                 self.__insert_blob(word, uword_id, blob)
             self.commit()
 
-            print offset, " entries complete"
+            print(offset, " entries complete")
             if res_len < chunk_size or (max_count is not None and max_count <= offset):
                 break
 
     def build(self, max_count=None):
-        print "Started to build optimized table"
+        print("Started to build optimized table")
         self.__drop_optimized_table()
         self.__create_optimized_table()
         self.__disable_synchronous_mode()
@@ -534,12 +534,12 @@ class WorddbCounter(common.shadow.Shadow, common.db.Db):
 
     def __log_progress(self, cnt):
         if cnt % 1000 == 0:
-            print "Processed", cnt, "words"
+            print("Processed", cnt, "words")
         if cnt % 5000000 == 0:
-            print "Flushing primaries..."
+            print("Flushing primaries...")
             self.__worddb.flush_primaries()
         if cnt % 100000 == 0:
-            print "Running gc..."
+            print("Running gc...")
             gc.collect()
 
     def add_words(self, words_iter, max_count=None):
@@ -550,7 +550,7 @@ class WorddbCounter(common.shadow.Shadow, common.db.Db):
         while words_iter.has_data() and (max_count is None or count < max_count):
             words = words_iter.get()
             if len(words) < 1:
-                print "Failed to get next word", fail_cnt
+                print("Failed to get next word", fail_cnt)
                 fail_cnt += 1
                 if fail_cnt > 10:
                     break
@@ -603,7 +603,7 @@ class WordClassesBuilder(base.WordClasses):
         self.id_to_json[cid] = json_info
 
     def get_class_id(self, json_info):
-        if self.json_to_id.has_key(json_info):
+        if json_info in self.json_to_id:
             return self.json_to_id[json_info]
         self.add_class(json_info)
         return self.json_to_id[json_info]

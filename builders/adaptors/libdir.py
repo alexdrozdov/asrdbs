@@ -17,7 +17,7 @@ class LibdirAdapter(object):
         self.__pos = 0
 
     def __load(self):
-        print 'Loading dir list file ' + self.__listfile + '...'
+        print('Loading dir list file ' + self.__listfile + '...')
         with open(self.__listfile) as f:
             self.__file_list = f.readlines()
         self.__len = len(self.__file_list)

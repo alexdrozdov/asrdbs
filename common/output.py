@@ -25,7 +25,7 @@ class OutputPath(object):
 
     def get_output_file(self, subpath, filename):
         if isinstance(subpath, list):
-            subpath = filter(lambda e: e is not None, subpath)
+            subpath = [e for e in subpath if e is not None]
             subpath = os.path.join(*subpath)
         path = self.get_output_dir(subpath)
         return os.path.join(path, filename)

@@ -17,5 +17,5 @@ if __name__=="__main__":
     # ts = simulate_words.TextSimulator(simulate_words.LetterReplaceProbabilities())
     # ts.simulate(u"коробка", simulate_words.FakeTrackSequencer())
     # ts.simulate(u"таран", tseq)
-    ts.simulate_events(u"таран", tseq)
+    ts.simulate_events("таран", tseq)
     tseq.print_results()

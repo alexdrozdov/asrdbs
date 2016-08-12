@@ -74,10 +74,7 @@ class EqualPropsSpec(parser.templates.common.SpecTemplate):
 
     def __call__(self, body):
         ep = body.pop('@equal-properties')
-        body['equal-properties'] = map(
-            lambda (other_indx, s): RelationsSpecs().EqualProps(int(other_indx), s),
-            ep.items()
-        )
+        body['equal-properties'] = [RelationsSpecs().EqualProps(int(other_indx_s[0]), other_indx_s[1]) for other_indx_s in list(ep.items())]
 
 
 class PositionSpec(parser.templates.common.SpecTemplate):
@@ -86,10 +83,7 @@ class PositionSpec(parser.templates.common.SpecTemplate):
 
     def __call__(self, body):
         pr = body.pop('@position')
-        body['position'] = map(
-            lambda (other_indx, s): RelationsSpecs().Position(int(other_indx), s),
-            pr.items()
-        )
+        body['position'] = [RelationsSpecs().Position(int(other_indx_s1[0]), other_indx_s1[1]) for other_indx_s1 in list(pr.items())]
 
 
 class LinkSpec(parser.templates.common.SpecTemplate):

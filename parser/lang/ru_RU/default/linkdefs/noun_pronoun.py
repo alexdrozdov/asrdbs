@@ -18,7 +18,7 @@ class RuleCase(PosMatchRule):
                 return possibleTrue(self.get_name())
             return independentFalse(self.get_name())
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
         return possibleTrue(self.get_name())
 
 

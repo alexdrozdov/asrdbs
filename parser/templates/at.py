@@ -39,7 +39,7 @@ class TemplateAt(parser.templates.common.SpecTemplate):
             modified = False
             first_run = False
             self.__descend_dict(d)
-            for k in d.keys():
+            for k in list(d.keys()):
                 if k[0] == '@':
                     self.__handle_key_tmpl(d, k)
                     modified = True

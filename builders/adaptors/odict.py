@@ -18,7 +18,7 @@ class OdictAdapter(object):
         self.__pos = 0
 
     def __load(self):
-        print 'Loading odict ' + self.__odict_filename + '...'
+        print('Loading odict ' + self.__odict_filename + '...')
         with open(self.__odict_filename) as f:
             self.__odict = pickle.load(f)
             self.__len = len(self.__odict)

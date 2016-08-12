@@ -17,7 +17,7 @@ class SentGraph(object):
 
         tmp_file = outfile + '.tmp.graph'
         with open(tmp_file, 'w') as f:
-            f.write(s.encode('utf8'))
+            f.write(s)
 
         os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
 
@@ -28,16 +28,16 @@ class SentGraphGen(object):
         self.__last_id = 0
 
     def __dict_to_istr(self, d, offset=0):
-        r = u''
-        if isinstance(d, unicode) or isinstance(d, str):
+        r = ''
+        if isinstance(d, str) or isinstance(d, str):
             d = json.loads(d)
-        for k, v in d.items():
-            r += u'  ' * offset + k + ': '
+        for k, v in list(d.items()):
+            r += '  ' * offset + k + ': '
             if isinstance(v, list):
                 r += '['
                 for vv in v:
                     r += self.__dict_to_istr(vv, offset=offset+1)
-                r += u'  ' * offset + ']\l'
+                r += '  ' * offset + ']\l'
             else:
                 r += str(v) + "\l"
         return r
@@ -59,11 +59,11 @@ class SentGraphGen(object):
             style = "filled"
         else:
             style = "invisible"
-        s = u'\t{0} [label = "{1}", shape="octagon", style="{2}", fillcolor="orchid"];\r\n'.format(self.__get_obj_id(l), self.__dict_to_istr(l.get_rule().explain_str()), style)
+        s = '\t{0} [label = "{1}", shape="octagon", style="{2}", fillcolor="orchid"];\r\n'.format(self.__get_obj_id(l), self.__dict_to_istr(l.get_rule().explain_str()), style)
         return s
 
     def __gen_links(self, form, subgraph=None):
-        s = u''
+        s = ''
         try:
             for sl in form.get_slaves():
                 if subgraph is None:
@@ -72,15 +72,15 @@ class SentGraphGen(object):
                     style = "filled"
                 else:
                     style = "invis"
-                s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(self.__get_obj_id(form), self.__get_obj_id(sl[1]), self.__get_obj_id(sl[0]), style)
+                s += '\t{0}->{1}->{2} [style="{3}"];\r\n'.format(self.__get_obj_id(form), self.__get_obj_id(sl[1]), self.__get_obj_id(sl[0]), style)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
         return s
 
     def __gen_subgraph(self, e, subgraph=None):
-        s = u'subgraph cluster_{0} {{\r\n'.format(self.__get_obj_id(e))
-        s += u'\tnode [shape="box", style="filled", fillcolor="yellow", fontcolor="black"];\r\n'
-        s += u'\tlabel = "{0}";\r\n'.format(e.get_word())
+        s = 'subgraph cluster_{0} {{\r\n'.format(self.__get_obj_id(e))
+        s += '\tnode [shape="box", style="filled", fillcolor="yellow", fontcolor="black"];\r\n'
+        s += '\tlabel = "{0}";\r\n'.format(e.get_word())
         for f in e.get_forms():
             if subgraph is None:
                 style = "filled"
@@ -88,8 +88,8 @@ class SentGraphGen(object):
                 style = "filled"
             else:
                 style = "invisible"
-            s += u'\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(f), f.format_info(crlf=True), style)
-        s += u'}\r\n'
+            s += '\t"{0}" [label="{1}", style="{2}"];\r\n'.format(self.__get_obj_id(f), f.format_info(crlf=True), style)
+        s += '}\r\n'
         return s
 
     def generate(self, entries, subgraph=None):
@@ -100,7 +100,7 @@ class SentGraphGen(object):
                 for l in f.get_slaves():
                     self.__add_obj(l[1])
 
-        s = u'digraph D {\r\n'
+        s = 'digraph D {\r\n'
         for e in entries:
             s += self.__gen_subgraph(e, subgraph)
 
@@ -113,7 +113,7 @@ class SentGraphGen(object):
                 for l in f.get_slaves():
                     s += self.__gen_link_label(l[1], subgraph)
 
-        s += u'}\r\n'
+        s += '}\r\n'
 
         return s
 
@@ -128,7 +128,7 @@ class SpecGraph(object):
 
         tmp_file = outfile + '.tmp.graph'
         with open(tmp_file, 'w') as f:
-            f.write(s.encode('utf8'))
+            f.write(s)
 
         os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
 
@@ -149,7 +149,7 @@ class SpecGraphGen(object):
         return self.__obj2id[obj]
 
     def __gen_links(self, st):
-        s = u''
+        s = ''
         for trs in st.get_transitions():
             try:
                 to = trs.get_to()
@@ -157,10 +157,10 @@ class SpecGraphGen(object):
                 n_trs = self.__get_obj_id(trs)
                 n_from = self.__get_obj_id(st)
                 n_to = self.__get_obj_id(to)
-                s += u'\t{0}->{1}->{2} [style="{3}"];\r\n'.format(n_from, n_trs, n_to, style)
+                s += '\t{0}->{1}->{2} [style="{3}"];\r\n'.format(n_from, n_trs, n_to, style)
             except:
-                print 'state name: {0}, trs name: {1}'.format(st.get_name(), to.get_name())
-                print traceback.format_exc()
+                print('state name: {0}, trs name: {1}'.format(st.get_name(), to.get_name()))
+                print(traceback.format_exc())
         return s
 
     def __gen_state(self, st):
@@ -180,11 +180,11 @@ class SpecGraphGen(object):
             color = "yellow"
         elif st.is_fini():
             color = "orchid"
-        return u'\t"{0}" [label=< {1} >, style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), label, style, color)
+        return '\t"{0}" [label=< {1} >, style="{2}", fillcolor="{3}"];\r\n'.format(self.__get_obj_id(st), label, style, color)
 
     def __gen_trs(self, trs):
         label = trs.get_levelpath()
-        return u'\t"{0}" [label="{1}", style="filled"];\r\n'.format(self.__get_obj_id(trs), label)
+        return '\t"{0}" [label="{1}", style="filled"];\r\n'.format(self.__get_obj_id(trs), label)
 
     def generate(self, states):
         self.__trs = []
@@ -196,7 +196,7 @@ class SpecGraphGen(object):
                 self.__add_obj(trs)
                 self.__trs.append(trs)
 
-        s = u'digraph D {\r\n'
+        s = 'digraph D {\r\n'
         for st in states:
             s += self.__gen_state(st)
 
@@ -206,7 +206,7 @@ class SpecGraphGen(object):
         for st in states:
             s += self.__gen_links(st)
 
-        s += u'}\r\n'
+        s += '}\r\n'
 
         return s
 
@@ -221,7 +221,7 @@ class SequenceGraph(object):
 
         tmp_file = outfile + '.tmp.graph'
         with open(tmp_file, 'w') as f:
-            f.write(s.encode('utf8'))
+            f.write(s)
 
         os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
 
@@ -232,24 +232,24 @@ class GraphGen(object):
         self.__last_id = 0
 
     def dict_to_istr(self, d, offset=0):
-        r = u''
-        if isinstance(d, unicode) or isinstance(d, str):
+        r = ''
+        if isinstance(d, str) or isinstance(d, str):
             d = json.loads(d)
         if isinstance(d, dict):
-            r += u'  ' * offset + '{\l'
-            for k, v in d.items():
-                r += u'  ' * (offset + 1) + k + ':'
+            r += '  ' * offset + '{\l'
+            for k, v in list(d.items()):
+                r += '  ' * (offset + 1) + k + ':'
                 if isinstance(v, list):
                     r += '\l'
                     r += self.dict_to_istr(v, offset=offset+1)
                 else:
                     r += ' ' + str(v) + '\l'
-            r += u'  ' * offset + '}\l'
+            r += '  ' * offset + '}\l'
         elif isinstance(d, list):
-            r += u'  ' * offset + '[\l'
+            r += '  ' * offset + '[\l'
             for dd in d:
                 r += self.dict_to_istr(dd, offset=offset+1)
-            r += u'  ' * offset + ']\l'
+            r += '  ' * offset + ']\l'
         return r
 
     def __mkid(self, iid):
@@ -272,7 +272,7 @@ class SequenceGraphGen(GraphGen):
 
     def __gen_link(self, link):
         s = (
-            u'\t{0} ['
+            '\t{0} ['
             'label =< {1} >, '
             'shape="plaintext", '
             'style="filled", '
@@ -285,7 +285,7 @@ class SequenceGraphGen(GraphGen):
 
     def __gen_entry(self, entry):
         s = (
-            u'\t"{0}" ['
+            '\t"{0}" ['
             'label=< {1} >, '
             'shape="plaintext", '
             'style="filled", '
@@ -297,14 +297,14 @@ class SequenceGraphGen(GraphGen):
         return s
 
     def __link_entries(self, link):
-        s = u'\t{0}->{1}->{2} [style="filled"];\r\n'.format(
+        s = '\t{0}->{1}->{2} [style="filled"];\r\n'.format(
             self.get_obj_id(link.get_master()),
             self.get_obj_id(link),
             self.get_obj_id(link.get_slave()))
         return s
 
     def generate(self, sequence):
-        s = u'digraph D {\r\n'
+        s = 'digraph D {\r\n'
 
         for e in sequence.get_entries(hidden=False):
             self.add_obj(e.get_uniq())
@@ -317,7 +317,7 @@ class SequenceGraphGen(GraphGen):
         for l in sequence.get_links(hidden=False):
             s += self.__link_entries(l)
 
-        s += u'}\r\n'
+        s += '}\r\n'
 
         return s
 
@@ -332,7 +332,7 @@ class SelectorGraph(object):
 
         tmp_file = outfile + '.tmp.graph'
         with open(tmp_file, 'w') as f:
-            f.write(s.encode('utf8'))
+            f.write(s)
 
         os.system('dot -T{0} {1} -o {2}'.format(self.__out_type, tmp_file, outfile))
 
@@ -342,15 +342,15 @@ class SelectorGraphGen(GraphGen):
         super(SelectorGraphGen, self).__init__()
 
     def __gen_selector(self, selector):
-        label = u'<TABLE>'
+        label = '<TABLE>'
         tags = ' '.join(selector.get_tags())
-        label += u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(tags)
+        label += '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(tags)
 
         label += selector.format('dot-html')
 
-        label += u'</TABLE>'
+        label += '</TABLE>'
 
-        s = u'\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
+        s = '\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
             self.get_obj_id(selector.get_uniq()),
             label)
         return s
@@ -363,7 +363,7 @@ class SelectorGraphGen(GraphGen):
     #     return s
 
     def generate(self, selectors):
-        s = u'digraph D {\r\n'
+        s = 'digraph D {\r\n'
 
         for hub in selectors:
             for selector in hub:
@@ -372,6 +372,6 @@ class SelectorGraphGen(GraphGen):
                 self.add_obj(selector.get_uniq())
                 s += self.__gen_selector(selector)
 
-        s += u'}\r\n'
+        s += '}\r\n'
 
         return s

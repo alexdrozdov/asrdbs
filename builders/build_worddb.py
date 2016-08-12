@@ -48,7 +48,7 @@ def execute(opts):
         if not os.path.exists(opts.txt):
             raise ValueError('File ' + opts.txt + ' not found')
         wdtxt = adaptors.wordtxt.WordtxtAdapter(opts.txt)
-        wddb.add_alphabet(u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+        wddb.add_alphabet("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
         wddb.add_words(wdtxt, max_count=opts.limit)
     if opts.wordlist:
         wddb.build_wordlist(max_count=opts.limit)

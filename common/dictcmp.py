@@ -13,35 +13,23 @@ class GraphCmp(object):
         self.__xpaths = xpaths
 
         self.__d_nodes_hashs = dict(
-            map(
-                lambda n:
-                (self.__node_hash_fcn(n), n),
-                filter(
+            [(self.__node_hash_fcn(n), n) for n in list(filter(
                     self.__filter_fcn,
                     self.__d['nodes']
-                )
-            )
+                ))]
         )
 
         self.__d_uniq2hashs = dict(
-            map(
-                lambda (h, n):
-                    (n['uniq'], h),
-                self.__d_nodes_hashs.items()
-            )
+            [(h_n[1]['uniq'], h_n[0]) for h_n in list(self.__d_nodes_hashs.items())]
         )
 
         self.__d_edges_hashs = set(
-            map(
-                lambda e:
-                    hash(
+            [hash(
                         (
                             self.__d_uniq2hashs[e['from']],
                             self.__d_uniq2hashs[e['to']]
                         )
-                    ),
-                self.__d['edges']
-            )
+                    ) for e in self.__d['edges']]
         )
 
     def __true(self, *args):
@@ -77,7 +65,7 @@ class GraphCmp(object):
             if not self.__filter_fcn(n1):
                 continue
             h1 = self.__node_hash_fcn(n1)
-            if not other.__d_nodes_hashs.has_key(h1):
+            if h1 not in other.__d_nodes_hashs:
                 return False
         return True
 

@@ -3,85 +3,85 @@
 
 import os
 import traceback
-import base
+from . import base
 
 
 class LetterReplaceProbabilities:
     def __init__(self):
         self.originals = {}
-        letters = u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+        letters = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
         for l in letters:
             self.originals[l] = {}
 
-        self.originals[u"а"][u"о"] = 0.2
-        self.originals[u"а"][u"у"] = 0.2
-        self.originals[u"а"][u"е"] = 0.2
-        self.originals[u"а"][u"и"] = 0.2
+        self.originals["а"]["о"] = 0.2
+        self.originals["а"]["у"] = 0.2
+        self.originals["а"]["е"] = 0.2
+        self.originals["а"]["и"] = 0.2
 
-        self.originals[u"о"][u"а"] = 0.2
-        self.originals[u"о"][u"у"] = 0.2
-        self.originals[u"о"][u"е"] = 0.2
-        self.originals[u"о"][u"и"] = 0.2
+        self.originals["о"]["а"] = 0.2
+        self.originals["о"]["у"] = 0.2
+        self.originals["о"]["е"] = 0.2
+        self.originals["о"]["и"] = 0.2
 
-        self.originals[u"у"][u"о"] = 0.2
-        self.originals[u"у"][u"а"] = 0.2
-        self.originals[u"у"][u"е"] = 0.2
-        self.originals[u"у"][u"и"] = 0.2
+        self.originals["у"]["о"] = 0.2
+        self.originals["у"]["а"] = 0.2
+        self.originals["у"]["е"] = 0.2
+        self.originals["у"]["и"] = 0.2
 
-        self.originals[u"е"][u"о"] = 0.2
-        self.originals[u"е"][u"у"] = 0.2
-        self.originals[u"е"][u"а"] = 0.2
-        self.originals[u"е"][u"и"] = 0.2
+        self.originals["е"]["о"] = 0.2
+        self.originals["е"]["у"] = 0.2
+        self.originals["е"]["а"] = 0.2
+        self.originals["е"]["и"] = 0.2
 
-        self.originals[u"и"][u"о"] = 0.2
-        self.originals[u"и"][u"у"] = 0.2
-        self.originals[u"и"][u"е"] = 0.2
-        self.originals[u"и"][u"а"] = 0.2
+        self.originals["и"]["о"] = 0.2
+        self.originals["и"]["у"] = 0.2
+        self.originals["и"]["е"] = 0.2
+        self.originals["и"]["а"] = 0.2
 
-        self.originals[u"б"][u"п"] = 0.1
-        self.originals[u"п"][u"б"] = 0.1
+        self.originals["б"]["п"] = 0.1
+        self.originals["п"]["б"] = 0.1
 
-        self.originals[u"с"][u"з"] = 0.1
-        self.originals[u"з"][u"с"] = 0.1
+        self.originals["с"]["з"] = 0.1
+        self.originals["з"]["с"] = 0.1
 
-        self.originals[u"в"][u"ф"] = 0.1
-        self.originals[u"ф"][u"в"] = 0.1
+        self.originals["в"]["ф"] = 0.1
+        self.originals["ф"]["в"] = 0.1
 
-        self.originals[u"а"][u"а"] = 1.0
-        self.originals[u"б"][u"б"] = 1.0
-        self.originals[u"в"][u"в"] = 1.0
-        self.originals[u"г"][u"г"] = 1.0
-        self.originals[u"д"][u"д"] = 1.0
-        self.originals[u"е"][u"е"] = 1.0
-        self.originals[u"ж"][u"ж"] = 1.0
-        self.originals[u"з"][u"з"] = 1.0
-        self.originals[u"и"][u"и"] = 1.0
-        self.originals[u"й"][u"й"] = 1.0
-        self.originals[u"к"][u"к"] = 1.0
-        self.originals[u"л"][u"л"] = 1.0
-        self.originals[u"м"][u"м"] = 1.0
-        self.originals[u"н"][u"н"] = 1.0
-        self.originals[u"о"][u"о"] = 1.0
-        self.originals[u"п"][u"п"] = 1.0
-        self.originals[u"р"][u"р"] = 1.0
-        self.originals[u"с"][u"с"] = 1.0
-        self.originals[u"т"][u"т"] = 1.0
-        self.originals[u"у"][u"у"] = 1.0
-        self.originals[u"ф"][u"ф"] = 1.0
-        self.originals[u"х"][u"х"] = 1.0
-        self.originals[u"ц"][u"ц"] = 1.0
-        self.originals[u"ч"][u"ч"] = 1.0
-        self.originals[u"ш"][u"ш"] = 1.0
-        self.originals[u"щ"][u"щ"] = 1.0
-        self.originals[u"ъ"][u"ъ"] = 1.0
-        self.originals[u"ы"][u"ы"] = 1.0
-        self.originals[u"ь"][u"ь"] = 1.0
-        self.originals[u"э"][u"э"] = 1.0
-        self.originals[u"ю"][u"ю"] = 1.0
-        self.originals[u"я"][u"я"] = 1.0
+        self.originals["а"]["а"] = 1.0
+        self.originals["б"]["б"] = 1.0
+        self.originals["в"]["в"] = 1.0
+        self.originals["г"]["г"] = 1.0
+        self.originals["д"]["д"] = 1.0
+        self.originals["е"]["е"] = 1.0
+        self.originals["ж"]["ж"] = 1.0
+        self.originals["з"]["з"] = 1.0
+        self.originals["и"]["и"] = 1.0
+        self.originals["й"]["й"] = 1.0
+        self.originals["к"]["к"] = 1.0
+        self.originals["л"]["л"] = 1.0
+        self.originals["м"]["м"] = 1.0
+        self.originals["н"]["н"] = 1.0
+        self.originals["о"]["о"] = 1.0
+        self.originals["п"]["п"] = 1.0
+        self.originals["р"]["р"] = 1.0
+        self.originals["с"]["с"] = 1.0
+        self.originals["т"]["т"] = 1.0
+        self.originals["у"]["у"] = 1.0
+        self.originals["ф"]["ф"] = 1.0
+        self.originals["х"]["х"] = 1.0
+        self.originals["ц"]["ц"] = 1.0
+        self.originals["ч"]["ч"] = 1.0
+        self.originals["ш"]["ш"] = 1.0
+        self.originals["щ"]["щ"] = 1.0
+        self.originals["ъ"]["ъ"] = 1.0
+        self.originals["ы"]["ы"] = 1.0
+        self.originals["ь"]["ь"] = 1.0
+        self.originals["э"]["э"] = 1.0
+        self.originals["ю"]["ю"] = 1.0
+        self.originals["я"]["я"] = 1.0
 
     def get_repeatable(self):
-        return [u"а", u"в", u"е", u"ж", u"з", u"и", u"й", u"л", u"м", u"н", u"о", u"п", u"р", u"с", u"у", u"ф", u"х", u"ш", u"щ", u"ы", u"э", u"ю", u"я"]
+        return ["а", "в", "е", "ж", "з", "и", "й", "л", "м", "н", "о", "п", "р", "с", "у", "ф", "х", "ш", "щ", "ы", "э", "ю", "я"]
 
     def get_replacements(self, letter):
         try:
@@ -91,7 +91,7 @@ class LetterReplaceProbabilities:
         return None
 
     def get_originals(self):
-        return self.originals.keys()
+        return list(self.originals.keys())
 
     def get_probability(self, original, replacement):
         try:
@@ -108,11 +108,11 @@ class WordSoftlinkBuilder(object):
 
     def get_letter_id(self, letter):
         try:
-            sql_request = u'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
+            sql_request = 'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
             self.cursor.execute(sql_request)
             return self.cursor.fetchall()[0][0]
         except:
-            raise ValueError(u"Символ {0} не найден в базе".format(letter))
+            raise ValueError("Символ {0} не найден в базе".format(letter))
 
     def get_hardlinks_by_letter(self, letter):
         letter_id = self.get_letter_id(letter)
@@ -121,11 +121,11 @@ class WordSoftlinkBuilder(object):
         return self.cursor.fetchall()
 
     def __drop_softlinks_table(self):
-        print "Dropping existing softlinks tables..."
+        print("Dropping existing softlinks tables...")
         self.cursor.execute('DROP INDEX IF EXISTS from_nodes_idx;')
         self.cursor.execute('DROP TABLE IF EXISTS soft_links;')
         self.conn.commit()
-        print "Running vacuum..."
+        print("Running vacuum...")
         self.cursor.execute('VACUUM;')
         self.conn.commit()
 
@@ -137,12 +137,12 @@ class WordSoftlinkBuilder(object):
         self.conn.commit()
 
     def __build_direct_softlinks(self, max_count=None):
-        print "Building direct links..."
+        print("Building direct links...")
         lrp = LetterReplaceProbabilities()
         for l in lrp.get_originals():
             original_nodes = self.get_hardlinks_by_letter(l)
             replacements = lrp.get_replacements(l)
-            r_letters = replacements.keys()
+            r_letters = list(replacements.keys())
             for r in r_letters:
                 replacement_letter_id = self.get_letter_id(r)
                 sql_params = [(e[0], e[1], replacement_letter_id, lrp.get_probability(l, r)) for e in original_nodes]
@@ -157,12 +157,12 @@ class WordSoftlinkBuilder(object):
         return self.cursor.fetchall()
 
     def __build_self_softlinks(self, max_count=None):
-        print "Building self links..."
+        print("Building self links...")
         lrp = LetterReplaceProbabilities()
         for l in lrp.get_repeatable():
             nodes = self.__get_nodes_by_letter(l)
             replacements = lrp.get_replacements(l)
-            r_letters = replacements.keys()
+            r_letters = list(replacements.keys())
             for r in r_letters:
                 replacement_letter_id = self.get_letter_id(r)
                 sql_params = [(e[0], e[0], replacement_letter_id, lrp.get_probability(l, r)) for e in nodes]
@@ -171,7 +171,7 @@ class WordSoftlinkBuilder(object):
         self.conn.commit()
 
     def build_node_links(self, max_count=None):
-        print "Started to build soft links"
+        print("Started to build soft links")
         self.__drop_softlinks_table()
         self.__create_softlinks_table()
         self.__build_direct_softlinks(max_count)
@@ -200,20 +200,20 @@ class WordTrackBuilder(object):
             self.conn.commit()
         except:
             self.conn.rollback()
-            print traceback.format_exc()
-            print u"Текущее слово -", word
-            print u"Транзакция отменена..."
+            print(traceback.format_exc())
+            print("Текущее слово -", word)
+            print("Транзакция отменена...")
 
     def get_letter_id(self, letter):
         try:
-            sql_request = u'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
+            sql_request = 'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
             self.cursor.execute(sql_request)
             return self.cursor.fetchall()[0][0]
         except:
-            raise ValueError(u"Символ {0} не найден в базе".format(letter))
+            raise ValueError("Символ {0} не найден в базе".format(letter))
 
     def get_word_id(self, word):
-        sql_request = u'SELECT word_id FROM words WHERE (words.word=\'{0}\');'.format(word)
+        sql_request = 'SELECT word_id FROM words WHERE (words.word=\'{0}\');'.format(word)
         # print sql_request
         self.cursor.execute(sql_request)
         return self.cursor.fetchall()[0][0]
@@ -223,10 +223,10 @@ class WordTrackBuilder(object):
         self.cursor.execute('UPDATE nodes SET word_id=?, info_blob=? WHERE (nodes.node_id=?);', (word_id, info_blob, node_id))
 
     def update_hardlink_version(self, word):
-        sql_request = u'SELECT commit_id FROM words WHERE (words.word=\'{0}\');'.format(word)
+        sql_request = 'SELECT commit_id FROM words WHERE (words.word=\'{0}\');'.format(word)
         self.cursor.execute(sql_request)
         commit_id = self.cursor.fetchall()[0][0]
-        sql_request = u'UPDATE words SET hardlink_version={0} WHERE (words.word=\'{1}\');'.format(commit_id, word)
+        sql_request = 'UPDATE words SET hardlink_version={0} WHERE (words.word=\'{1}\');'.format(commit_id, word)
         self.cursor.execute(sql_request)
 
     def get_letter_node(self, current_node, letter_id):
@@ -253,7 +253,7 @@ class OptimizedDbBuilder(object):
         self.cursor = sql_cursor
 
     def get_word_by_id(self, word_id):
-        sql_request = u'SELECT word FROM words WHERE (words.word_id={0});'.format(word_id)
+        sql_request = 'SELECT word FROM words WHERE (words.word_id={0});'.format(word_id)
         # print sql_request
         self.cursor.execute(sql_request)
         return self.cursor.fetchall()[0][0]
@@ -269,7 +269,7 @@ class OptimizedDbBuilder(object):
             letter_id = l[3]
             letter = l[4]
             probability = l[5]
-            if not by_letter.has_key(letter_id):
+            if letter_id not in by_letter:
                 by_letter[letter_id] = {"letter_id": letter_id, "letter": letter, "nodes": [(link_id, to_node, probability)]}
             else:
                 by_letter[letter_id]["nodes"].append((link_id, to_node, probability))
@@ -286,19 +286,19 @@ class OptimizedDbBuilder(object):
         self.cursor.execute(sql_request)
 
     def __drop_optimized_table(self):
-        print "Dropping existing optimized tables..."
+        print("Dropping existing optimized tables...")
         self.cursor.execute('DROP INDEX IF EXISTS node_blobs_idx;')
         self.cursor.execute('DROP TABLE IF EXISTS node_blobs;')
 
         self.cursor.execute('DROP TABLE IF EXISTS primary_node_blobs;')
         self.conn.commit()
 
-        print "Running vacuum..."
+        print("Running vacuum...")
         self.cursor.execute('VACUUM;')
         self.conn.commit()
 
     def __create_optimized_table(self):
-        print "Creating new optimized tables..."
+        print("Creating new optimized tables...")
         # Создаем таблицу под точки входа в дерево
         self.cursor.execute('CREATE TABLE IF NOT EXISTS primary_node_blobs (language_id INTEGER, node_blob TEXT);')
         # Создаем таблицу под вторичные узлы дерева
@@ -306,7 +306,7 @@ class OptimizedDbBuilder(object):
         self.conn.commit()
 
     def __disable_synchronous_mode(self):
-        print "Disabling synchronous mode..."
+        print("Disabling synchronous mode...")
         self.cursor.execute('PRAGMA synchronous=0;')
 
     def __build_index(self):
@@ -320,7 +320,7 @@ class OptimizedDbBuilder(object):
         return entries
 
     def __build_primary_entries(self, max_count=None):
-        print "Building primary entries..."
+        print("Building primary entries...")
         sql_request = 'SELECT letter_id, letter FROM alphabet ORDER BY alphabet.letter_id;'
         self.cursor.execute(sql_request)
         letter_ids = self.cursor.fetchall()
@@ -338,7 +338,7 @@ class OptimizedDbBuilder(object):
         self.conn.commit()
 
     def __build_secondary_entries(self, max_count=None):
-        print "Building secondary entries..."
+        print("Building secondary entries...")
         if None == max_count:
             sql_request = 'SELECT nodes.node_id, nodes.letter_id, alphabet.letter, nodes.word_id FROM nodes JOIN alphabet USING (letter_id) ;'
         else:
@@ -363,10 +363,10 @@ class OptimizedDbBuilder(object):
             self.conn.commit()
             node_cnt += 1
             if (node_cnt % progress_show_step) == 0:
-                print "    {0}% complete".format(node_cnt*100/node_count)
+                print("    {0}% complete".format(node_cnt*100/node_count))
 
     def build(self, max_count=None):
-        print "Started to build optimized table"
+        print("Started to build optimized table")
         self.__drop_optimized_table()
         self.__create_optimized_table()
         self.__disable_synchronous_mode()
@@ -394,7 +394,7 @@ class GraphdbBuilder(base.Graphdb):
 
     def add_words(self, words_iter, max_count=None, chunk_len=10000, commit_string="Automatic commit name"):
         count = 0
-        print "Adding words..."
+        print("Adding words...")
         self.cursor.execute('PRAGMA synchronous=0;')
         while words_iter.has_data() and (max_count is None or count < max_count):
             self.cursor.execute('INSERT INTO commits (commit_time, comment)  VALUES (CURRENT_TIMESTAMP, "'+commit_string+'");')
@@ -404,7 +404,7 @@ class GraphdbBuilder(base.Graphdb):
             self.cursor.executemany('INSERT OR IGNORE INTO words (word, commit_id, hardlink_version, info_blob) VALUES (?,?,?,?);', words_tuple)
             self.conn.commit()
             count += len(words)
-            print "\t added", count, "words"
+            print("\t added", count, "words")
 
     def add_alphabet(self, alphabet):
         alphabet_tuple = [(a,) for a in alphabet]
@@ -412,7 +412,7 @@ class GraphdbBuilder(base.Graphdb):
         self.conn.commit()
 
     def generate_hardlinks(self, actual_hardlink_version=1, max_count=None):
-        print "Generating hardlinks..."
+        print("Generating hardlinks...")
         self.cursor.execute('PRAGMA synchronous=0;')
         # Выбираем слова, для которых версия жестких ссылок меньше актуальной
         if None == max_count:
@@ -427,15 +427,15 @@ class GraphdbBuilder(base.Graphdb):
             wtb.build_word_track(w, blob)
             count += 1
             if count % 1000 == 0:
-                print "\tgenerated", count, "entries"
+                print("\tgenerated", count, "entries")
 
     def generate_softlinks(self, max_count=None):
-        print "Generating hardlinks..."
+        print("Generating hardlinks...")
         wsb = WordSoftlinkBuilder(self.conn, self.cursor)
         wsb.build_node_links()
 
     def generate_optimized(self, max_count=None):
-        print "Generating softlinks..."
+        print("Generating softlinks...")
         odb = OptimizedDbBuilder(self.conn, self.cursor)
         odb.build(max_count)
 

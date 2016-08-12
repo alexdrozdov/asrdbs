@@ -3,12 +3,12 @@
 
 
 import os
-import ConfigParser
+import configparser
 
 
-class Limits(ConfigParser.ConfigParser):
+class Limits(configparser.ConfigParser):
     def __init__(self, limit_file_list):
-        ConfigParser.ConfigParser.__init__(self)
+        configparser.ConfigParser.__init__(self)
         defconfig_path = os.path.split(os.path.split(os.path.realpath(__file__)))
         defconfig_file = os.path.join(defconfig_path, 'data/deflimits.cfg')
 

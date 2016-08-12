@@ -30,7 +30,7 @@ class EventStep(object):
         self.step_counter = 0
     def __estimate_average_probability(self):
         return 0
-        probabilities = [node.get_probability()/(self.step_counter-node.initial_step) for node in self.original_nodes.values()]
+        probabilities = [node.get_probability()/(self.step_counter-node.initial_step) for node in list(self.original_nodes.values())]
         probabilities.sort(reverse=True)
         p_len = len(probabilities)
         if p_len<50:
@@ -44,39 +44,39 @@ class EventStep(object):
             return
         original_nodes = {}
         average_probability = self.__estimate_average_probability()
-        for k,node in self.original_nodes.items():
+        for k,node in list(self.original_nodes.items()):
             if (self.step_counter-node.initial_step)>2 and node.get_probability()/(self.step_counter-node.initial_step)<average_probability:
                 continue
             original_nodes[k] = node
         self.original_nodes = original_nodes
     def switch_nodes(self, worddb):
         self.step_counter += 1
-        for node_state in self.next_step_nodes.values():
+        for node_state in list(self.next_step_nodes.values()):
             node_state.set_node(worddb.get_node_blob(node_state.get_node_id()))
             self.original_nodes[node_state.get_node_id()] = node_state
         self.next_step_nodes = {}
         self.__remove_weak_nodes()
     def get_original_nodes(self):
-        return self.original_nodes.values()
-    def print_event_step(self, msg=u''):
+        return list(self.original_nodes.values())
+    def print_event_step(self, msg=''):
         original_nodes = msg
         next_step_nodes = msg
-        for k,v in self.original_nodes.items():
-            original_nodes += str(k)+u': '+str(v.probability)+u', '
-        for k,v in self.next_step_nodes.items():
-            next_step_nodes += str(k)+u': '+str(v.probability)+u', '
+        for k,v in list(self.original_nodes.items()):
+            original_nodes += str(k)+': '+str(v.probability)+', '
+        for k,v in list(self.next_step_nodes.items()):
+            next_step_nodes += str(k)+': '+str(v.probability)+', '
     def goto_node(self, from_node, to_node, probability):
         #Проверяем, есть ли такой узел в оригинальной версии
         original_node_probability = 0.0
         initial_step = self.step_counter
-        if self.original_nodes.has_key(from_node):
+        if from_node in self.original_nodes:
             original_node_probability = self.original_nodes[from_node].probability
             initial_step = self.original_nodes[from_node].initial_step
         ns_node_probability = original_node_probability + probability
 
         #Проверяем, добавляли ли мы такой узел в следующее поколение
         existed_ns_node_probability = 0.0
-        if self.next_step_nodes.has_key(to_node):
+        if to_node in self.next_step_nodes:
             existed_ns_node_probability = self.next_step_nodes[to_node].probability #Определяем вероятность узла, которая уже существовала у нас ранее
             if ns_node_probability>existed_ns_node_probability:
                 self.next_step_nodes[to_node].probability = ns_node_probability
@@ -110,20 +110,20 @@ class TrackSequencerEx:
             self.a2i_dict[a] = i
             self.a2i_dict[i] = a
     def __get_dict_intersection(self, p1, p2):
-        return [(p1_v,p2[k]) for k,p1_v in p1.items() if p2.has_key(k)]
+        return [(p1_v,p2[k]) for k,p1_v in list(p1.items()) if k in p2]
     def __get_accessible_nodes(self, node, probabilities_dict):
         intersections = self.__get_dict_intersection(probabilities_dict, node["soft_links"])
         return [(probability, node_info["nodes"]) for probability,node_info in intersections ]
     def __convert_probabilities_a2i(self, probabilities):
         p = {}
-        for k,v in probabilities.items():
+        for k,v in list(probabilities.items()):
             p[self.a2i_dict[k]] = v
         return p
     def print_event(self, probabilities):
-        event_info = u''
-        for k,v in probabilities.items():
-            event_info += k+u': '+str(v)+u', '
-        print 'Event probabilities', event_info
+        event_info = ''
+        for k,v in list(probabilities.items()):
+            event_info += k+': '+str(v)+', '
+        print('Event probabilities', event_info)
     def add_event(self, probabilities):
         self.event_step.switch_nodes(self.worddb)
         probabilities = self.__convert_probabilities_a2i(probabilities)
@@ -153,4 +153,4 @@ class TrackSequencerEx:
             probabilities_list.append((node.get_probability(), node))
         probabilities_list.sort(pcmp)
         for p, node in probabilities_list:
-            print node.get_node_id(), node.get_node_word(), p, p/(self.event_step.step_counter-node.initial_step), node.initial_step,self.event_step.step_counter
+            print(node.get_node_id(), node.get_node_word(), p, p/(self.event_step.step_counter-node.initial_step), node.initial_step,self.event_step.step_counter)

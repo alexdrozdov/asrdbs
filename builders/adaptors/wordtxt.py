@@ -18,9 +18,9 @@ class WordtxtAdapter(object):
         self.__next_line = None
 
     def __load(self):
-        print 'Loading wordtxt ' + self.__wordtxt_filename + '...'
+        print('Loading wordtxt ' + self.__wordtxt_filename + '...')
         self.f = open(self.__wordtxt_filename)
-        self.__wordtxt = self.f.xreadlines()
+        self.__wordtxt = self.f
 
     def has_data(self):
         if self.__next_line is not None:
@@ -28,7 +28,7 @@ class WordtxtAdapter(object):
         if self.__wordtxt is None:
             self.__load()
             try:
-                self.__next_line = self.__wordtxt.next()
+                self.__next_line = next(self.__wordtxt)
                 return True
             except:
                 self.__next_line = None
@@ -38,10 +38,10 @@ class WordtxtAdapter(object):
         if self.__wordtxt is None:
             self.__load()
         if self.__next_line is None:
-            self.__next_line = self.__wordtxt.next()
+            self.__next_line = next(self.__wordtxt)
         res = self.__next_line
         try:
-            self.__next_line = self.__wordtxt.next()
+            self.__next_line = next(self.__wordtxt)
         except:
             self.__next_line = None
 

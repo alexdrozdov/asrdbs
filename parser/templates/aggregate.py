@@ -26,7 +26,7 @@ class TemplateAggregate(parser.templates.common.SpecTemplate):
             ),
             "closed": False,
         }
-        for k, v in attributes.items():
+        for k, v in list(attributes.items()):
             agg_open[k] = v
 
         agg_close = {

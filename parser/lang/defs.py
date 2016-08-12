@@ -98,11 +98,11 @@ class BasicDynamicRule(RtAnchorRelated):
         raise ValueError('Unsupported format {0}'.format(fmt))
 
     def __format_dot(self):
-        wrap = u'<BR ALIGN="LEFT"/>'
-        s = u'{0}{1}'.format(self.name(), wrap)
-        s += u' anchor: {0}{1}'.format(self.anchor(), wrap)
-        s += u' is_persistent: {0}{1}'.format(self.is_persistent(), wrap)
-        s += u' is_optional: {0}{1}'.format(self.is_optional(), wrap)
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += ' anchor: {0}{1}'.format(self.anchor(), wrap)
+        s += ' is_persistent: {0}{1}'.format(self.is_persistent(), wrap)
+        s += ' is_optional: {0}{1}'.format(self.is_optional(), wrap)
         return s
 
     def __format_dict(self):
@@ -189,13 +189,10 @@ class BasicStaticRule(parser.lang.common.RtStaticRule):
         raise ValueError('Unsupported format {0}'.format(fmt))
 
     def __format_dot(self):
-        wrap = u'<BR ALIGN="LEFT"/>'
-        s = u'{0}{1}'.format(self.name(), wrap)
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
         s += wrap.join(
-            map(
-                lambda (k, v): u'{0}: {1}'.format(unicode(k), unicode(v)),
-                self.__fmt_info.items()
-            )
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
         )
         return s
 
@@ -204,7 +201,7 @@ class BasicStaticRule(parser.lang.common.RtStaticRule):
             [
                 ('rule', self.name()),
                 ('friendly', self.friendly())
-            ] + self.__fmt_info.items()
+            ] + list(self.__fmt_info.items())
         )
 
     def __repr__(self):
@@ -227,7 +224,7 @@ class c__pos_check(BasicStaticRule):
         super(c__pos_check, self).__init__(
             name='pos',
             friendly='IsPos',
-            fmt_info={u'pos': pos_names}
+            fmt_info={'pos': pos_names}
         )
         self.__pos_names = pos_names
 
@@ -238,7 +235,7 @@ class c__pos_check(BasicStaticRule):
         return form.get_pos() in self.__pos_names
 
     def get_info(self, wrap=False):
-        return u'pos: {0}'.format(self.__pos_names[0])
+        return 'pos: {0}'.format(self.__pos_names[0])
 
 
 class c__pos_check_inv(BasicStaticRule):
@@ -246,7 +243,7 @@ class c__pos_check_inv(BasicStaticRule):
         super(c__pos_check_inv, self).__init__(
             name='pos-inv',
             friendly='IsNotPos',
-            fmt_info={u'pos': pos_names}
+            fmt_info={'pos': pos_names}
         )
         self.__pos_names = pos_names
 
@@ -257,7 +254,7 @@ class c__pos_check_inv(BasicStaticRule):
         return form.get_pos() not in self.__pos_names
 
     def get_info(self, wrap=False):
-        return u'not pos: {0}'.format(self.__pos_names[0])
+        return 'not pos: {0}'.format(self.__pos_names[0])
 
 
 class c__placeholder(BasicStaticRule):
@@ -265,7 +262,7 @@ class c__placeholder(BasicStaticRule):
         super(c__placeholder, self).__init__(
             name='placeholder',
             friendly='Placeholder',
-            fmt_info={u'value': def_value}
+            fmt_info={'value': def_value}
         )
         self.__def_value = def_value
 
@@ -276,7 +273,7 @@ class c__placeholder(BasicStaticRule):
         return self.__def_value
 
     def get_info(self, wrap=False):
-        return u'placeholder: {0}'.format(self.__def_value)
+        return 'placeholder: {0}'.format(self.__def_value)
 
 
 class c__pos_syntax_check(BasicStaticRule):
@@ -284,7 +281,7 @@ class c__pos_syntax_check(BasicStaticRule):
         super(c__pos_syntax_check, self).__init__(
             name='syntax',
             friendly='IsSyntax',
-            fmt_info={u'syntax': syntax_name}
+            fmt_info={'syntax': syntax_name}
         )
         assert syntax_name in ['comma', 'dot', 'question'], 'Unsupported syntax {0}'.format(syntax_name)
         self.__syntax = syntax_name
@@ -311,7 +308,7 @@ class c__pos_syntax_check(BasicStaticRule):
         return form.get_pos() == 'syntax' and self.__syntax_check_cb(form)
 
     def get_info(self, wrap=False):
-        return u'syntax: {0}'.format(self.__syntax)
+        return 'syntax: {0}'.format(self.__syntax)
 
 
 class PosSpecs(object):
@@ -362,7 +359,7 @@ class c__word_check(BasicStaticRule):
         super(c__word_check, self).__init__(
             name='word',
             friendly='IsWord',
-            fmt_info={u'word': words}
+            fmt_info={'word': words}
         )
         self.__words = words
 
@@ -373,7 +370,7 @@ class c__word_check(BasicStaticRule):
         return form.get_word() in self.__words
 
     def get_info(self, wrap=False):
-        return u'word: {0}'.format(self.__words)
+        return 'word: {0}'.format(self.__words)
 
 
 class WordSpecs(object):
@@ -386,7 +383,7 @@ class c__case_check(BasicStaticRule):
         super(c__case_check, self).__init__(
             name='case',
             friendly='IsCase',
-            fmt_info={u'pos': cases}
+            fmt_info={'pos': cases}
         )
         self.__cases = cases
 
@@ -401,7 +398,7 @@ class c__case_check(BasicStaticRule):
         return False
 
     def get_info(self, wrap=False):
-        return u'case: {0}'.format(self.__cases[0])
+        return 'case: {0}'.format(self.__cases[0])
 
 
 class CaseSpecs(object):
@@ -826,7 +823,7 @@ class c__selector(BasicStaticRule):
         super(c__selector, self).__init__(
             name='selector',
             friendly='Selector',
-            fmt_info={u'selector': selector}
+            fmt_info={'selector': selector}
         )
         self.__selector = selector
 
@@ -837,7 +834,7 @@ class c__selector(BasicStaticRule):
         return self.__selector(form, can_modify=True)
 
     def get_info(self, wrap=False):
-        return u'selector: {0}'.format(str(self.__selector))
+        return 'selector: {0}'.format(str(self.__selector))
 
 
 class SelectorSpecs(object):

@@ -14,7 +14,7 @@ class DependencySpec(parser.templates.common.SpecTemplate):
     def __call__(self, body, *args):
         for base in args:
             bb = self.__get_base(base)
-            for k, v in bb.items():
+            for k, v in list(bb.items()):
                 self.__extend_attr(body, k, v)
 
     def __extend_attr(self, body, attr, val):

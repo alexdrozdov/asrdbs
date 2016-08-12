@@ -23,7 +23,7 @@ class LibrudbAdapter(object):
         self.__iter = None
 
     def __load(self):
-        print 'Loading libdb ' + self.__libdb_filename + '...'
+        print('Loading libdb ' + self.__libdb_filename + '...')
         self.__libdb = librudb.librudb.Librudb(self.__libdb_filename)
         self.__iter = common.db.DbRoIterator(self.__libdb, 'lib', ['text_id', 'path', 'md5', 'content'])
 
@@ -63,7 +63,7 @@ class LibrudbWordsAdapter(object):
     def __get_next_text(self):
         lt = self.__libdb_adapt.get(1)[0]
         txt = lt.get_content()
-        print "Processing", lt.get_path()
+        print("Processing", lt.get_path())
 
         unwanted_chars = '*+-()@#№%^&_{}[]"\'/\\<>~=,.:;!?\r\n'
         tt = {ord(c): ord(' ') for c in unwanted_chars}
