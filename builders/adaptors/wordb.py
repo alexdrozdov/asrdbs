@@ -19,7 +19,7 @@ class WorddbBlobsAdapter(object):
         self.__iter = None
 
     def __load(self):
-        print 'Loading worddb ' + self.__worddb_filename + '...'
+        print('Loading worddb ' + self.__worddb_filename + '...')
         self.__worddb = worddb.worddb.Worddb(self.__worddb_filename)
         self.__iter = common.db.DbRoIterator(self.__worddb, 'word_blobs', ['word', 'blob'])
 

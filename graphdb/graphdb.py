@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import base
+from . import base
 import common.shadow
 
 
@@ -52,7 +52,7 @@ class NodeBlob(object):
 
     def has_subletter(self, letter):
         letter_id = self.a2i_dict[letter]
-        return self.__blob['soft_links'].has_key(letter_id)
+        return letter_id in self.__blob['soft_links']
 
     def get_subletter_link_ids(self, letter):
         letter_id = self.a2i_dict[letter]
@@ -93,7 +93,7 @@ class WordTreeItem(object):
         self.worddb.cursor.execute(sql_request)
         fa = self.worddb.cursor.fetchall()
         if len(fa) < 1:
-            self.letter = u''
+            self.letter = ''
         else:
             letter_id = int(fa[0][0])
             sql_request = 'SELECT letter FROM alphabet WHERE (alphabet.letter_id={0}) ;'.format(letter_id)

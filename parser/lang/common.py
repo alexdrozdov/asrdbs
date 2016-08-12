@@ -109,7 +109,7 @@ class RtStaticRule(RtRule):
 
 class RtMatchString(object):
     def __init__(self, string, max_level=None):
-        assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
+        assert isinstance(string, str) or isinstance(string, str) or isinstance(string, RtMatchString)
 
         if isinstance(string, RtMatchString):
             self.__init_from_rtmatchstring(string, max_level)
@@ -138,7 +138,7 @@ class RtMatchString(object):
         return self.__max_level
 
     def update(self, string):
-        assert isinstance(string, str) or isinstance(string, unicode) or isinstance(string, RtMatchString)
+        assert isinstance(string, str) or isinstance(string, str) or isinstance(string, RtMatchString)
         if isinstance(string, RtMatchString):
             self.__init_from_rtmatchstring(string, self.__max_level)
         else:
@@ -195,10 +195,10 @@ class SameDictList(object):
         d_len = len(self.__dicts)
         if d_len == new_size:
             return
-        grow_factor = new_size / d_len
+        grow_factor = int(new_size / d_len)
         for i in range(grow_factor - 1):
             for j in range(d_len):
-                d = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in self.__dicts[j].items()}
+                d = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in list(self.__dicts[j].items())}
                 self.__dicts.append(d)
 
     def __getitem__(self, key):
@@ -231,7 +231,7 @@ class RtRuleFactory(object):
         self.__max_level = max_level if max_level is not None else rrf.__max_level
         self.__original_state = original_state if rrf.__original_state is None else rrf.__original_state
         self.__args = rrf.__args
-        self.__kwargs = {k: RtMatchString(w) if isinstance(w, RtMatchString) else w for k, w in rrf.__kwargs.items()}
+        self.__kwargs = {k: RtMatchString(w) if isinstance(w, RtMatchString) else w for k, w in list(rrf.__kwargs.items())}
         self.__created = False
 
     def __init_from_params(self, classname, args, kwargs):
@@ -239,7 +239,7 @@ class RtRuleFactory(object):
         self.__max_level = None
         self.__original_state = None
         self.__args = args  # FIXME Some strange logic in the next line
-        self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in kwargs.items()}
+        self.__kwargs = {k: w if not isinstance(w, str) or '$' not in w else RtMatchString(w) for k, w in list(kwargs.items())}
         self.__created = False
 
     def create(self, compiler, state):
@@ -249,7 +249,7 @@ class RtRuleFactory(object):
             state = self.__original_state
         max_level = state.get_glevel() if self.__max_level is None else min(self.__max_level, state.get_glevel())
         kwargs = SameDictList()
-        for k, w in self.__kwargs.items():
+        for k, w in list(self.__kwargs.items()):
             if isinstance(w, RtMatchString) and w.need_resolve():
                 n = compiler.resolve_variant_count(state.get_spec(), str(w))
                 if n == 1:

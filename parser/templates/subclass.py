@@ -35,7 +35,7 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
             yield e
 
     def __rule_matched(self, e, r):
-        for k, v in r.items():
+        for k, v in list(r.items()):
             if k not in e:
                 return False
             if re.match(v, e[k]) is None:
@@ -43,5 +43,5 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
         return True
 
     def __rule_apply(self, e, extend):
-        for k, v in extend.items():
+        for k, v in list(extend.items()):
             e[k] = v

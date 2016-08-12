@@ -2,7 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
-import output
+from . import output
 
 
 class History(object):
@@ -16,7 +16,7 @@ class History(object):
         subobj = objinfo['subobj']
         is_uniq = objinfo['uniq']
         is_shared = objinfo['shared']
-        if self.__subobj2inst.has_key(subobj):
+        if subobj in self.__subobj2inst:
             hist_subobjinfo = self.__subobj2inst[subobj]
             assert len(hist_subobjinfo)
             if is_uniq:
@@ -32,26 +32,26 @@ class History(object):
         self.__subobj2inst[subobj] = [{'inst': inst, 'uniq': is_uniq, 'shared': is_shared}, ]
 
     def register_object(self, obj, label=None, is_clone_of=None, assert_not_registered=True):
-        if self.__obj2inst.has_key(obj):
+        if obj in self.__obj2inst:
             assert not assert_not_registered
             return
         filename = output.output.get_output_file(self.__subpath, 'hist-{0}.txt'.format(self.__filecount))
         self.__filecount += 1
         hi = HistoryInst(self, obj, label, filename)
         if is_clone_of:
-            assert self.__obj2inst.has_key(is_clone_of)
+            assert is_clone_of in self.__obj2inst
             hi.copy_history(self.__obj2inst[is_clone_of])
         self.__obj2inst[obj] = hi
 
     def register_subobject(self, obj, subobj, label=None, is_uniq=True, is_shared=False):
-        assert self.__obj2inst.has_key(obj)
+        assert obj in self.__obj2inst
         hi = self.__obj2inst[obj]
         hi.add_subobject(subobj, label=label, is_uniq=is_uniq, is_shared=is_shared)
 
     def log(self, obj, log_string):
-        if self.__obj2inst.has_key(obj):
+        if obj in self.__obj2inst:
             self.__obj2inst[obj].log(obj, log_string)
-        elif self.__subobj2inst.has_key(obj):
+        elif obj in self.__subobj2inst:
             for inst in self.__subobj2inst[obj]:
                 inst['inst'].log(obj, log_string)
         else:
@@ -70,7 +70,7 @@ class HistoryInst(object):
 
     def add_subobject(self, subobj, label=None, is_uniq=True, is_shared=False):
         assert is_uniq != is_shared
-        if self.__subojects.has_key(subobj):
+        if subobj in self.__subojects:
             objinfo = self.__subojects[subobj]
             assert objinfo['uniq'] == is_uniq and objinfo['shared'] == is_shared
         else:
@@ -94,11 +94,11 @@ class HistoryInst(object):
     def log(self, obj, log_string):
         if self.__fd is None:
             self.__fd = open(self.__filename, 'w')
-        if self.__subojects.has_key(obj):
+        if obj in self.__subojects:
             subobj_label = self.__subojects[obj]['label']
         else:
             subobj_label = 'base'
-        log_str = u'{0} - {1}: {2}\r\n'.format(self.__label, subobj_label, log_string)
+        log_str = '{0} - {1}: {2}\r\n'.format(self.__label, subobj_label, log_string)
         self.__add_line(log_str)
 
 

@@ -4,7 +4,6 @@
 
 import os
 import sys
-import codecs
 import time
 import json
 import io
@@ -18,15 +17,13 @@ import parser.selectors
 from contextlib import contextmanager
 from common.output import output as oput
 
-sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-
 
 @contextmanager
 def timeit_ctx(name):
     startTime = time.time()
     yield
     elapsedTime = time.time() - startTime
-    print('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000)))
+    print(('[{}] finished in {} ms'.format(name, int(elapsedTime * 1000))))
 
 
 def parse_opts():
@@ -51,7 +48,7 @@ def parse_opts():
 
 def execute(opts):
     if opts.sentence is not None:
-        sentence = opts.sentence.decode('utf8')
+        sentence = opts.sentence
     elif opts.test is not None:
         with open(opts.test) as f:
             data = json.load(f)
@@ -80,7 +77,7 @@ def execute(opts):
             matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
-            sq.print_sequence()
+            print(sq.format('str'))
             parser.graph.SequenceGraph(img_type='svg').generate(
                 sq,
                 oput.get_output_file([base_dir, 'imgs'], 'sq-{0}.svg'.format(j))
@@ -96,8 +93,7 @@ def execute(opts):
                     'graph': matched_sentences.export_obj()
                 },
                 jf,
-                ensure_ascii=False,
-                encoding='utf8'
+                ensure_ascii=False
             )
             jf.write(s)
 

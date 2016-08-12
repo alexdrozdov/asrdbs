@@ -24,15 +24,15 @@ class SelectorRes(object):
     def __bool__(self):
         return self.res
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.res
 
     def __and__(self, other):
         if self.res and other.res:
             return SelectorRes(
                 True,
-                dict(self.link_attrs.items() + other.link_attrs.items()),
-                dict(self.info.items() + other.info.items()),
+                dict(list(self.link_attrs.items()) + list(other.link_attrs.items())),
+                dict(list(self.info.items()) + list(other.info.items())),
             )
         return SelectorRes(False)
 
@@ -40,16 +40,16 @@ class SelectorRes(object):
         if self.res or other.res:
             return SelectorRes(
                 True,
-                dict(self.link_attrs.items() + other.link_attrs.items()),
-                dict(self.info.items() + other.info.items()),
+                dict(list(self.link_attrs.items()) + list(other.link_attrs.items())),
+                dict(list(self.info.items()) + list(other.info.items())),
             )
         return SelectorRes(False)
 
     def __add__(self, other):
         r = SelectorRes(
             self.res,
-            dict(self.link_attrs.items() + other.link_attrs.items()),
-            dict(self.info.items() + other.info.items()),
+            dict(list(self.link_attrs.items()) + list(other.link_attrs.items())),
+            dict(list(self.info.items()) + list(other.info.items())),
         )
         return r
 
@@ -139,10 +139,7 @@ class Selector(object):
         return dict(
             functools.reduce(
                 lambda x, y: x + y,
-                map(
-                    lambda r: r.format('dict').items(),
-                    self.__rules
-                ),
+                [list(r.format('dict').items()) for r in self.__rules],
                 []
             )
         )
@@ -165,19 +162,16 @@ class Selector(object):
         return self.__apply(argc[0], test_only=test_only)
 
     def format(self, fmt):
-        s = u'<TR><TD BGCOLOR="darkseagreen1">type:selector</TD></TR>'
-        s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
-            u' '.join(self.__clarifies)
+        s = '<TR><TD BGCOLOR="darkseagreen1">type:selector</TD></TR>'
+        s += '<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
+            ' '.join(self.__clarifies)
         )
         s += functools.reduce(
             lambda x, y: x + y,
-            map(
-                lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
-                    unicode(r.format('dict'))
-                ),
-                self.__rules
-            ),
-            u''
+            ['<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+                    str(r.format('dict'))
+                ) for r in self.__rules],
+            ''
         )
         return s
 
@@ -219,7 +213,7 @@ class MultiSelector(object):
         return SelectorRes(False)
 
     def __apply(self, forms, test_only=False):
-        tag_suffix = u'/' + '+'.join(sorted([f.get_uniq() for f in forms]))
+        tag_suffix = '/' + '+'.join(sorted([f.get_uniq() for f in forms]))
         res = SelectorRes(True)
         for c in self.__clarifies:
             res = res and self.__check_clarify(forms, c, tag_suffix)
@@ -243,10 +237,7 @@ class MultiSelector(object):
         return dict(
             functools.reduce(
                 lambda x, y: x + y,
-                map(
-                    lambda r: r.format('dict').items(),
-                    self.__rules
-                ),
+                [list(r.format('dict').items()) for r in self.__rules],
                 []
             )
         )
@@ -275,19 +266,16 @@ class MultiSelector(object):
         return self.__apply(argc, test_only=test_only)
 
     def format(self, fmt):
-        s = u'<TR><TD BGCOLOR="darkseagreen1">type: multiselector</TD></TR>'
-        s += u'<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
-            u' '.join(self.__clarifies)
+        s = '<TR><TD BGCOLOR="darkseagreen1">type: multiselector</TD></TR>'
+        s += '<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
+            ' '.join(self.__clarifies)
         )
         s += functools.reduce(
             lambda x, y: x + y,
-            map(
-                lambda r: u'<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
-                    unicode(r.format('dict'))
-                ),
-                self.__rules
-            ),
-            u''
+            ['<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+                    str(r.format('dict'))
+                ) for r in self.__rules],
+            ''
         )
         return s
 
@@ -322,10 +310,7 @@ class SelectorHub(object):
     def __apply(self, *argc, **argv):
         return functools.reduce(
             lambda x, y: x or y,
-            map(
-                lambda s: s(*argc, **argv),
-                self.__selectors
-            ),
+            [s(*argc, **argv) for s in self.__selectors],
             SelectorRes(False)
         )
 
@@ -390,10 +375,10 @@ class _Preprocessor(object):
             exclude = []
         elif isinstance(exclude, str):
             exclude = [exclude, ]
-        keys = filter(
+        keys = list(filter(
             lambda k: k not in exclude,
-            rule.keys(),
-        )
+            list(rule.keys()),
+        ))
 
         for k in keys:
             v = rule[k]
@@ -428,49 +413,40 @@ class _Compiler(object):
         js = Preprocessor().preprocess(js)
         if clarifies is None:
             clarifies = []
-        if u'selector' in js:
-            return self.__compile(js[u'selector'], clarifies, base_tags)
-        if u'multi' in js:
-            return self.__multi(js[u'multi'])
+        if 'selector' in js:
+            return self.__compile(js['selector'], clarifies, base_tags)
+        if 'multi' in js:
+            return self.__multi(js['multi'])
         raise KeyError('neither selector nor multi key found in selector spec')
 
     def __multi(self, js):
         terms_count = self.__eval_terms_count(js)
-        tag_base = map(
-            lambda t: ns(
+        tag_base = [ns(
                 name=t,
                 auto=False,
                 base=True
-            ),
-            self.__get_property_list(js, 'tag-base')
-        )
+            ) for t in self.__get_property_list(js, 'tag-base')]
         js = self.__reshape_js_base(js, terms_count)
         index = self.__find_internal_layer(js, terms_count)
         if index is not None:
-            index = js.keys()[0]
+            index = list(js.keys())[0]
             js = js[index]
             index = int(index)
             return self.__compile_layer(terms_count, index, js, base_tags=tag_base)
         return []
 
     def __compile_layer(self, terms_count, index, js, parent_tag=None, base_tags=None):
-        base_tags = map(
-            lambda t: ns(
+        base_tags = [ns(
                 name=t,
                 auto=False,
                 base=True
-            ),
-            self.__get_property_list(js, 'tag-base')
-        ) + self.__as_list(base_tags, none_is_empty=True)
+            ) for t in self.__get_property_list(js, 'tag-base')] + self.__as_list(base_tags, none_is_empty=True)
 
-        tags = map(
-            lambda t: ns(
+        tags = [ns(
                 name=t,
                 auto=False,
                 base=False
-            ),
-            self.__get_property_list(js, 'tag')
-        )
+            ) for t in self.__get_property_list(js, 'tag')]
 
         clarifies = self.__get_property_list(js, 'clarifies') + \
             self.__as_list(parent_tag, none_is_empty=True)
@@ -482,15 +458,12 @@ class _Compiler(object):
 
         rules = functools.reduce(
             lambda x, y: x + y,
-            map(
-                lambda (r, v): self.__mk_multi_rule(index, r, v),
-                self.__rules(js)
-            ),
+            [self.__mk_multi_rule(index, r_v[0], r_v[1]) for r_v in self.__rules(js)],
             []
         )
 
         auto_tag = ns(
-            name=u'#' + unicode(uuid.uuid1()),
+            name='#' + str(uuid.uuid1()),
             auto=True,
             base=False
         )
@@ -509,7 +482,7 @@ class _Compiler(object):
 
         i_index = self.__find_internal_layer(js, terms_count)
         if i_index is not None:
-            i_js = js[unicode(i_index)]
+            i_js = js[str(i_index)]
             s.extend(
                 self.__compile_layer(
                     terms_count,
@@ -536,20 +509,20 @@ class _Compiler(object):
 
     def __find_internal_layer(self, js, terms_count):
         for i in range(terms_count):
-            if unicode(i) in js:
+            if str(i) in js:
                 return i
         return None
 
     def __eval_terms_count(self, js):
         n = 0
-        while unicode(n) in js:
+        while str(n) in js:
             n += 1
         return n
 
     def __find_deepest_term(self, js, max_count):
-        test_set = set(['clarify', ] + [unicode(x) for x in range(max_count)])
+        test_set = set(['clarify', ] + [str(x) for x in range(max_count)])
         for i in range(max_count):
-            t = js[unicode(i)]
+            t = js[str(i)]
             if test_set.intersection(t):
                 return i
         raise ValueError(
@@ -561,13 +534,13 @@ class _Compiler(object):
             terms_count = self.__eval_terms_count(js)
         deepest = self.__find_deepest_term(js, terms_count)
         res = {
-            unicode(deepest): js[unicode(deepest)]
+            str(deepest): js[str(deepest)]
         }
         for i in range(terms_count):
             if i == deepest:
                 continue
             res = {
-                unicode(i): dict(js[unicode(i)].items() + res.items())
+                str(i): dict(list(js[str(i)].items()) + list(res.items()))
             }
         return res
 
@@ -575,27 +548,24 @@ class _Compiler(object):
         assert base_tags is None or None not in base_tags
         selectors = []
 
-        tags = self.__get_property_list(js, u'tag')
+        tags = self.__get_property_list(js, 'tag')
         assert None not in tags
         base_tags = self.__as_list(base_tags, none_is_empty=True) +\
-            self.__get_property_list(js, u'tag-base')
+            self.__get_property_list(js, 'tag-base')
         assert None not in base_tags
         clarifies = self.__as_list(clarifies)
 
-        clarifies.extend(self.__get_property_list(js, u'clarifies'))
+        clarifies.extend(self.__get_property_list(js, 'clarifies'))
         rules = functools.reduce(
             lambda x, y: x + y,
-            map(
-                lambda (r, v): self.__mk_single_rule(r, v),
-                self.__rules(js)
-            ),
+            [self.__mk_single_rule(r_v1[0], r_v1[1]) for r_v1 in self.__rules(js)],
             []
         )
 
         if tags:
             selectors.append(Selector(tags + base_tags, clarifies, rules))
 
-        for c in self.__get_property_list(js, u'clarify'):
+        for c in self.__get_property_list(js, 'clarify'):
             selectors.extend(self.__compile(c, tags, base_tags))
 
         return selectors
@@ -604,10 +574,7 @@ class _Compiler(object):
         return sorted(list(set(
             functools.reduce(
                 lambda x, y: x + y,
-                map(
-                    lambda s: s.get_tags(),
-                    selectors
-                ),
+                [s.get_tags() for s in selectors],
                 []
             )
         )))
@@ -631,29 +598,17 @@ class _Compiler(object):
             'position', 'equal-properties',
             'word',
         ]
-        return map(
-            lambda k: (k, js[k]),
-            filter(
-                lambda k: k in known_rules,
-                js.keys()
-            )
-        )
+        return [(k, js[k]) for k in [k for k in list(js.keys()) if k in known_rules]]
 
     def __mk_single_rule(self, k, v):
         if not isinstance(v, list):
             return [v.create_single(), ]
-        return map(
-            lambda vv: vv.create_single(),
-            v
-        )
+        return [vv.create_single() for vv in v]
 
     def __mk_multi_rule(self, index, k, v):
         if not isinstance(v, list):
             return [v.create_multi(index), ]
-        return map(
-            lambda vv: vv.create_multi(index),
-            v
-        )
+        return [vv.create_multi(index) for vv in v]
 
 
 class _Selectors(object):
@@ -667,10 +622,7 @@ class _Selectors(object):
         if not cfg.exists('/parser/selectors'):
             return
         for d in cfg['/parser/selectors']:
-            for f in filter(
-                lambda fname: fname.endswith('.json'),
-                os.listdir(d)
-            ):
+            for f in [fname for fname in os.listdir(d) if fname.endswith('.json')]:
                 path = os.path.join(d, f)
                 if path.endswith('.multi.json'):
                     self.__load_multi(path)
@@ -685,10 +637,7 @@ class _Selectors(object):
     def __load_multi(self, path):
         with open(path) as fp:
             data = fp.read()
-            for s in filter(
-                None,
-                re.split('^//.*\n', data, flags=re.MULTILINE)
-            ):
+            for s in [_f for _f in re.split('^//.*\n', data, flags=re.MULTILINE) if _f]:
                 res = Compiler().compile(json.loads(s))
                 self.__add_selectors(res)
 
@@ -706,7 +655,7 @@ class _Selectors(object):
         return self.__selectors[index]
 
     def __iter__(self):
-        for v in self.__selectors.values():
+        for v in list(self.__selectors.values()):
             yield v
 
 

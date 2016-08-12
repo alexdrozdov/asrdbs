@@ -24,7 +24,7 @@ class AppConfig(object):
         self.__obj = obj
 
     def register_unit(self, name, cfg=None):
-        if self.__obj.has_key(name):
+        if name in self.__obj:
             return
         if cfg is None:
             cfg = {}

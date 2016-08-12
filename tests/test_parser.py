@@ -49,7 +49,7 @@ class MatchResCmp(common.dictcmp.GraphCmp):
                 hash((
                     n['udata']['position'],
                     n['udata']['word'],
-                    n['udata']['name'] if n['udata'].has_key('virtual') and n['udata']['virtual'] else '',
+                    n['udata']['name'] if 'virtual' in n['udata'] and n['udata']['virtual'] else '',
                 )),
             lambda n:
                 not n['udata']['hidden'],
@@ -74,11 +74,7 @@ class CrossMatchResCmp(object):
     def __init__(self, obj):
         assert isinstance(obj, list)
         self.__obj = obj
-        self.__cmps = map(
-            lambda o:
-                MatchResCmp(o),
-            self.__obj
-        )
+        self.__cmps = [MatchResCmp(o) for o in self.__obj]
 
     def __eq__(self, other):
         if not isinstance(other, CrossMatchResCmp):
@@ -104,7 +100,7 @@ class ParserTestCase(unittest.TestCase):
         self.primary = primary
 
     def setUp(self):
-        print ''
+        print('')
 
     def test_sentence(self):
         with timeit_ctx('loading worddb'):
@@ -116,7 +112,7 @@ class ParserTestCase(unittest.TestCase):
             data = json.load(f)
             self.sentence = data['input']
             self.reference = data['graph']
-        logging.info(u'Setting env for {0}'.format(self.sentence))
+        logging.info('Setting env for {0}'.format(self.sentence))
 
         with timeit_ctx('tokenizing'):
             tokens = parser.api.Tokenizer().tokenize(self.sentence)
@@ -162,16 +158,7 @@ class ParserTestCase(unittest.TestCase):
 
 def suite(parser_tests_dir, primary):
     return unittest.TestSuite(
-        map(
-            lambda filename: ParserTestCase(filename=filename, primary=primary),
-            filter(
-                lambda d: os.path.exists(d),
-                map(
-                    lambda e: os.path.join(parser_tests_dir, e, 'test.json'),
-                    os.listdir(parser_tests_dir)
-                )
-            )
-        )
+        [ParserTestCase(filename=filename, primary=primary) for filename in [d for d in [os.path.join(parser_tests_dir, e, 'test.json') for e in os.listdir(parser_tests_dir)] if os.path.exists(d)]]
     )
 
 

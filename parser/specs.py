@@ -14,7 +14,7 @@ import parser.lang.defs
 from parser.lang.common import RtRule, RtMatchString
 import parser.preprocessor
 import parser.matcher
-import graph
+from . import graph
 import common.output
 import common.ifmodified
 from argparse import Namespace as ns
@@ -332,7 +332,7 @@ class SpecCompiler(object):
             spec_path = self.__create_spec_path()
             name = name.replace('$SPEC', spec_path)
         elif name.find('::') != 0:
-            print "Compile warning: $-definition is missing for", self.__spec_name, name
+            print("Compile warning: $-definition is missing for", self.__spec_name, name)
         return name
 
     def __add_name_remap(self, original, target):
@@ -347,7 +347,7 @@ class SpecCompiler(object):
         self.__name_remap[original] = list(set(targets))
 
     def __copy_name_remap(self, compiled_spec):
-        for k, v in compiled_spec.get_name_remap().items():
+        for k, v in list(compiled_spec.get_name_remap().items()):
             self.__add_name_remap(k, v)
 
     def __add_state(self, state):
@@ -568,7 +568,7 @@ class SpecCompiler(object):
             if not state.has_rules():
                 continue
             rules = state.get_rules_list()
-            for r, v in rules.items():
+            for r, v in list(rules.items()):
                 pass
                 # print r, v
 
@@ -653,9 +653,9 @@ class SpecCompiler(object):
             return True
         if str(binding) in self.__name_remap:
             return True
-        print self.__parent_spec_name
-        print binding
-        print self.__name_remap.keys()
+        print(self.__parent_spec_name)
+        print(binding)
+        print(list(self.__name_remap.keys()))
         raise RuntimeError('state name matching not implemented')
 
     def resolve_binding(self, binding):
@@ -673,7 +673,7 @@ class SpecCompiler(object):
                 in_spec_anchors = in_spec.get_local_spec_anchors()
                 assert in_spec_anchors is not None and len(in_spec_anchors) == 1
                 return in_spec_anchors[0].get_name()
-        print binding
+        print(binding)
         raise RuntimeError('state name matching not implemented')
 
     def compile(self, spec, parent_spec_name=''):
@@ -740,7 +740,7 @@ class TrsDef(object):
         elif self.__from.get_glevel() > self.__to.get_glevel():
             self.__levelpath = [self.__to.get_glevel(), ]  # to is higher than from. Anything below to doesnt matter
         else:
-            self.__levelpath = range(self.__from.get_glevel() + 1, self.__to.get_glevel() + 1)
+            self.__levelpath = list(range(self.__from.get_glevel() + 1, self.__to.get_glevel() + 1))
         self.__levelpath = tuple(self.__levelpath)
 
     def __init_from_trsto(self, compiler, st_from, trs_to, with_trs):
@@ -758,10 +758,10 @@ class TrsDef(object):
         elif self.__from.get_glevel() > upper_level:
             self.__levelpath = [upper_level, ]
         else:
-            self.__levelpath = range(self.__from.get_glevel() + 1, upper_level + 1)
+            self.__levelpath = list(range(self.__from.get_glevel() + 1, upper_level + 1))
 
         if upper_level < trs_to.get_from().get_glevel():
-            self.__levelpath.extend(range(upper_level + 1, trs_to.get_from().get_glevel()))
+            self.__levelpath.extend(list(range(upper_level + 1, trs_to.get_from().get_glevel())))
 
         self.__levelpath.extend(trs_to.__levelpath)
         to_level = trs_to.get_to().get_glevel()
@@ -1094,10 +1094,10 @@ class SpecStateDef(object):
     def get_transitions(self, filt_fcn=None):
         if filt_fcn is None:
             return self.__transitions[:]
-        return filter(
+        return list(filter(
             filt_fcn,
             self.__transitions
-        )
+        ))
 
     def get_rtransitions(self):
         return self.__rtransitions[:]
@@ -1109,7 +1109,7 @@ class SpecStateDef(object):
         return True
 
     def extend_rules(self, rules, max_level, original_state=None):
-        for r, rule_def in rules.items():
+        for r, rule_def in list(rules.items()):
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
             rule_def = [parser.lang.common.RtRuleFactory(
@@ -1141,10 +1141,10 @@ class SpecStateDef(object):
         return [r.new_copy() for r in self.__stateless_rules]
 
     def has_rules(self):
-        return len(set(SpecStateDef.all_rules).intersection(self.__spec_dict.keys())) > 0
+        return len(set(SpecStateDef.all_rules).intersection(list(self.__spec_dict.keys()))) > 0
 
     def has_rt_rules(self):
-        return len(set(SpecStateDef.dynamic_rules).intersection(self.__spec_dict.keys())) > 0
+        return len(set(SpecStateDef.dynamic_rules).intersection(list(self.__spec_dict.keys()))) > 0
 
     def get_rules_list(self):
         return {r: self.__spec_dict[r] for r in SpecStateDef.all_rules if r in self.__spec_dict}
@@ -1260,8 +1260,8 @@ argres_level = 0
 def argres(show_result=True, repr_result=None):
     def argres_internal(func):
         "This decorator dumps out the arguments passed to a function before calling it"
-        argnames = func.func_code.co_varnames[:func.func_code.co_argcount]
-        fname = func.func_name
+        argnames = func.__code__.co_varnames[:func.__code__.co_argcount]
+        fname = func.__name__
 
         def argres_fcn(*args, **kwargs):
             obj = args[0]
@@ -1272,7 +1272,7 @@ def argres(show_result=True, repr_result=None):
             if logger is not None:
                 s = '>>{0}{1}: {2}'.format(space, fname, ', '.join(
                     '%s=%r' % entry
-                    for entry in zip(argnames, args) + kwargs.items()))
+                    for entry in list(zip(argnames, args)) + list(kwargs.items())))
                 logger.info(s)
             res = func(*args, **kwargs)
             if logger is not None and show_result:
@@ -1290,25 +1290,15 @@ def argres(show_result=True, repr_result=None):
 def todict(obj, classkey=None):
     if isinstance(obj, dict):
         data = {}
-        for (k, v) in obj.items():
+        for (k, v) in list(obj.items()):
             data[k] = todict(v, classkey)
         return data
     elif hasattr(obj, "_ast"):
         return todict(obj._ast())
-    elif hasattr(obj, "__iter__"):
+    elif isinstance(obj, list):
         return [todict(v, classkey) for v in obj]
-    elif hasattr(obj, "__dict__"):
-        data = dict(
-            [(key, todict(value, classkey))
-             for key, value in obj.__dict__.iteritems()
-             if not callable(value) and not key.startswith('_')
-             ]
-        )
-        if classkey is not None and hasattr(obj, "__class__"):
-            data[classkey] = obj.__class__.__name__
-        return data
     else:
-        return obj
+        return str(obj)
 
 
 class LineWrapper(object):
@@ -1317,7 +1307,7 @@ class LineWrapper(object):
         self.__max_length = max_length
         if isinstance(splitters, (list, tuple)):
             self.__wrapper_fcn = self.__wrap_sequence
-        elif isinstance(splitters, (str, unicode)):
+        elif isinstance(splitters, str):
             self.__wrapper_fcn = self.__wrap_symbol
         else:
             raise ValueError(
@@ -1325,7 +1315,7 @@ class LineWrapper(object):
             )
         self.__splitters = dict(
             map(
-                lambda (i, s): (s, 1.0 / i),
+                lambda i_s: (i_s[1], 1.0 / i_s[0]),
                 enumerate(splitters, 1)
             )
         )
@@ -1341,7 +1331,7 @@ class LineWrapper(object):
         indent = indent_char * self.__indent
         return linebreak.join(
             map(
-                lambda (i, p): p if i == 0 else indent + p if i == 1 or not self.__step else indent * i + p,
+                lambda i_p: i_p[1] if i_p[0] == 0 else indent + i_p[1] if i_p[0] == 1 or not self.__step else indent * i_p[0] + i_p[1],
                 enumerate(parts)
             )
         )
@@ -1396,7 +1386,7 @@ class LineWrapper(object):
         }
         for i in range(0, max_length):
             splitter = ''
-            for s in self.__splitters.keys():
+            for s in list(self.__splitters.keys()):
                 if max_length <= len(s) + i:
                     continue
                 if line[i:i+len(s)] == s:
@@ -1465,34 +1455,34 @@ class Link(object):
 
     def __fmt_dot_html_table(self):
         lw = LineWrapper(60, 70, [' ', '::'], 4, False)
-        s = u'<TABLE CELLSPACING="0">'
-        s += u'<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
+        s = '<TABLE CELLSPACING="0">'
+        s += '<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
             self.get_uniq()
         )
-        s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">master: {0}</FONT></TD></TR>'.format(
+        s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">master: {0}</FONT></TD></TR>'.format(
             self.get_master()
         )
-        s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">slave: {0}</FONT></TD></TR>'.format(
+        s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">slave: {0}</FONT></TD></TR>'.format(
             self.get_slave()
         )
 
         for d in self.get_details():
-            s += u'<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
+            s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
                 self.__format_dot_html_dict(d, lw)
             )
-        s += u'</TABLE>'
+        s += '</TABLE>'
         return s
 
     def __format_dot_html_dict(self, d, line_wrapper):
-        s = u'<TABLE CELLSPACING="0">'
-        row_fmt = (u'<TR>'
-                   u'<TD {align} {valign} {bgcolor}>{k}</TD>'
-                   u'<TD {align} {valign} {bgcolor}>{v}</TD>'
-                   u'</TR>')
-        align = u'ALIGN="LEFT"'
-        valign = u'VALIGN="TOP"'
-        bgcolor = u'BGCOLOR="WHITE"'
-        for k, v in d.items():
+        s = '<TABLE CELLSPACING="0">'
+        row_fmt = ('<TR>'
+                   '<TD {align} {valign} {bgcolor}>{k}</TD>'
+                   '<TD {align} {valign} {bgcolor}>{v}</TD>'
+                   '</TR>')
+        align = 'ALIGN="LEFT"'
+        valign = 'VALIGN="TOP"'
+        bgcolor = 'BGCOLOR="WHITE"'
+        for k, v in list(d.items()):
             if isinstance(v, dict) and v:
                 v_str = self.__format_dot_html_dict(v, line_wrapper)
             elif isinstance(v, list) and v:
@@ -1510,17 +1500,17 @@ class Link(object):
                 k=k,
                 v=v_str
             )
-        s += u'</TABLE>'
+        s += '</TABLE>'
         return s
 
     def __format_dot_html_list(self, l, line_wrapper):
-        s = u'<TABLE CELLSPACING="0">'
-        row_fmt = (u'<TR>'
-                   u'<TD {align} {valign} {bgcolor}>{v}</TD>'
-                   u'</TR>')
-        align = u'ALIGN="LEFT"'
-        valign = u'VALIGN="TOP"'
-        bgcolor = u'BGCOLOR="WHITE"'
+        s = '<TABLE CELLSPACING="0">'
+        row_fmt = ('<TR>'
+                   '<TD {align} {valign} {bgcolor}>{v}</TD>'
+                   '</TR>')
+        align = 'ALIGN="LEFT"'
+        valign = 'VALIGN="TOP"'
+        bgcolor = 'BGCOLOR="WHITE"'
         for v in l:
             if isinstance(v, dict) and v:
                 v_str = self.__format_dot_html_dict(v, line_wrapper)
@@ -1538,7 +1528,7 @@ class Link(object):
                 bgcolor=bgcolor,
                 v=v_str
             )
-        s += u'</TABLE>'
+        s += '</TABLE>'
         return s
 
 
@@ -1650,25 +1640,25 @@ class MatchedEntry(object):
         raise ValueError('unsupported format {0}'.format(fmt))
 
     def __fmt_dot_html_table(self):
-        s = u'<TABLE CELLSPACING="0">'
-        s += u'<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
+        s = '<TABLE CELLSPACING="0">'
+        s += '<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
             self.get_name()
         )
 
-        s += u'<TR><TD BGCOLOR="darkseagreen2"><FONT FACE="ARIAL"><B>{0}: {1}</B></FONT></TD></TR>'.format(
+        s += '<TR><TD BGCOLOR="darkseagreen2"><FONT FACE="ARIAL"><B>{0}: {1}</B></FONT></TD></TR>'.format(
             self.get_form().get_word(),
             self.get_form().get_position(),
         )
 
-        s += u'<TR><TD BGCOLOR="white"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
+        s += '<TR><TD BGCOLOR="white"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
             self.get_form().format('dot-html-table')
         )
 
         for r in self.get_rules():
-            s += u'<TR><TD ALIGN="LEFT" BGCOLOR="{0}"><FONT FACE="ARIAL">{1}</FONT></TD></TR>'.format(
-                u'darkolivegreen1' if r.is_static() else u'burlywood1',
+            s += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}"><FONT FACE="ARIAL">{1}</FONT></TD></TR>'.format(
+                'darkolivegreen1' if r.is_static() else 'burlywood1',
                 r.format('dot-html'))
-        s += u'</TABLE>'
+        s += '</TABLE>'
         return s
 
 
@@ -1693,8 +1683,8 @@ class MatchedSequence(object):
             self.__append_entries(me)
             self.__reliability *= me.get_reliability()
 
-        for master, slaves in sq.get_links().items():
-            for slave, details in slaves.items():
+        for master, slaves in list(sq.get_links().items()):
+            for slave, details in list(slaves.items()):
                 self.__mk_link(master, slave, details)
 
     def __copy_subseq(self, rtme):
@@ -1771,10 +1761,10 @@ class MatchedSequence(object):
     def get_entries(self, hidden=False, virtual=True):
         if virtual:
             return self.__all_entries if hidden else self.__entries
-        return filter(
+        return list(filter(
             lambda e: not e.is_virtual(),
             self.__all_entries if hidden else self.__entries
-        )
+        ))
 
     def get_links(self, hidden=False):
         return self.__all_links if hidden else self.__links
@@ -1785,29 +1775,31 @@ class MatchedSequence(object):
     def get_reliability(self):
         return self.__reliability
 
-    def print_sequence(self):
-        print self.get_name(), '<',
+    def format(self, fmt):
+        assert fmt == 'str'
+        res = '{0} <'.format(self.get_name())
         for e in self.__all_entries:
             f = e.get_form()
             if not e.is_hidden():
-                print f.get_word(),
+                res += '{0} '.format(f.get_word())
             else:
-                print '<', f.get_word(), '>',
-        print 'reliability={0}, entries_csum={1}, links_csum={2}>'.format(
+                res += '< {0} >'.format(f.get_word())
+        res += 'reliability={0}, entries_csum={1}, links_csum={2}>'.format(
             self.get_reliability(),
             self.__entries_csum,
             self.__links_csum
         )
+        return res
 
     def export_dict(self):
-        nodes = map(
+        nodes = list(map(
             lambda e: e.export_dict(),
             self.__all_entries
-        )
-        edges = map(
+        ))
+        edges = list(map(
             lambda l: l.export_dict(),
             self.__all_links
-        )
+        ))
         return {
             'name': self.__name,
             'reliability': self.__reliability,
@@ -1816,9 +1808,9 @@ class MatchedSequence(object):
         }
 
     def __repr__(self):
-        r = u"MatchedSequence(objid={0}, entries=[{1}])".format(
+        r = "MatchedSequence(objid={0}, entries=[{1}])".format(
             hex(id(self)),
-            u', '.join(map(lambda x: x.get_form().get_word(), self.__entries))
+            ', '.join(map(lambda x: x.get_form().get_word(), self.__entries))
         )
         return r.encode('utf-8')
 
@@ -1838,7 +1830,7 @@ class MatchedSequence(object):
     def __hash__(self):
         return hash(
             (
-                tuple(sorted(self.__entries_csum)),
+                tuple(sorted([str(i) for i in self.__entries_csum])),
                 tuple(sorted(self.__links_csum))
             )
         )
@@ -2015,7 +2007,7 @@ class RtMatchSequence(object):
             r = indexes[1]
             if r < 0:
                 r += len(sq.__all_entries) + 1
-            indexes = range(l, r)
+            indexes = list(range(l, r))
 
         self.__copy_all_entries(sq, indexes=indexes)
         self.__copy_links(sq, indexes=indexes)
@@ -2025,7 +2017,7 @@ class RtMatchSequence(object):
 
     def __copy_all_entries(self, sq, indexes):
         for i, e in filter(
-            lambda (idx, entry): indexes is None or idx in indexes,
+            lambda idx_entry: indexes is None or idx_entry[0] in indexes,
             enumerate(sq.__all_entries)
         ):
             self.__append_entries(
@@ -2038,13 +2030,13 @@ class RtMatchSequence(object):
 
     def __copy_links(self, sq, indexes):
         self.__links = {}
-        for master, slaves in sq.__links.items():
+        for master, slaves in list(sq.__links.items()):
             master_offset = master.get_offset()
             if indexes is not None and master_offset not in indexes:
                 continue
             my_master = self[master_offset]
             self.__links[my_master] = {}
-            for slave, details in slaves.items():
+            for slave, details in list(slaves.items()):
                 slave_offset = slave.get_offset()
                 if indexes is not None and slave_offset not in indexes:
                     continue
@@ -2102,7 +2094,7 @@ class RtMatchSequence(object):
         if not trs:
             return hres
 
-        trs_sqs = [self, ] + map(lambda x: RtMatchSequence(self), trs[0:-1])
+        trs_sqs = [self, ] + list(map(lambda x: RtMatchSequence(self), trs[0:-1]))
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             for r in res:
@@ -2171,17 +2163,17 @@ class RtMatchSequence(object):
     @argres()
     def __find_affected_pares(self, rtme, find_all=False):
         if find_all:
-            return map(
+            return list(map(
                 lambda other_rtme: (rtme, other_rtme),
                 self.get_entries(hidden=True, exclude=rtme)
-            ) + map(
+            )) + list(map(
                 lambda other_rtme: (other_rtme, rtme),
                 self.get_entries(hidden=True, exclude=rtme)
-            )
-        return map(
+            ))
+        return list(map(
             lambda other_rtme: (rtme, other_rtme),
             self.get_entries(hidden=True, exclude=rtme)
-        )
+        ))
 
     @argres()
     def __handle_fixed_trs(self, trs, form):
@@ -2234,10 +2226,10 @@ class RtMatchSequence(object):
         self.__append_entries(rte)
         self.__ctx.create_ctx(
             to.get_include_name(),
-            ctx_create_fcn=lambda(sub_ctx, ): self.__subctx_create(sub_ctx, rte),
-            sequence_res_fcn=lambda (sub_ctx, res): self.__submatcher_res(sub_ctx, rte, res),
-            sequence_forked_fcn=lambda (sub_ctx, sq, new_sq): self.__submatcher_forked(sub_ctx, sq, new_sq, rte),
-            ctx_complete_fcn=lambda (sub_ctx, ): self.__subctx_complete(sub_ctx, rte)
+            ctx_create_fcn=lambda sub_ctx2: self.__subctx_create(sub_ctx2[0], rte),
+            sequence_res_fcn=lambda sub_ctx_res: self.__submatcher_res(sub_ctx_res[0], rte, sub_ctx_res[1]),
+            sequence_forked_fcn=lambda sub_ctx_sq_new_sq: self.__submatcher_forked(sub_ctx_sq_new_sq[0], sub_ctx_sq_new_sq[1], sub_ctx_sq_new_sq[2], rte),
+            ctx_complete_fcn=lambda sub_ctx3: self.__subctx_complete(sub_ctx3[0], rte)
         )
         return [ns(sq=self, valid=True, fini=False, again=False), ]
 
@@ -2286,11 +2278,12 @@ class RtMatchSequence(object):
         return self.__matcher.get_name()
 
     def print_sequence(self):
-        print self.get_rule_name(), '<',
+        res = '{0} <'.format(self.get_rule_name())
         for e in self.__entries:
             f = e.get_form()
-            print f.get_word(),
-        print '>'
+            res += '{0} '.format(f.get_word())
+        res += '>'
+        return res
 
     def get_links(self):
         return self.__links
@@ -2361,8 +2354,8 @@ class RtMatchSequence(object):
 
     def get_trackable_links(self, rtme):
         trackable = []
-        for master, slaves in self.__links.items():
-            for slave, links in slaves.items():
+        for master, slaves in list(self.__links.items()):
+            for slave, links in list(slaves.items()):
                 if slave is not rtme:
                     continue
                 for link in links:
@@ -2494,10 +2487,10 @@ class SequenceMatchRes(object):
         return self.__sqs
 
     def export_obj(self):
-        return map(
+        return list(map(
             lambda s: s.export_dict(),
             self.__sqs
-        )
+        ))
 
     def export_json(self):
         return json.dumps(
@@ -2529,7 +2522,7 @@ class SequenceSpecMatcher(object):
         obj = __import__(root, globals(), locals(), root)
         for p in parts:
             path += '.' + p
-            obj = __import__(str(path), globals(), locals(), str(path))
+            obj = __import__(path, globals(), locals(), p)
         return obj
 
     def __create_specs(self):
@@ -2576,7 +2569,7 @@ class SequenceSpecMatcher(object):
             self.__primary.append(matcher)
 
     def build_specs(self):
-        for spec_name in self.__spec_by_name.keys():
+        for spec_name in list(self.__spec_by_name.keys()):
             if self.__is_primary(spec_name):
                 self.__build_spec(spec_name)
 
@@ -2600,20 +2593,20 @@ class SequenceSpecMatcher(object):
             ctx.matched_sqs,
             0
         )
-        ctx.matched_sqs = filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), ctx.matched_sqs)
+        ctx.matched_sqs = list(filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), ctx.matched_sqs))
 
     def __create_initial_ctxs(self, ctx):
-        ctx.ctxs = map(
+        ctx.ctxs = list(map(
             lambda m: (
                 m,
                 MatcherContext(
                     ctx,
                     '__root',
-                    sequence_matched_fcn=lambda (sq_ctx, sq): ctx.matched_sqs.add(sq),
+                    sequence_matched_fcn=lambda sq_ctx_sq: ctx.matched_sqs.add(sq_ctx_sq[1]),
                 )
             ),
             self.__primary
-        )
+        ))
 
     def __create_ctx(self):
         return ns(
@@ -2715,7 +2708,7 @@ class RtMatchEntry(object):
 
     @argres(show_result=False)
     def __copy_attributes(self, rtme):
-        self.__attributes = {k: v for k, v in rtme.__attributes.items()}
+        self.__attributes = {k: v for k, v in list(rtme.__attributes.items())}
 
     @argres(show_result=False)
     def __create_rules(self):
@@ -2828,29 +2821,30 @@ class RtMatchEntry(object):
     @argres()
     def find_transitions(self, forms):
         return functools.reduce(
-            lambda x, y: x + y,
+            lambda x, y: x + list(y),
             map(
                 lambda form:
                     filter(
-                        lambda (frm, trs): trs.get_to().is_static_applicable(frm),
+                        lambda frm_trs: frm_trs[1].get_to().is_static_applicable(frm_trs[0]),
                         map(
                             lambda trs: (form, trs),
                             self.__spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
                         )
                     ),
                 forms.get_forms()
-            )
-        ) + map(
+            ),
+            []
+        ) + list(map(
             lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
-        )
+        ))
 
     @argres()
     def handle_rules(self, on_entry=None):
         pending = []
         affected_links = []
 
-        entries = map(
+        entries = list(map(
             lambda e: common.ifmodified.IfModified(
                 e,
                 lambda v: v.get_form().revision()
@@ -2858,7 +2852,7 @@ class RtMatchEntry(object):
             [on_entry, ] if on_entry is not None
             else
             self.__owner.get_entries(hidden=True, exclude=self)
-        )
+        ))
 
         for r in self.__pending:
             applied = False
@@ -3013,10 +3007,10 @@ class RtTmpEntry(object):
 
     @argres()
     def find_transitions(self, forms):
-        return map(
+        return list(map(
             lambda f: (f, TrsDef(None, self.get_spec(), st_to=self.get_spec())),
             forms.get_forms()
-        )
+        ))
 
     @argres()
     def handle_rules(self, on_entry=None):
@@ -3172,7 +3166,7 @@ class RtVirtualEntry(object):
 
     @argres(show_result=False)
     def __copy_attributes(self, rtme):
-        self.__attributes = {k: v for k, v in rtme.__attributes.items()}
+        self.__attributes = {k: v for k, v in list(rtme.__attributes.items())}
 
     @argres(show_result=False)
     def __create_rules(self):
@@ -3296,22 +3290,23 @@ class RtVirtualEntry(object):
     @argres()
     def find_transitions(self, forms):
         return functools.reduce(
-            lambda x, y: x + y,
+            lambda x, y: x + list(y),
             map(
                 lambda form:
                     filter(
-                        lambda (frm, trs): trs.get_to().is_static_applicable(frm),
+                        lambda frm_trs1: frm_trs1[1].get_to().is_static_applicable(frm_trs1[0]),
                         map(
                             lambda trs: (form, trs),
                             self.__spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
                         )
                     ),
                 forms.get_forms()
-            )
-        ) + map(
+            ),
+            []
+        ) + list(map(
             lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
-        )
+        ))
 
     @argres()
     def handle_rules(self, on_entry=None):
@@ -3325,7 +3320,7 @@ class RtVirtualEntry(object):
         pending = []
         affected_links = []
 
-        entries = map(
+        entries = list(map(
             lambda e: common.ifmodified.IfModified(
                 e,
                 lambda v: v.get_form().revision()
@@ -3333,7 +3328,7 @@ class RtVirtualEntry(object):
             [on_entry, ] if on_entry is not None
             else
             self.__owner.get_entries(hidden=True, exclude=self)
-        )
+        ))
 
         for r in self.__pending:
             applied = False

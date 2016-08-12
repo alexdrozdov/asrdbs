@@ -31,42 +31,42 @@ class Event(object):
 class LetterReplaceProbabilities:
     def __init__(self):
         self.originals={}
-        letters = u"абвгдежзийклмнопрстуфхцчшщъьэюя"
+        letters = "абвгдежзийклмнопрстуфхцчшщъьэюя"
         for l in letters:
             self.originals[l] = {}
-        self.originals[u"а"][u"о"]=0.5
-        self.originals[u"а"][u"у"]=0.5
-        self.originals[u"а"][u"е"]=0.3
-        self.originals[u"а"][u"и"]=0.3
+        self.originals["а"]["о"]=0.5
+        self.originals["а"]["у"]=0.5
+        self.originals["а"]["е"]=0.3
+        self.originals["а"]["и"]=0.3
 
-        self.originals[u"о"][u"а"]=0.5
-        self.originals[u"о"][u"у"]=0.5
-        self.originals[u"о"][u"е"]=0.5
-        self.originals[u"о"][u"и"]=0.5
+        self.originals["о"]["а"]=0.5
+        self.originals["о"]["у"]=0.5
+        self.originals["о"]["е"]=0.5
+        self.originals["о"]["и"]=0.5
 
-        self.originals[u"у"][u"о"]=0.5
-        self.originals[u"у"][u"а"]=0.3
-        self.originals[u"у"][u"е"]=0.2
-        self.originals[u"у"][u"и"]=0.5
+        self.originals["у"]["о"]=0.5
+        self.originals["у"]["а"]=0.3
+        self.originals["у"]["е"]=0.2
+        self.originals["у"]["и"]=0.5
 
-        self.originals[u"е"][u"о"]=0.5
-        self.originals[u"е"][u"у"]=0.2
-        self.originals[u"е"][u"а"]=0.2
-        self.originals[u"е"][u"и"]=0.5
+        self.originals["е"]["о"]=0.5
+        self.originals["е"]["у"]=0.2
+        self.originals["е"]["а"]=0.2
+        self.originals["е"]["и"]=0.5
 
-        self.originals[u"и"][u"о"]=0.5
-        self.originals[u"и"][u"у"]=0.5
-        self.originals[u"и"][u"е"]=0.5
-        self.originals[u"и"][u"а"]=0.3
+        self.originals["и"]["о"]=0.5
+        self.originals["и"]["у"]=0.5
+        self.originals["и"]["е"]=0.5
+        self.originals["и"]["а"]=0.3
 
-        self.originals[u"б"][u"п"] = 0.4
-        self.originals[u"п"][u"б"] = 0.4
+        self.originals["б"]["п"] = 0.4
+        self.originals["п"]["б"] = 0.4
 
-        self.originals[u"с"][u"з"] = 0.5
-        self.originals[u"з"][u"с"] = 0.5
+        self.originals["с"]["з"] = 0.5
+        self.originals["з"]["с"] = 0.5
 
-        self.originals[u"в"][u"ф"] = 0.5
-        self.originals[u"ф"][u"в"] = 0.5
+        self.originals["в"]["ф"] = 0.5
+        self.originals["ф"]["в"] = 0.5
     def get_replacements(self,letter):
         try:
             return self.originals[letter]
@@ -113,7 +113,7 @@ class SimEntry:
         if None==replacements:
             e = {letter:1.0}
         else:
-            e = {l:randrange(0.8, 1.0)*p for l,p in replacements.items()}
+            e = {l:randrange(0.8, 1.0)*p for l,p in list(replacements.items())}
             e[letter] = randrange(0.7, 1.0)
         return e
     def step_forward(self):
@@ -132,40 +132,40 @@ class TextSimulator:
         self.position = 0
         self.letters = {}
         self.lrp = letter_replace_probabilies
-        self.letters[u"а"] = LetterSimInfo(u"а", 4, None, back_intersection=0.3, forward_intersection=0.5)
-        self.letters[u"о"] = LetterSimInfo(u"о", 4, None, back_intersection=0.3, forward_intersection=0.5)
-        self.letters[u"у"] = LetterSimInfo(u"у", 4, None, back_intersection=0.3, forward_intersection=0.5)
-        self.letters[u"е"] = LetterSimInfo(u"е", 4, None, back_intersection=0.3, forward_intersection=0.5)
-        self.letters[u"и"] = LetterSimInfo(u"и", 4, None, back_intersection=0.3, forward_intersection=0.5)
+        self.letters["а"] = LetterSimInfo("а", 4, None, back_intersection=0.3, forward_intersection=0.5)
+        self.letters["о"] = LetterSimInfo("о", 4, None, back_intersection=0.3, forward_intersection=0.5)
+        self.letters["у"] = LetterSimInfo("у", 4, None, back_intersection=0.3, forward_intersection=0.5)
+        self.letters["е"] = LetterSimInfo("е", 4, None, back_intersection=0.3, forward_intersection=0.5)
+        self.letters["и"] = LetterSimInfo("и", 4, None, back_intersection=0.3, forward_intersection=0.5)
 
-        self.letters[u"м"] = LetterSimInfo(u"м", 4, None, back_intersection=0.3, forward_intersection=0.6)
-        self.letters[u"н"] = LetterSimInfo(u"н", 4, None, back_intersection=0.3, forward_intersection=0.6)
-        self.letters[u"л"] = LetterSimInfo(u"л", 4, None, back_intersection=0.3, forward_intersection=0.6)
+        self.letters["м"] = LetterSimInfo("м", 4, None, back_intersection=0.3, forward_intersection=0.6)
+        self.letters["н"] = LetterSimInfo("н", 4, None, back_intersection=0.3, forward_intersection=0.6)
+        self.letters["л"] = LetterSimInfo("л", 4, None, back_intersection=0.3, forward_intersection=0.6)
 
-        self.letters[u"в"] = LetterSimInfo(u"в", 4, None, back_intersection=0.0, forward_intersection=0.5)
-        self.letters[u"г"] = LetterSimInfo(u"г", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"ж"] = LetterSimInfo(u"ж", 4, None, back_intersection=0.0, forward_intersection=0.5)
-        self.letters[u"з"] = LetterSimInfo(u"з", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"р"] = LetterSimInfo(u"р", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"с"] = LetterSimInfo(u"с", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"ф"] = LetterSimInfo(u"ф", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"х"] = LetterSimInfo(u"х", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"ц"] = LetterSimInfo(u"ц", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"ч"] = LetterSimInfo(u"ч", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"ш"] = LetterSimInfo(u"ш", 4, None, back_intersection=0.0, forward_intersection=0.3)
-        self.letters[u"щ"] = LetterSimInfo(u"щ", 4, None, back_intersection=0.0, forward_intersection=0.3 )
+        self.letters["в"] = LetterSimInfo("в", 4, None, back_intersection=0.0, forward_intersection=0.5)
+        self.letters["г"] = LetterSimInfo("г", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["ж"] = LetterSimInfo("ж", 4, None, back_intersection=0.0, forward_intersection=0.5)
+        self.letters["з"] = LetterSimInfo("з", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["р"] = LetterSimInfo("р", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["с"] = LetterSimInfo("с", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["ф"] = LetterSimInfo("ф", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["х"] = LetterSimInfo("х", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["ц"] = LetterSimInfo("ц", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["ч"] = LetterSimInfo("ч", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["ш"] = LetterSimInfo("ш", 4, None, back_intersection=0.0, forward_intersection=0.3)
+        self.letters["щ"] = LetterSimInfo("щ", 4, None, back_intersection=0.0, forward_intersection=0.3 )
 
-        self.letters[u"б"] = LetterSimInfo(u"б", 1, None, back_intersection=0.0, forward_intersection=0.0)
-        self.letters[u"д"] = LetterSimInfo(u"д", 1, None, back_intersection=0.0, forward_intersection=0.0)
-        self.letters[u"к"] = LetterSimInfo(u"к", 1, None, back_intersection=0.0, forward_intersection=0.0)
-        self.letters[u"п"] = LetterSimInfo(u"п", 1, None, back_intersection=0.0, forward_intersection=0.0)
-        self.letters[u"т"] = LetterSimInfo(u"т", 1, None, back_intersection=0.0, forward_intersection=0.0)
+        self.letters["б"] = LetterSimInfo("б", 1, None, back_intersection=0.0, forward_intersection=0.0)
+        self.letters["д"] = LetterSimInfo("д", 1, None, back_intersection=0.0, forward_intersection=0.0)
+        self.letters["к"] = LetterSimInfo("к", 1, None, back_intersection=0.0, forward_intersection=0.0)
+        self.letters["п"] = LetterSimInfo("п", 1, None, back_intersection=0.0, forward_intersection=0.0)
+        self.letters["т"] = LetterSimInfo("т", 1, None, back_intersection=0.0, forward_intersection=0.0)
 
     def simulate(self, text, track_sequencer):
         self.active_letters = []
         for t in text:
-            print "!!!!!!!!!!!!!!!!!Simulating", t
-            if not self.letters.has_key(t):
+            print("!!!!!!!!!!!!!!!!!Simulating", t)
+            if t not in self.letters:
                 continue
             lsi = self.letters[t]
             if lsi.back_intersection<0.01:
@@ -187,17 +187,17 @@ class TextSimulator:
         while len(self.active_letters)>0:
             self.simulate_one_step(track_sequencer)
     def print_step_probabilities(self, step, probabilities):
-        print step ,
-        for l,p in probabilities.items():
-            print l.encode("utf8"),":", round(p,3),", ",
-        print ""
+        print(step, end=' ')
+        for l,p in list(probabilities.items()):
+            print(l.encode("utf8"),":", round(p,3),", ", end=' ')
+        print("")
     def simulate_one_step(self, track_sequencer):
         active_letters = []
         probabilities = {}
         for a in self.active_letters:
             pr = a.get_probabilities(self.lrp)
-            for l,p in pr.items():
-                if probabilities.has_key(l) and probabilities[l]<p:
+            for l,p in list(pr.items()):
+                if l in probabilities and probabilities[l]<p:
                     probabilities[l] = p
                 else:
                     probabilities[l] = p
@@ -234,12 +234,12 @@ class FakeTrackSequencer:
         self.print_event_probabilities(event)
         self.step_num += 1
     def print_event_probabilities(self, probabilities):
-        print self.step_num ,
-        for l,p in probabilities.items():
-            print l.encode("utf8"),":", round(p,3),", ",
-        print ""
+        print(self.step_num, end=' ')
+        for l,p in list(probabilities.items()):
+            print(l.encode("utf8"),":", round(p,3),", ", end=' ')
+        print("")
 
 if __name__=="__main__":
     ts = TextSimulator(LetterReplaceProbabilities())
-    ts.simulate(u"влесуродиласьелочка", FakeTrackSequencer())
+    ts.simulate("влесуродиласьелочка", FakeTrackSequencer())
 

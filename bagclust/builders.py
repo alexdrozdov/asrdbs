@@ -2,7 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
-import base
+from . import base
 import gc
 
 
@@ -21,12 +21,12 @@ class BagClustdbBuilder(base.BagClustdb):
 
     def __log_progress(self, cnt):
         if cnt % 1000 == 0:
-            print "Processed", cnt, "words"
+            print("Processed", cnt, "words")
         if cnt % 5000000 == 0:
-            print "Flushing primaries..."
+            print("Flushing primaries...")
             self.flush_bags()
         if cnt % 100000 == 0:
-            print "Running gc..."
+            print("Running gc...")
             gc.collect()
 
     def add_words(self, words_iter, worddb, window_width=6, max_count=None):
@@ -38,7 +38,7 @@ class BagClustdbBuilder(base.BagClustdb):
         while words_iter.has_data() and (max_count is None or count < max_count):
             words = words_iter.get()
             if len(words) < 1:
-                print "Failed to get next word", fail_cnt
+                print("Failed to get next word", fail_cnt)
                 fail_cnt += 1
                 if fail_cnt > 10:
                     break

@@ -14,16 +14,16 @@ class Graphdb(object):
         self.cursor = self.conn.cursor()
 
     def get_alphabet(self):
-        self.cursor.execute(u'SELECT * FROM alphabet ;')
+        self.cursor.execute('SELECT * FROM alphabet ;')
         return self.cursor.fetchall()
 
     def get_letter_id(self, letter):
         try:
-            sql_request = u'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
+            sql_request = 'SELECT letter_id FROM alphabet WHERE (alphabet.letter=\'{0}\');'.format(letter)
             self.cursor.execute(sql_request)
             return self.cursor.fetchall()[0][0]
         except:
-            raise ValueError(u"Символ {0} не найден в базе".format(letter))
+            raise ValueError("Символ {0} не найден в базе".format(letter))
 
     def get_node_blob(self, node_id):
         sql_request = 'SELECT node_blob FROM node_blobs WHERE (node_blobs.node_id={0});'.format(node_id)

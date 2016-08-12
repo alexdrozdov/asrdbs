@@ -9,61 +9,61 @@ import sqlite3
 class Forms:
     terms = {
         "parts_of_speech": {
-            "noun": u"сущ",
-            "adjective": u"прл",
-            "verb": u"гл",
-            "participal": [u"прч", u"дееп"],
-            "union": [u"союз", u"межд", u"предик"],
-            "particle": u"част",
-            "numeral": u"числ",
-            "pronoun": u"мест",
-            "adverb": u"нар",
-            "preposition": u"предл",
+            "noun": "сущ",
+            "adjective": "прл",
+            "verb": "гл",
+            "participal": ["прч", "дееп"],
+            "union": ["союз", "межд", "предик"],
+            "particle": "част",
+            "numeral": "числ",
+            "pronoun": "мест",
+            "adverb": "нар",
+            "preposition": "предл",
         },
 
         "count": {
-            "singilar": u"ед",
-            "plural": u"мн"
+            "singilar": "ед",
+            "plural": "мн"
         },
 
         "gender": {
-            "male": u"муж",
-            "female": u"жен",
-            "neuter": u"ср"
+            "male": "муж",
+            "female": "жен",
+            "neuter": "ср"
         },
 
         "animation": {
-            "animated": u"одуш",
-            "inanimated": u"неод"
+            "animated": "одуш",
+            "inanimated": "неод"
         },
 
         "case": {
-            "nominative": u"им",
-            "genitive": u"род",
-            "dative": u"дат",
-            "accusative": u"вин",
-            "ablative": u"тв",
-            "prepositional": u"пр"
+            "nominative": "им",
+            "genitive": "род",
+            "dative": "дат",
+            "accusative": "вин",
+            "ablative": "тв",
+            "prepositional": "пр"
         },
 
         "verb_form": {
-            "perfect": u"несов",
-            "imperfect": u"сов"
+            "perfect": "несов",
+            "imperfect": "сов"
         },
 
         "time": {
-            "infinitive": u"инф",
-            "past": u"прош",
-            "present": u"наст",
-            "future": u"буд"
+            "infinitive": "инф",
+            "past": "прош",
+            "present": "наст",
+            "future": "буд"
         }
     }
 
     def __init__(self):
         self.transforms = {}
         self.unknown = {}
-        for term_name, term_values in Forms.terms.items():
-            for term_value, term_code in term_values.items():
+        for term_name, term_values in list(Forms.terms.items()):
+            for term_value, term_code in list(term_values.items()):
                 if isinstance(term_code, list):
                     for c in term_code:
                         self.transforms[c] = {"term": term_name, "value": term_value, "code": c}
@@ -81,15 +81,15 @@ class Forms:
                 term = self.transforms[i]
                 res[term["term"]] = term["value"]
             except:
-                if self.unknown.has_key(i):
+                if i in self.unknown:
                     self.unknown[i] += 1
                 else:
                     self.unknown[i] = 1
         return res
 
     def print_unknowns(self):
-        for k, v in self.unknown.items():
-            print k.encode("utf8"), v
+        for k, v in list(self.unknown.items()):
+            print(k.encode("utf8"), v)
 
 
 class MorfWordGroup(object):
@@ -139,10 +139,10 @@ class WordClasses(object):
         self.id_to_json[cid] = json_info
 
     def class_exists(self, json_info):
-        return self.json_to_info.has_key(json_info)
+        return json_info in self.json_to_info
 
     def get_class_id(self, json_info):
-        if self.json_to_id.has_key(json_info):
+        if json_info in self.json_to_id:
             return self.json_to_id[json_info]
         self.add_class(json_info)
         return self.json_to_id[json_info]
@@ -158,7 +158,7 @@ def load_db(max_words=None):
         return Morfdb("morfdb.db")
     else:
         mdb = Morfdb("morfdb.db")
-        mdb.add_alphabet(u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+        mdb.add_alphabet("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
         mdb.load_words("morh.txt", max_words=max_words)
         return mdb
 

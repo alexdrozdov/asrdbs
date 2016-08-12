@@ -36,7 +36,7 @@ class MatchBool(object):
     def is_true(self):
         return self.b > MatchBool.invariantBool
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.is_true()
 
     def __bool__(self):
@@ -68,7 +68,7 @@ class PosMatchRes(object):
     def __str__(self):
         return str(self.__details)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.is_true()
 
 

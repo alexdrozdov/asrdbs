@@ -39,7 +39,7 @@ class BagEntry(object):
         self.__blob_id = blob_id
         self.__word = word
         self.__info = info
-        if not self.__info.has_key('neighbors'):
+        if 'neighbors' not in self.__info:
             self.__info['neighbors'] = {}
 
     def get_blob_id(self):
@@ -56,7 +56,7 @@ class BagEntry(object):
 
     def get_neighbor(self, word):
         neighbors = self.__info['neighbors']
-        if not neighbors.has_key(word):
+        if word not in neighbors:
             neighbors[word] = {'cnt': 0, 'avg_dist': 0.0}
         return WordNeighbor(word, neighbors[word])
 

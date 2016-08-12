@@ -40,30 +40,30 @@ class Preprocessor(object):
     def __init__(self):
         self.__supported_keys = {
             'id': self.__on_id,
-            'repeatable': lambda (ctx, v): True,
+            'repeatable': lambda ctx_v: True,
             'include': self.__on_include,
-            'master-slave': lambda (ctx, v): True,
-            'add-to-seq': lambda (ctx, v): True,
-            'required': lambda (ctx, v): True,
-            'fsm': lambda (ctx, v): True,
+            'master-slave': lambda ctx_v1: True,
+            'add-to-seq': lambda ctx_v2: True,
+            'required': lambda ctx_v3: True,
+            'fsm': lambda ctx_v4: True,
             'entries': self.__on_entries,
-            'anchor': lambda (ctx, v): True,
-            'pos_type': lambda (ctx, v): True,
-            'case': lambda (ctx, v): True,
-            'reliability': lambda (ctx, v): True,
+            'anchor': lambda ctx_v5: True,
+            'pos_type': lambda ctx_v6: True,
+            'case': lambda ctx_v7: True,
+            'reliability': lambda ctx_v8: True,
             'uniq-items': self.__on_uniq_items,
-            'same-as': lambda (ctx, v): True,
-            'merges-with': lambda (ctx, v): True,
-            'dependency-of': lambda (ctx, v): True,
-            'refers-to': lambda (ctx, v): True,
-            'virtual': lambda (ctx, v): True,
-            'form-info': lambda (ctx, v): True,
-            'uniq': lambda (ctx, v): True,
-            'action': lambda (ctx, v): True,
-            'closed-with': lambda (ctx, v): True,
-            'closed': lambda (ctx, v): True,
-            'exclusive-with': lambda (ctx, v): True,
-            'selector': lambda (ctx, v): True,
+            'same-as': lambda ctx_v9: True,
+            'merges-with': lambda ctx_v10: True,
+            'dependency-of': lambda ctx_v11: True,
+            'refers-to': lambda ctx_v12: True,
+            'virtual': lambda ctx_v13: True,
+            'form-info': lambda ctx_v14: True,
+            'uniq': lambda ctx_v15: True,
+            'action': lambda ctx_v16: True,
+            'closed-with': lambda ctx_v17: True,
+            'closed': lambda ctx_v18: True,
+            'exclusive-with': lambda ctx_v19: True,
+            'selector': lambda ctx_v20: True,
         }
 
     def __on_id(self, v):
@@ -138,7 +138,7 @@ class Preprocessor(object):
             )
 
         ctx.push_stack(d['id'])
-        for k, v in d.items():
+        for k, v in list(d.items()):
             # ctx.push_stack(k)
             try:
                 check_fcn = self.__supported_keys[k]

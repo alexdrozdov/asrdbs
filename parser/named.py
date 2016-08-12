@@ -12,18 +12,12 @@ class Named(object):
         self.__reusable = reusable
         if self.__reusable:
             self.__objs = {
-                obj.get_name(): obj for obj in map(
-                    lambda clsdef: clsdef(),
-                    constructors
-                )
+                obj.get_name(): obj for obj in [clsdef() for clsdef in constructors]
             }
         else:
             self.__objs = {
                 (clsdef_obj[1].get_name(), clsdef_obj[1].get_namespace()):
-                    clsdef_obj[0] for clsdef_obj in map(
-                        lambda clsdef: (clsdef, clsdef()),
-                        constructors
-                    )
+                    clsdef_obj[0] for clsdef_obj in [(clsdef, clsdef()) for clsdef in constructors]
             }
 
     def __getitem__(self, name):
@@ -45,25 +39,19 @@ class _Templates(Named):
         cfg = common.config.Config()
         return functools.reduce(
             lambda x, y: x + y,
-            map(
-                lambda tmpl_dir: self.__load_module(tmpl_dir).load_templates(),
-                cfg['/parser/templates']
-            ),
+            [self.__load_module(tmpl_dir).load_templates() for tmpl_dir in cfg['/parser/templates']],
             []
         )
 
     def __load_module(self, path):
-        parts = map(
-            lambda p: str(p),
-            path.split('/')
-        )
+        parts = [str(p) for p in path.split('/')]
         root = parts[0]
         parts = parts[1:]
         path = root
         obj = __import__(root, globals(), locals(), root)
         for p in parts:
             path += '.' + p
-            obj = __import__(str(path), globals(), locals(), str(path))
+            obj = __import__(path, globals(), locals(), p)
         return obj
 
 
@@ -94,8 +82,5 @@ def template(name, *args, **kwargs):
     l = [name, ] + list(args)
     l.reverse()
     return SequentialFuncCall(
-        map(
-            lambda n: Templates()[n, namespace],
-            l
-        )
+        [Templates()[n, namespace] for n in l]
     )

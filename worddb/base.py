@@ -19,7 +19,7 @@ class Worddb(common.db.Db):
         self.classes = WordClasses(reuse_db=self)
 
     def get_alphabet(self):
-        return self.execute(u'SELECT * FROM alphabet ;').fetchall()
+        return self.execute('SELECT * FROM alphabet ;').fetchall()
 
     def check_word(self, word):
         for w in word:
@@ -60,7 +60,7 @@ class WordClasses(common.db.Db):
         return False
 
     def __load_classes(self):
-        if not self.__table_exists(u'word_classes'):
+        if not self.__table_exists('word_classes'):
             return
 
         self.execute('SELECT * from word_classes;')
@@ -69,10 +69,10 @@ class WordClasses(common.db.Db):
             self.id_to_json[cid] = json_info
 
     def class_exists(self, json_info):
-        return self.json_to_info.has_key(json_info)
+        return json_info in self.json_to_info
 
     def get_class_id(self, json_info):
-        if self.json_to_id.has_key(json_info):
+        if json_info in self.json_to_id:
             return self.json_to_id[json_info]
         self.add_class(json_info)
         return self.json_to_id[json_info]

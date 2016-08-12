@@ -40,7 +40,7 @@ class TemplateNeg(parser.templates.common.SpecTemplate):
                     {
                         "id": "$PARENT::neg",
                         "repeatable": RepeatableSpecs().Once() if strict_neg else RepeatableSpecs().LessOrEqualThan(1),
-                        "pos_type": [WordSpecs().IsWord([u'не', ]), ],
+                        "pos_type": [WordSpecs().IsWord(['не', ]), ],
                     },
                     body
                 ]

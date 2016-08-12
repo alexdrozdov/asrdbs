@@ -203,10 +203,10 @@ class EntityLocationSpec(SequenceSpec):
                                 ),
                             },
                             items=[
-                                {"pos_type": [WordSpecs().IsWord([u'над']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'под']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'в']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'на']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['над']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['под']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['в']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['на']), ]},
                             ]
                         )
                     }
@@ -225,10 +225,10 @@ class EntityLocationSpec(SequenceSpec):
                                 "exclusive-with": AnchorSpecs().ExclusiveWith("$TAG(pre)"),
                             },
                             items=[
-                                {"pos_type": [WordSpecs().IsWord([u'над']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'под']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'в']), ]},
-                                {"pos_type": [WordSpecs().IsWord([u'на']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['над']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['под']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['в']), ]},
+                                {"pos_type": [WordSpecs().IsWord(['на']), ]},
                             ]
                         )
                     }

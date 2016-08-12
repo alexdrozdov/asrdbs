@@ -61,12 +61,12 @@ class ShadowStatsOneMinute(object):
         stop_time = time.time()
         delta_time = stop_time - self.__start
 
-        print "\t\ttime: " + str(self.__start) + ", " + str(stop_time) + ", " + str(delta_time)
-        print "\t\tloads: " + str(self.__load_count) + " / " + str(float(self.__load_count) / delta_time)
-        print "\t\tdumps: " + str(self.__dump_count) + " / " + str(float(self.__dump_count) / delta_time)
-        print "\t\tget_object: " + str(self.__get_object_count) + " / " + str(float(self.__get_object_count) / delta_time)
-        print "\t\thits: " + str(self.__hitcount) + " / " + str(float(self.__hitcount) / delta_time)
-        print "\t\thitrate: " + str(self.__hitrate)
+        print("\t\ttime: " + str(self.__start) + ", " + str(stop_time) + ", " + str(delta_time))
+        print("\t\tloads: " + str(self.__load_count) + " / " + str(float(self.__load_count) / delta_time))
+        print("\t\tdumps: " + str(self.__dump_count) + " / " + str(float(self.__dump_count) / delta_time))
+        print("\t\tget_object: " + str(self.__get_object_count) + " / " + str(float(self.__get_object_count) / delta_time))
+        print("\t\thits: " + str(self.__hitcount) + " / " + str(float(self.__hitcount) / delta_time))
+        print("\t\thitrate: " + str(self.__hitrate))
 
     def reset(self):
         self.__start = time.time()
@@ -112,15 +112,15 @@ class ShadowStats(object):
         self.__one_min.incr_get_object()
 
     def print_stats(self):
-        print "Stat name: " + self.__stat_name
-        print "\tmax_entry_count: " + str(self.__max_entry_count)
-        print "\tentry_count: " + str(self.__entry_count)
-        print "\tloads: " + str(self.__load_count)
-        print "\tdumps: " + str(self.__dump_count)
-        print "\tget_object: " + str(self.__get_object_count)
-        print "\thits: " + str(self.__hitcount)
-        print "\thitrate: " + str(self.__hitrate)
-        print "\tper minute: "
+        print("Stat name: " + self.__stat_name)
+        print("\tmax_entry_count: " + str(self.__max_entry_count))
+        print("\tentry_count: " + str(self.__entry_count))
+        print("\tloads: " + str(self.__load_count))
+        print("\tdumps: " + str(self.__dump_count))
+        print("\tget_object: " + str(self.__get_object_count))
+        print("\thits: " + str(self.__hitcount))
+        print("\thitrate: " + str(self.__hitrate))
+        print("\tper minute: ")
         self.__one_min.print_stats()
 
     def report_stats(self):
@@ -144,8 +144,8 @@ class Shadow(object):
         self.__obj2objid_dict = {}
 
     def print_self(self):
-        print self.__lru_tail, type(self.__lru_tail)
-        print self.__lru_head, type(self.__lru_head)
+        print(self.__lru_tail, type(self.__lru_tail))
+        print(self.__lru_head, type(self.__lru_head))
 
     def __pop_tail(self):
         if self.__lru_tail is None or self.__lru_len == 0:

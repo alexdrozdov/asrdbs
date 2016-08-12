@@ -17,7 +17,7 @@ class LibtxtAdapter(object):
         self.__pos = 0
 
     def __load(self):
-        print 'Loading libtxt ' + self.__libtxt_filename + '...'
+        print('Loading libtxt ' + self.__libtxt_filename + '...')
         with open(self.__libtxt_filename) as f:
             txt = f.read().decode('utf8')
 

@@ -16,11 +16,11 @@ class c__pos_check(RtStaticRule):
         return args[0].get_pos() in self.__pos_names
 
     def get_info(self, wrap=False):
-        return u'pos: {0}'.format(self.__pos_names[0])
+        return 'pos: {0}'.format(self.__pos_names[0])
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'pos': self.__pos_names}
+        return {'pos': self.__pos_names}
 
 
 class c__case_check(RtStaticRule):
@@ -38,11 +38,11 @@ class c__case_check(RtStaticRule):
         return False
 
     def get_info(self, wrap=False):
-        return u'case: {0}'.format(self.__cases[0])
+        return 'case: {0}'.format(self.__cases[0])
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'case': self.__cases}
+        return {'case': self.__cases}
 
 
 class c__equal_properties_check(RtStaticRule):
@@ -63,11 +63,11 @@ class c__equal_properties_check(RtStaticRule):
         return True
 
     def get_info(self, wrap=False):
-        return u'equal: {0}'.format(self.__props)
+        return 'equal: {0}'.format(self.__props)
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'equal': self.__props}
+        return {'equal': self.__props}
 
 
 class c__position_check(RtStaticRule):
@@ -91,11 +91,11 @@ class c__position_check(RtStaticRule):
         return self.__cb(p1, p2)
 
     def get_info(self, wrap=False):
-        return u'position: {0}'.format(self.__relative_position)
+        return 'position: {0}'.format(self.__relative_position)
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'position': self.__relative_position}
+        return {'position': self.__relative_position}
 
 
 class c__placeholder(RtStaticRule):
@@ -109,11 +109,11 @@ class c__placeholder(RtStaticRule):
         return self.__def_value
 
     def get_info(self, wrap=False):
-        return u'placeholder: {0}'.format(self.__def_value)
+        return 'placeholder: {0}'.format(self.__def_value)
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'placeholder': self.__def_value}
+        return {'placeholder': self.__def_value}
 
 
 class c__word_check(RtStaticRule):
@@ -127,11 +127,11 @@ class c__word_check(RtStaticRule):
         return args[0].get_word() in self.__words
 
     def get_info(self, wrap=False):
-        return u'pos: {0}'.format(self.__words)
+        return 'pos: {0}'.format(self.__words)
 
     def format(self, fmt):
         assert fmt == 'dict'
-        return {u'pos': self.__words}
+        return {'pos': self.__words}
 
 
 class PosSpecs(object):

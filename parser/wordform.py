@@ -93,10 +93,10 @@ class _PredefinedFormats(object):
                     },
                 },
                 '__fmt': {
-                    'layer-row-template': u'<TR><TD {align} {color} {bgcolor}>{rowdata}</TD><TD {align} {color} {bgcolor}></TD></TR>',
-                    'row-template': u'<TR><TD {align} {color} {bgcolor}></TD><TD {align} {color} {bgcolor}>{rowdata}</TD></TR>',
-                    'color-template': u'COLOR="{color}"',
-                    'bg-color-template': u'BGCOLOR="{bgcolor}"',
+                    'layer-row-template': '<TR><TD {align} {color} {bgcolor}>{rowdata}</TD><TD {align} {color} {bgcolor}></TD></TR>',
+                    'row-template': '<TR><TD {align} {color} {bgcolor}></TD><TD {align} {color} {bgcolor}>{rowdata}</TD></TR>',
+                    'color-template': 'COLOR="{color}"',
+                    'bg-color-template': 'BGCOLOR="{bgcolor}"',
                     'align-template': 'ALIGN="{align}"',
                 }
             }
@@ -126,47 +126,33 @@ class _PredefinedFormats(object):
         self.__formatters[name] = Formatter(formatter, fmt)
 
     def __prepare_data(self, fmt, term):
-        layer_order = fmt['layer-order'] if 'layer-order' in fmt else term.layers().keys()
-        layers = filter(
-            lambda ll: ll in filter(
-                lambda l: fmt['layer-filter'](l),
-                term.layers()
-            ),
-            layer_order
-        )
+        layer_order = fmt['layer-order'] if 'layer-order' in fmt else list(term.layers().keys())
+        layers = [ll for ll in layer_order if ll in [l for l in term.layers() if fmt['layer-filter'](l)]]
         tags = dict(
-            map(
-                lambda layer:
-                    (
+            [(
                         layer,
-                        filter(
+                        list(filter(
                             lambda t: fmt['tag-filter'](t),
                             term.layer(layer).tags(),
-                        )
-                    ),
-                layers
-            )
+                        ))
+                    ) for layer in layers]
         )
         properties = dict(
-            map(
-                lambda layer:
-                    (
+            [(
                         layer,
                         dict(
-                            filter(
-                                lambda (k, v): fmt['property-filter'](k),
-                                term.layer(layer).properties().items(),
-                            )
+                            list(filter(
+                                lambda k_v: fmt['property-filter'](k_v[0]),
+                                list(term.layer(layer).properties().items()),
+                            ))
                         )
-                    ),
-                layers
-            )
+                    ) for layer in layers]
         )
         return layers, tags, properties
 
     def __format_html(self, fmt, term):
         layers, tags, properties = self.__prepare_data(fmt, term)
-        res = u''
+        res = ''
         style = []
         self.__push_style_stack(style, self.__fmt(fmt, 'style'))
         for l in layers:
@@ -180,7 +166,7 @@ class _PredefinedFormats(object):
                 self.__push_style_stack(style, tstyle)
                 res += self.__fmt_tag_row(fmt, style, t)
                 self.__pop_style_stack(style)
-            for p, v in lprops.items():
+            for p, v in list(lprops.items()):
                 pstyle = self.__fmt(fmt, 'style', 'properties', p)
                 self.__push_style_stack(style, pstyle)
                 res += self.__fmt_prop_row(fmt, style, p, v)
@@ -199,10 +185,7 @@ class _PredefinedFormats(object):
     def __push_style_stack(self, style, nstyle):
         style.append(
             dict(
-                filter(
-                    lambda (k, v): k in ['align', 'font-color', 'bg-color'],
-                    nstyle.items()
-                )
+                [k_v1 for k_v1 in list(nstyle.items()) if k_v1[0] in ['align', 'font-color', 'bg-color']]
             )
         )
 
@@ -211,32 +194,32 @@ class _PredefinedFormats(object):
 
     def __fmt_layer_row(self, fmt, style, t):
         align = self.__style_get(style, 'align')
-        align = unicode(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else u''
+        align = str(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else ''
         color = self.__style_get(style, 'font-color')
-        color = unicode(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else u''
+        color = str(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else ''
         bgcolor = self.__style_get(style, 'bg-color')
-        bgcolor = unicode(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else u''
-        rowdata = unicode(t)
+        bgcolor = str(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else ''
+        rowdata = str(t)
         return self.__fmt(fmt, '__fmt', 'layer-row-template').format(align=align, color=color, bgcolor=bgcolor, rowdata=rowdata)
 
     def __fmt_tag_row(self, fmt, style, t):
         align = self.__style_get(style, 'align')
-        align = unicode(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else u''
+        align = str(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else ''
         color = self.__style_get(style, 'font-color')
-        color = unicode(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else u''
+        color = str(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else ''
         bgcolor = self.__style_get(style, 'bg-color')
-        bgcolor = unicode(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else u''
-        rowdata = unicode(t)
+        bgcolor = str(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else ''
+        rowdata = str(t)
         return self.__fmt(fmt, '__fmt', 'row-template').format(align=align, color=color, bgcolor=bgcolor, rowdata=rowdata)
 
     def __fmt_prop_row(self, fmt, style, p, v):
         align = self.__style_get(style, 'align')
-        align = unicode(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else u''
+        align = str(self.__fmt(fmt, '__fmt', 'align-template').format(align=align)) if align is not None else ''
         color = self.__style_get(style, 'font-color')
-        color = unicode(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else u''
+        color = str(self.__fmt(fmt, '__fmt', 'color-template').format(color=color)) if color is not None else ''
         bgcolor = self.__style_get(style, 'bg-color')
-        bgcolor = unicode(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else u''
-        rowdata = unicode(u'{0}: {1}'.format(unicode(p), unicode(v)))
+        bgcolor = str(self.__fmt(fmt, '__fmt', 'bg-color-template').format(bgcolor=bgcolor)) if bgcolor is not None else ''
+        rowdata = str('{0}: {1}'.format(str(p), str(v)))
         return self.__fmt(fmt, '__fmt', 'row-template').format(align=align, color=color, bgcolor=bgcolor, rowdata=rowdata)
 
     def __style_get(self, style, key):
@@ -250,14 +233,14 @@ class _PredefinedFormats(object):
         res = {}
         for l in layers:
             lprops = properties[l]
-            for p, v in lprops.items():
+            for p, v in list(lprops.items()):
                 res[p] = v
         return res
 
     def __format_dot_html_table(self, fmt, term):
-        s = u'<TABLE CELLSPACING="0">'
+        s = '<TABLE CELLSPACING="0">'
         s += self['dot-html-rows'](term)
-        s += u'</TABLE>'
+        s += '</TABLE>'
         return s
 
     def __format_dict(self, fmt, term):
@@ -277,10 +260,10 @@ class TermLayer(object):
         self.__ldict = ldict
 
     def properties(self):
-        return {k: v for k, v in self.__ldict.items() if not k.startswith('#')}
+        return {k: v for k, v in list(self.__ldict.items()) if not k.startswith('#')}
 
     def tags(self):
-        return [k for k in self.__ldict.keys() if k.startswith('#')]
+        return [k for k in list(self.__ldict.keys()) if k.startswith('#')]
 
 
 class Term(object):
@@ -453,7 +436,7 @@ class DictToken(object):
         )
 
     def format(self, format_spec):
-        if isinstance(format_spec, (str, unicode)):
+        if isinstance(format_spec, str):
             return self.__predefined_format(str(format_spec))
         assert isinstance(format_spec, dict)
         return self.__custom_format(format_spec)
@@ -488,13 +471,13 @@ class TermRoMethods(object):
         return self.__test_pos('syntax')
 
     def is_comma(self):
-        return self.get_word() == u','
+        return self.get_word() == ','
 
     def is_dot(self):
-        return self.get_word() == u'.'
+        return self.get_word() == '.'
 
     def is_question(self):
-        return self.get_word() == u'?'
+        return self.get_word() == '?'
 
     def get_pos(self):
         return self.term().get_property('parts_of_speech', 'ro')
@@ -588,7 +571,7 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
         self.term().restrict_property(property, layer)
 
     def format(self, format_spec):
-        if isinstance(format_spec, (str, unicode)):
+        if isinstance(format_spec, str):
             return self.__predefined_format(str(format_spec))
         assert isinstance(format_spec, dict)
         return self.__custom_format(format_spec)
@@ -643,9 +626,9 @@ class SpecStateIniForm(Token):
     def __init__(self, *args, **argv):
         super(SpecStateIniForm, self).__init__(
             ns(
-                word=u'ini',
-                original_word=u'ini',
-                info={'parts_of_speech': u'ini'},
+                word='ini',
+                original_word='ini',
+                info={'parts_of_speech': 'ini'},
                 pos=None,
                 uniq=0
             )
@@ -659,9 +642,9 @@ class SpecStateFiniForm(Token):
     def __init__(self, *args, **argv):
         super(SpecStateFiniForm, self).__init__(
             ns(
-                word=u'fini',
-                original_word=u'fini',
-                info={'parts_of_speech': u'fini'},
+                word='fini',
+                original_word='fini',
+                info={'parts_of_speech': 'fini'},
                 pos=None,
                 uniq=0
             )
@@ -679,24 +662,24 @@ class SpecStateVirtForm(Token):
             self.__init_from_form(form)
 
     def __init_default(self):
-        word = u'virt_' + unicode(uuid.uuid1())
+        word = 'virt_' + str(uuid.uuid1())
         super(SpecStateVirtForm, self).__init__(
             ns(
                 word=word,
                 original_word=word,
-                info={'parts_of_speech': u'virt'},
+                info={'parts_of_speech': 'virt'},
                 pos=None,
                 uniq=0
             )
         )
 
     def __defaults(self):
-        word = u'virt_' + unicode(uuid.uuid1())
+        word = 'virt_' + str(uuid.uuid1())
         super(SpecStateVirtForm, self).__init__(
             ns(
                 word=word,
                 original_word=word,
-                info={'parts_of_speech': u'virt'},
+                info={'parts_of_speech': 'virt'},
                 pos=None,
                 uniq=0
             )
@@ -763,7 +746,7 @@ class SpecStateVirtForm(Token):
             forms.append(form.format('dict'))
 
     def __add_form(self, form):
-        if self.get_pos() == u'virt':
+        if self.get_pos() == 'virt':
             self.term().copy(form.term(), ignore=['uniq', ])
             self.term().add_property(
                 'uniq',
@@ -781,9 +764,9 @@ class SpecStateVirtForm(Token):
             'gender': self.__resolve_same,
             'position': self.__resolve_range,
             'uniq': self.__resolve_uniq,
-            'word': lambda form, k: self.__resolve_cat(form, k, u'_')
+            'word': lambda form, k: self.__resolve_cat(form, k, '_')
         }
-        for k, v in resolvers.items():
+        for k, v in list(resolvers.items()):
             v(form, k)
 
         self.__append_history(form)
@@ -796,9 +779,9 @@ class SpecStateVirtForm(Token):
         if keys1 != keys2:
             # print 'differs in keys: {0} -> {1}'.format(keys1, keys2)
             return False
-        for k, l1 in layers1.items():
+        for k, l1 in list(layers1.items()):
             l2 = layers2[k]
-            for kk, v1 in l1.items():
+            for kk, v1 in list(l1.items()):
                 if kk in ['__forms', 'uniq', 'revision']:
                     continue
                 try:
@@ -863,7 +846,7 @@ class SpecStateVirtForm(Token):
                 k,
                 'ctx',
                 sorted(
-                    filter(lambda x: x is not None, list(set(my_prop + other_prop)))
+                    [x for x in list(set(my_prop + other_prop)) if x is not None]
                 )
             )
 
@@ -893,7 +876,7 @@ class SentenceFini(object):
         self.__entries = [SpecStateFiniForm()]
 
     def get_word(self):
-        return u'fini'
+        return 'fini'
 
     def get_uniq(self):
         return 0
@@ -923,8 +906,8 @@ class WordFormFabric(object):
                 self.__unused(info['count'])
             return True
         except:
-            print "Info validation failed for", info
-            print traceback.format_exc()
+            print("Info validation failed for", info)
+            print(traceback.format_exc())
             return False
 
     def __create_syntax_entry(self, symbol, position):
@@ -932,7 +915,7 @@ class WordFormFabric(object):
             ns(
                 word=symbol,
                 original_word=symbol,
-                info={'parts_of_speech': u'syntax'},
+                info={'parts_of_speech': 'syntax'},
                 pos=position,
                 uniq=str(uuid.uuid1())
             )
@@ -944,17 +927,11 @@ class WordFormFabric(object):
         res = []
         word = word.lower()
         info = self.__wdb.get_word_info(word)
-        assert isinstance(info, list), u"No info avaible for {0}".format(word)
-        for form in filter(
-            lambda form: self.__validate_info(form),
-            functools.reduce(
+        assert isinstance(info, list), "No info avaible for {0}".format(word)
+        for form in [form for form in functools.reduce(
                 lambda x, y: x + y,
-                map(
-                    lambda i: i['form'],
-                    info
-                )
-            )
-        ):
+                [i['form'] for i in info]
+            ) if self.__validate_info(form)]:
             res.append(
                 Token(
                     ns(

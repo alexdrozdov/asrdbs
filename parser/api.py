@@ -13,10 +13,7 @@ class Tokenizer(object):
     def tokenize(self, string):
         if isinstance(string, list):
             return string
-        return filter(
-            lambda s:
-                s,
-            re.sub(
+        return [s for s in re.sub(
                 r'\.\s*$',
                 r' . ',
                 re.sub(
@@ -31,8 +28,7 @@ class Tokenizer(object):
                     flags=re.U
                 ),
                 flags=re.U
-            ).split()
-        )
+            ).split() if s]
 
 
 class TokenMapper(object):
@@ -40,7 +36,4 @@ class TokenMapper(object):
         self.__wff = WordFormFabric(worddb_file)
 
     def map(self, tokens):
-        return map(
-            lambda (word_pos, word): self.__wff.create(word, word_pos),
-            enumerate(tokens)
-        )
+        return [self.__wff.create(word_pos_word[1], word_pos_word[0]) for word_pos_word in enumerate(tokens)]

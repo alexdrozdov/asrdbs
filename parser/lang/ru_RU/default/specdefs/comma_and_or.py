@@ -27,12 +27,12 @@ class CommaAndOrSpec(SequenceSpec):
                     {
                         "id": "$PARENT::and",
                         "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [WordSpecs().IsWord([u'и', ]), PosSpecs().IsUnion()],
+                        "pos_type": [WordSpecs().IsWord(['и', ]), PosSpecs().IsUnion()],
                     },
                     {
                         "id": "$PARENT::or",
                         "repeatable": RepeatableSpecs().Once(),
-                        "pos_type": [WordSpecs().IsWord([u'или', ]), ],
+                        "pos_type": [WordSpecs().IsWord(['или', ]), ],
                     }
                 ]
             }

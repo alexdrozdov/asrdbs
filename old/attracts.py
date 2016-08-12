@@ -15,7 +15,7 @@ class PartOfSpeechComparatorSelector(object):
         self.__add_cmp(pos2_name, pos1_name, comparator)
 
     def __add_cmp(self, p1, p2, comparator):
-        if self.comp_dict.has_key(p1):
+        if p1 in self.comp_dict:
             d = self.comp_dict[p1]
         else:
             d = self.comp_dict[p1] = {}
@@ -90,8 +90,8 @@ class VerbNoun(object):
                 return False   # доил коза - тоже не скажешь, а вот козел доил окрестные палатки =)
             return True
         except:
-            print traceback.format_exc()
-            print wl1.get_word(), wl2.get_word()
+            print(traceback.format_exc())
+            print(wl1.get_word(), wl2.get_word())
             return False
 
     def make_link(self, wf1, wf2):
@@ -158,7 +158,7 @@ class VerbVerb(object):
         pass
 
     def compare(self, info1, info2):
-        if not info1.has_key('time') or not info2.has_key['time']:
+        if 'time' not in info1 or not info2.has_key['time']:
             return False
         if info1['time'] != info2['time'] and (info1['time'] == 'infinite' or info2['time'] == 'infinite'):
             return True
@@ -176,7 +176,7 @@ class NounNoun(object):
         restrict = {"parts_of_speech": "noun"}
         while g is not None and g != g1:
             if g.has_spec(restrict):
-                print "restricting"
+                print("restricting")
                 return False
             g = g.left
         return True
@@ -243,8 +243,8 @@ class WordForm(object):
         return self.form['word']
 
     def spec_cmp(self, spec, ignore_missing=False):
-        for k, v in spec.items():
-            if self.info.has_key(k):
+        for k, v in list(spec.items()):
+            if k in self.info:
                 if self.info[k] == v:
                     continue
                 return False
@@ -304,9 +304,9 @@ class PathTo(object):
             r = r.right
 
     def path_to(self, to):
-        if self.left_targets.has_key(to):
+        if to in self.left_targets:
             return self.left_targets[to]
-        if self.right_targets.has_key(to):
+        if to in self.right_targets:
             return self.right_targets[to]
         return []
 
@@ -318,10 +318,10 @@ class PathTo(object):
         return len(self.path_to(to))
 
     def is_lefter(self, to):
-        return self.left_targets.has_key(to)
+        return to in self.left_targets
 
     def is_righter(self, to):
-        return self.right_targets.has_key(to)
+        return to in self.right_targets
 
 
 class WordFormNode(WordForm):
@@ -378,21 +378,21 @@ class WordFormNodeGroup(object):
             try:
                 my_pos = my_wfn.get_pos()
             except:
-                print traceback.format_exc()
+                print(traceback.format_exc())
                 continue
 
             for other_wfn in other_wfng.nodes:
                 try:
                     other_pos = other_wfn.get_pos()
                 except:
-                    print traceback.format_exc()
+                    print(traceback.format_exc())
                     continue
                 comp = pcs.get_comparator(my_pos, other_pos)
                 if comp is None:
                     continue
 
                 if comp.compare(my_wfn, other_wfn):
-                    print my_pos, my_wfn.get_word(), other_pos, other_wfn.get_word()
+                    print(my_pos, my_wfn.get_word(), other_pos, other_wfn.get_word())
                     comp.make_link(my_wfn, other_wfn)
 
     def get_accessable_groups(self):
@@ -452,9 +452,9 @@ class SentenceAttractors(object):
             word_position += 1
             prev_wfng = wfng
         if not self.validate_complete_attraction():
-            print "Error - not all leafs are attracted"
+            print("Error - not all leafs are attracted")
         if not self.validate_group_linkage():
-            print "Error - graph is not completely linked"
+            print("Error - graph is not completely linked")
 
     def validate_complete_attraction(self):
         for e in self.entries:
@@ -486,7 +486,7 @@ class SentenceAttractors(object):
                     e.check_attract(ee)
 
 
-sentence = [u'падал', u'прошлогодний', u'снег', u'на', u'теплую', u'землю', u'поля']
+sentence = ['падал', 'прошлогодний', 'снег', 'на', 'теплую', 'землю', 'поля']
 
 sa = SentenceAttractors(sentence)
 # sa.attract()
