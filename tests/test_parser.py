@@ -106,7 +106,7 @@ class ParserTestCase(unittest.TestCase):
         with timeit_ctx('loading worddb'):
             self.tm = TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building spec matcher'):
-            self.srm = SequenceSpecMatcher(False, primary=self.primary)
+            self.srm = SequenceSpecMatcher(primary=self.primary)
 
         with open(self.filename) as f:
             data = json.load(f)

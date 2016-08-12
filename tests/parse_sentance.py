@@ -58,7 +58,7 @@ def execute(opts):
         with timeit_ctx('loading database'):
             tm = parser.api.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            srm = parser.specs.SequenceSpecMatcher(False, primary=opts.primary)
+            srm = parser.specs.SequenceSpecMatcher(primary=opts.primary)
 
         base_dir = str(uuid.uuid1()) if opts.make_test else None
         with timeit_ctx('dumping selectos'):
@@ -114,7 +114,8 @@ if __name__ == '__main__':
                 'templates': [
                     'parser/templates',
                     'parser/lang/ru_RU/enchanced/templates/selectors'
-                ]
+                ],
+                'generate-svg': False
             },
         }
     )

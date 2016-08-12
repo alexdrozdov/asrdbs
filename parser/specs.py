@@ -2499,7 +2499,7 @@ class SequenceMatchRes(object):
 
 
 class SequenceSpecMatcher(object):
-    def __init__(self, export_svg=False, primary='sentence'):
+    def __init__(self, primary=None):
         self.__primary_spec = 'sentence' if primary is None else primary
         self.__matchers = []
         self.__primary = []
@@ -2508,8 +2508,6 @@ class SequenceSpecMatcher(object):
         self.__preprocessor = parser.preprocessor.Preprocessor()
         self.__load_linkdefs()
         self.__create_specs()
-        if export_svg:
-            self.__export_svg()
 
     def __load_linkdefs(self):
         parser.matcher.load()
@@ -2532,6 +2530,9 @@ class SequenceSpecMatcher(object):
             for sd in obj.load_specdefs():
                 self.add_spec(sd())
         self.build_specs()
+        export_svg = cfg['/parser/export-svg']
+        if export_svg is not None and export_svg:
+            self.__export_svg()
 
     def __is_primary(self, name):
         return name == self.__primary_spec
