@@ -13,10 +13,10 @@ from common.singleton import singleton
 
 class Restricted(object):
     def __cmp__(self, other):
-        return 0
+        return 0 if isinstance(other, Restricted) else 1
 
     def __eq__(self, other):
-        return True
+        return isinstance(other, Restricted)
 
     def __str__(self):
         return "-restricted"
@@ -27,10 +27,10 @@ class Restricted(object):
 
 class Missing(object):
     def __cmp__(self, other):
-        return 0
+        return 0 if isinstance(other, Missing) else 1
 
     def __eq__(self, other):
-        return True
+        return isinstance(other, Missing)
 
     def __str__(self):
         return "-missing"
@@ -133,7 +133,7 @@ class _PredefinedFormats(object):
                         layer,
                         list(filter(
                             lambda t: fmt['tag-filter'](t),
-                            term.layer(layer).tags(),
+                            term.layer(layer).tags_reprs(),
                         ))
                     ) for layer in layers]
         )
@@ -264,6 +264,9 @@ class TermLayer(object):
 
     def tags(self):
         return [k for k in list(self.__ldict.keys()) if k.startswith('#')]
+
+    def tags_reprs(self):
+        return [k if v != Restricted() else '-' + k for (k, v) in list(self.__ldict.items()) if k.startswith('#')]
 
 
 class Term(object):

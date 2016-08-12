@@ -2620,19 +2620,16 @@ class SequenceSpecMatcher(object):
 
         next_subctxs = []
         for mtchr, m_ctx in ctx.get_ctxs():
-            # print "Processing existing sub ctxs", m_ctx, s[0].get_word(), "with", mtchr.get_name()
             res = self.__handle_ctx(mtchr, m_ctx, s)
             if not res.complete:
                 next_subctxs.append((mtchr, m_ctx))
         ctx.set_ctxs(next_subctxs)
 
-        # print "Processing ctx", ctx, s[0].get_word(), "with", matcher.get_name()
         res = matcher.match(ctx, s)
         if res.complete:
             return res
 
         for mtchr, m_ctx in ctx.get_new_ctxs():
-            # print "Processing newly created ctxs", m_ctx, s[0].get_word(), "with", mtchr.get_name()
             self.__handle_ctx(mtchr, m_ctx, s)
 
         return ns(complete=False)

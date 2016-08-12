@@ -37,3 +37,8 @@ class TokenMapper(object):
 
     def map(self, tokens):
         return [self.__wff.create(word_pos_word[1], word_pos_word[0]) for word_pos_word in enumerate(tokens)]
+
+
+class Parser(object):
+    def __init__(object):
+        pass
