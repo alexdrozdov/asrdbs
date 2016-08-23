@@ -24,9 +24,6 @@ class SelectorRes(object):
     def __bool__(self):
         return self.res
 
-    def __bool__(self):
-        return self.res
-
     def __and__(self, other):
         if self.res and other.res:
             return SelectorRes(
@@ -168,9 +165,11 @@ class Selector(object):
         )
         s += functools.reduce(
             lambda x, y: x + y,
-            ['<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+            [
+                '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
                     str(r.format('dict'))
-                ) for r in self.__rules],
+                ) for r in self.__rules
+            ],
             ''
         )
         return s
@@ -272,9 +271,11 @@ class MultiSelector(object):
         )
         s += functools.reduce(
             lambda x, y: x + y,
-            ['<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
+            [
+                '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(
                     str(r.format('dict'))
-                ) for r in self.__rules],
+                ) for r in self.__rules
+            ],
             ''
         )
         return s
@@ -422,10 +423,10 @@ class _Compiler(object):
     def __multi(self, js):
         terms_count = self.__eval_terms_count(js)
         tag_base = [ns(
-                name=t,
-                auto=False,
-                base=True
-            ) for t in self.__get_property_list(js, 'tag-base')]
+            name=t,
+            auto=False,
+            base=True
+        ) for t in self.__get_property_list(js, 'tag-base')]
         js = self.__reshape_js_base(js, terms_count)
         index = self.__find_internal_layer(js, terms_count)
         if index is not None:
@@ -437,16 +438,17 @@ class _Compiler(object):
 
     def __compile_layer(self, terms_count, index, js, parent_tag=None, base_tags=None):
         base_tags = [ns(
-                name=t,
-                auto=False,
-                base=True
-            ) for t in self.__get_property_list(js, 'tag-base')] + self.__as_list(base_tags, none_is_empty=True)
+            name=t,
+            auto=False,
+            base=True
+        ) for t in self.__get_property_list(js, 'tag-base')] + \
+            self.__as_list(base_tags, none_is_empty=True)
 
         tags = [ns(
-                name=t,
-                auto=False,
-                base=False
-            ) for t in self.__get_property_list(js, 'tag')]
+            name=t,
+            auto=False,
+            base=False
+        ) for t in self.__get_property_list(js, 'tag')]
 
         clarifies = self.__get_property_list(js, 'clarifies') + \
             self.__as_list(parent_tag, none_is_empty=True)

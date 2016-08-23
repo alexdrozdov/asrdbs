@@ -131,23 +131,23 @@ class _PredefinedFormats(object):
         layers = [ll for ll in layer_order if ll in [l for l in term.layers() if fmt['layer-filter'](l)]]
         tags = dict(
             [(
-                        layer,
-                        list(filter(
-                            lambda t: fmt['tag-filter'](t),
-                            term.layer(layer).tags_reprs(),
-                        ))
-                    ) for layer in layers]
+                layer,
+                list(filter(
+                    lambda t: fmt['tag-filter'](t),
+                    term.layer(layer).tags_reprs(),
+                ))
+            ) for layer in layers]
         )
         properties = dict(
             [(
-                        layer,
-                        dict(
-                            list(filter(
-                                lambda k_v: fmt['property-filter'](k_v[0]),
-                                list(term.layer(layer).properties().items()),
-                            ))
-                        )
-                    ) for layer in layers]
+                layer,
+                dict(
+                    list(filter(
+                        lambda k_v: fmt['property-filter'](k_v[0]),
+                        list(term.layer(layer).properties().items()),
+                    ))
+                )
+            ) for layer in layers]
         )
         return layers, tags, properties
 
@@ -1004,9 +1004,9 @@ class WordFormFabric(object):
         info = self.__wdb.get_word_info(word)
         assert isinstance(info, list), "No info avaible for {0}".format(word)
         for form in [form for form in functools.reduce(
-                lambda x, y: x + y,
-                [i['form'] for i in info]
-            ) if self.__validate_info(form)]:
+            lambda x, y: x + y,
+            [i['form'] for i in info]
+        ) if self.__validate_info(form)]:
             res.append(
                 Token(
                     ns(
