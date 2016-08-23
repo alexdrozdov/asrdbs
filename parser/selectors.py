@@ -596,7 +596,7 @@ class _Compiler(object):
         known_rules = [
             'pos', 'case', 'animation',
             'position', 'equal-properties',
-            'word',
+            'word', 'bind-props', 'enable-props',
         ]
         return [(k, js[k]) for k in [k for k in list(js.keys()) if k in known_rules]]
 
@@ -614,7 +614,6 @@ class _Compiler(object):
 class _Selectors(object):
     def __init__(self):
         self.__selectors = {}
-        self.__known_selectors = {}
         self.__load_selectors()
 
     def __load_selectors(self):

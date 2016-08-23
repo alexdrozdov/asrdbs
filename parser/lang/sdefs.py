@@ -134,6 +134,49 @@ class c__word_check(RtStaticRule):
         return {'pos': self.__words}
 
 
+class c__bind_props(RtStaticRule):
+    def __init__(self, indx0, indx1):
+        self.__indx0 = indx0
+        self.__indx1 = indx1
+
+    def new_copy(self):
+        return c__bind_props(
+            self.__indx0,
+            self.__indx1
+        )
+
+    def match(self, *args, **kwargs):
+        t1 = args[self.__indx0].term()
+        t2 = args[self.__indx1].term()
+        return t1.bind_props(t2)
+
+    def get_info(self, wrap=False):
+        return 'bind-props: {0}'.format('all')
+
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {'bind-props': 'all'}
+
+
+class c__enable_props(RtStaticRule):
+    def __init__(self, props_group):
+        self.__props_group = props_group
+
+    def new_copy(self):
+        return c__enable_props(self.__props_group)
+
+    def match(self, *args, **kwargs):
+        t = args[0].term()
+        return t.enable(self.__props_group)
+
+    def get_info(self, wrap=False):
+        return 'enable-props: {0}'.format(self.__props_group)
+
+    def format(self, fmt):
+        assert fmt == 'dict'
+        return {'enable-props': self.__props_group}
+
+
 class PosSpecs(object):
     def IsPos(self, pos):
         if not isinstance(pos, (list, tuple)):
@@ -175,3 +218,19 @@ class RelationsSpecs(object):
             "right": lambda s_pos, o_pos: s_pos > o_pos,
         }[p]
         return MultiSelectorRuleFactory(c__position_check, other_indx, p, cb)
+
+
+class TermPropsSpecs(object):
+    def Bind(self, other_indx):
+        return MultiSelectorRuleFactory(
+            c__bind_props,
+            other_indx
+        )
+
+    def Enable(self, p):
+        if isinstance(p, (list, tuple)):
+            p = p[0]
+        return SelectorRuleFactory(
+            c__enable_props,
+            p
+        )

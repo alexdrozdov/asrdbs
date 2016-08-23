@@ -9,6 +9,7 @@ import functools
 import worddb.worddb
 from argparse import Namespace as ns
 from common.singleton import singleton
+import parser.properties
 
 
 class Restricted(object):
@@ -331,6 +332,71 @@ class Term(object):
             ignore=ignore
         )
 
+    def __copy_tag_props(self, layer, props):
+        for t in props.default().tags():
+            if not self.has_tag(t) and not self.restricted(t):
+                self.__layers[layer][t] = True
+        self.__copy_expected_properties(layer, props.default().properties())
+        self.__copy_disabled_properties(layer, props.disabled())
+
+    def __copy_expected_properties(self, layer, props):
+        if '__expected' not in self.__layers[layer]:
+            self.__layers[layer]['__expected'] = {}
+        for p, v in props:
+            if not self.has_property(p) and not self.restricted(p):
+                self.__layers[layer]['__expected'][p] = v
+
+    def __copy_disabled_properties(self, layer, disabled):
+        self.__layers[layer]['__disabled'] = disabled
+
+    def __enable_disabled_props(self, layer, props):
+        if '__expected' not in self.__layers[layer]:
+            self.__layers[layer]['__expected'] = {}
+        if 'tags' in props:
+            for t in props['tags']:
+                if not self.has_tag(t) and not self.restricted(t):
+                    self.__layers[layer][t] = True
+        for k, v in props.items():
+            if k == 'tags':
+                continue
+            if not self.has_property(k) and not self.restricted(k):
+                self.__layers[layer]['__expected'][k] = v
+
+    def enable(self, name):
+        for l in reversed(Term.layer_order):
+            if '__disabled' in self.__layers[l] and \
+                    name in self.__layers[l]['__disabled']:
+                self.__enable_disabled_props(
+                    l,
+                    self.__layers[l]['__disabled'][name]
+                )
+
+    def __aggregate_expected(self):
+        d = {}
+        for l in Term.layer_order:
+            if '__expected' in self.__layers[l]:
+                for e, v in self.__layers[l]['__expected'].items():
+                    if not isinstance(v, dict):
+                        continue
+                    key = e
+                    exp_tag = v.get('expected-tag', None)
+                    exp_prop = v.get('expected-tag', None)
+                    value_src = lambda t: t.get_property('uniq')
+                    d[key] = (key, exp_tag, exp_prop, value_src)
+        return list(d.values())
+
+    def bind_props(self, source):
+        expected = self.__aggregate_expected()
+        for key, exp_tag, exp_prop, value_src in expected:
+            try:
+                if exp_tag is not None and not source.has_tag(exp_tag):
+                    continue
+                if exp_prop is not None and not source.has_property(exp_prop):
+                    continue
+            except KeyError:
+                continue
+            self.add_property(key, 'ctx', value_src(source))
+
     def add_tag(self, tag, layer):
         assert layer in self.__layers and layer != 'ro',\
             '{0} is missing or ro'.format(layer)
@@ -339,6 +405,9 @@ class Term(object):
             self.__layers['ctx']['revision'] = str(uuid.uuid1())
 
         self.__layers[layer][tag] = True
+        tag_props = parser.properties.properties(tag)
+        if tag_props is not None:
+            self.__copy_tag_props(layer, tag_props)
 
     def has_tag(self, tag, layer=None):
         if layer is not None:
@@ -349,6 +418,9 @@ class Term(object):
                     self.__layers[l][tag] != Restricted():
                 return True
         return False
+
+    def has_property(self, property, layer=None):
+        return self.has_tag(property, layer)
 
     def restricted(self, tag, layer=None):
         if layer is not None:

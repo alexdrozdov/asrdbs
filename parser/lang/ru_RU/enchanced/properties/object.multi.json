@@ -1,0 +1,29 @@
+{
+    "type": "obj-props",
+    "tag": "#object",
+    "default": {
+        "location": {"default": null, "expects-tag": "#provides-location", "value": "@other/uniq"},
+        "ownership": "@default",
+        "size": "@default",
+        "color": "@default"
+    },
+    "disabled": {
+        "prepositional-case": {
+            "tags": [
+                "#provides-location"
+            ]
+        }
+    }
+}
+
+//
+
+{
+    "type": "props-map",
+    "property": "location",
+    "requires": "#provides-location",
+    "reversed": {
+        "property": "contains"
+    }
+}
+

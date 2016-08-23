@@ -14,7 +14,7 @@ class TemplateContinue(parser.templates.common.SpecTemplate):
         )
 
     def __mk_continued_tag(self, tag):
-        return '#-continued' + str(tag)
+        return '#continued-' + str(tag)
 
     def __call__(self, body, *args):
         tag = body.pop('@continue')

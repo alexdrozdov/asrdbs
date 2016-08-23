@@ -13,9 +13,19 @@ class TemplateBreak(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
+    def __mk_break_tag(self, tag):
+        return '#break-' + str(tag)
+
+    def __mk_fwd_tag(self, tag):
+        return '#break-fwd-' + str(tag)
+
     def __mk_continued_tag(self, tag):
-        return '#-continued' + str(tag)
+        return '#continued-' + str(tag)
 
     def __call__(self, body):
-        break_tag = self.__mk_continued_tag(body.pop('@break'))
-        body['tag'] = break_tag
+        tag = body.pop('@break')
+        body['tag'] = self.__mk_break_tag(tag)
+        body['clarify'] = {
+            'tag': self.__mk_fwd_tag(tag),
+            'clarifies': [self.__mk_continued_tag(tag)]
+        }

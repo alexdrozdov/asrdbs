@@ -4,12 +4,11 @@
         "@self": {
             "clarifies": "#object",
             "clarify": {
-                "clarifies": "#location-presence",
+                "@other": {
+                    "@bind-props": "0"
+                },
                 "@link": {
                     "label": "^obj-location"
-                },
-                "@other": {
-                    "tag": "#has-location"
                 }
             }
         },

@@ -6,9 +6,9 @@ import parser.templates.common
 from parser.lang.defs import WordSpecs
 
 
-class TemplateId(parser.templates.common.SpecTemplate):
+class TemplateWord(parser.templates.common.SpecTemplate):
     def __init__(self):
-        super(TemplateId, self).__init__(
+        super(TemplateWord, self).__init__(
             'word',
             namespace=None,
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE

@@ -115,6 +115,7 @@ if __name__ == '__main__':
                     'parser/templates',
                     'parser/lang/ru_RU/enchanced/templates/selectors'
                 ],
+                'props': ['parser/lang/ru_RU/enchanced/properties', ],
                 'generate-svg': False
             },
         }

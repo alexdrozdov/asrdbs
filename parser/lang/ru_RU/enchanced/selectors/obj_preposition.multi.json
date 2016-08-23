@@ -36,12 +36,13 @@
 {
     "@continue": "obj-preposition-link[в]",
     "clarify": {
+        "tag": "#hello",
         "@case": "prepositional",
         "@link": {
-            "label": "#provides-location-presence"
+            "label": "#provides-prepositional-case"
         },
         "@other": {
-            "tag": ["#location-presence", "#time-presence"]
+            "@enable-props": "prepositional-case"
         }
     }
 }
@@ -52,10 +53,10 @@
     "clarify": {
         "@case": "accusative",
         "@link": {
-            "label": "#provides-location-destination"
+            "label": "#provides-accusative-case"
         },
         "@other": {
-            "tag": ["#location-destination", "#time-destination"]
+            "@enable-props": "accusative-case"
         }
     }
 }
