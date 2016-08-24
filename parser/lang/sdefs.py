@@ -5,30 +5,78 @@
 from parser.lang.common import RtStaticRule, SelectorRuleFactory, MultiSelectorRuleFactory
 
 
-class c__pos_check(RtStaticRule):
-    def __init__(self, pos_names):
-        self.__pos_names = pos_names
+class SelectorStaticRule(RtStaticRule):
+    def __init__(self, name, friendly, fmt_info):
+        super().__init__()
+        self.__name = name
+        self.__friendly = friendly
+        self.__fmt_info = fmt_info
 
-    def new_copy(self):
-        return c__pos_check(self.__pos_names)
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += wrap.join(
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
+        )
+        return s
+
+    def __format_dict(self):
+        return dict(
+            [
+                ('rule', self.name()),
+                ('friendly', self.friendly())
+            ] + list(self.__fmt_info.items())
+        )
+
+    def __repr__(self):
+        return "{0}(objid={1}, name='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.name()
+        )
+
+    def __str__(self):
+        return "{0}(objid={1}, name='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.name()
+        )
+
+
+class c__pos_check(SelectorStaticRule):
+    def __init__(self, pos_names):
+        super().__init__(
+            name='pos',
+            friendly='IsPos',
+            fmt_info={'pos': pos_names}
+        )
+        self.__pos_names = pos_names
 
     def match(self, *args, **kwargs):
         return args[0].get_pos() in self.__pos_names
 
-    def get_info(self, wrap=False):
-        return 'pos: {0}'.format(self.__pos_names[0])
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'pos': self.__pos_names}
-
-
-class c__case_check(RtStaticRule):
+class c__case_check(SelectorStaticRule):
     def __init__(self, cases):
+        super().__init__(
+            name='case',
+            friendly='IsCase',
+            fmt_info={'case': cases}
+        )
         self.__cases = cases
-
-    def new_copy(self):
-        return c__case_check(self.__cases)
 
     def match(self, *args, **kwargs):
         try:
@@ -37,22 +85,17 @@ class c__case_check(RtStaticRule):
             pass
         return False
 
-    def get_info(self, wrap=False):
-        return 'case: {0}'.format(self.__cases[0])
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'case': self.__cases}
-
-
-class c__equal_properties_check(RtStaticRule):
+class c__equal_properties_check(SelectorStaticRule):
     def __init__(self, indx0, indx1, props):
+        super().__init__(
+            name='equal-properties',
+            friendly='EqualProps',
+            fmt_info={'equal-properties': props}
+        )
         self.__indx0 = indx0
         self.__indx1 = indx1
         self.__props = props
-
-    def new_copy(self):
-        return c__equal_properties_check(self.__indx0, self.__indx1,  self.__props)
 
     def match(self, *args, **kwargs):
         f1 = args[self.__indx0]
@@ -62,119 +105,79 @@ class c__equal_properties_check(RtStaticRule):
                 return False
         return True
 
-    def get_info(self, wrap=False):
-        return 'equal: {0}'.format(self.__props)
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'equal': self.__props}
-
-
-class c__position_check(RtStaticRule):
+class c__position_check(SelectorStaticRule):
     def __init__(self, indx0, indx1, relative_position, cb):
+        super().__init__(
+            name='position',
+            friendly='Position',
+            fmt_info={'position': relative_position}
+        )
         self.__indx0 = indx0
         self.__indx1 = indx1
         self.__relative_position = relative_position
         self.__cb = cb
-
-    def new_copy(self):
-        return c__position_check(
-            self.__indx0,
-            self.__indx1,
-            self.__relative_position,
-            self.__cb
-        )
 
     def match(self, *args, **kwargs):
         p1 = args[self.__indx0].get_position()
         p2 = args[self.__indx1].get_position()
         return self.__cb(p1, p2)
 
-    def get_info(self, wrap=False):
-        return 'position: {0}'.format(self.__relative_position)
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'position': self.__relative_position}
-
-
-class c__placeholder(RtStaticRule):
+class c__placeholder(SelectorStaticRule):
     def __init__(self, def_value):
+        super().__init__(
+            name='placeholder',
+            friendly='Placeholder',
+            fmt_info={'placeholder': def_value}
+        )
         self.__def_value = def_value
-
-    def new_copy(self):
-        return c__placeholder(self.__def_value)
 
     def match(self, *args, **kwargs):
         return self.__def_value
 
-    def get_info(self, wrap=False):
-        return 'placeholder: {0}'.format(self.__def_value)
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'placeholder': self.__def_value}
-
-
-class c__word_check(RtStaticRule):
+class c__word_check(SelectorStaticRule):
     def __init__(self, words):
+        super().__init__(
+            name='word',
+            friendly='IsWord',
+            fmt_info={'word': words}
+        )
         self.__words = words
-
-    def new_copy(self):
-        return c__word_check(self.__word)
 
     def match(self, *args, **kwargs):
         return args[0].get_word() in self.__words
 
-    def get_info(self, wrap=False):
-        return 'pos: {0}'.format(self.__words)
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'pos': self.__words}
-
-
-class c__bind_props(RtStaticRule):
+class c__bind_props(SelectorStaticRule):
     def __init__(self, indx0, indx1):
+        super().__init__(
+            name='bind-props',
+            friendly='Bind',
+            fmt_info={}
+        )
         self.__indx0 = indx0
         self.__indx1 = indx1
-
-    def new_copy(self):
-        return c__bind_props(
-            self.__indx0,
-            self.__indx1
-        )
 
     def match(self, *args, **kwargs):
         t1 = args[self.__indx0].term()
         t2 = args[self.__indx1].term()
         return t1.bind_props(t2)
 
-    def get_info(self, wrap=False):
-        return 'bind-props: {0}'.format('all')
 
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'bind-props': 'all'}
-
-
-class c__enable_props(RtStaticRule):
+class c__enable_props(SelectorStaticRule):
     def __init__(self, props_group):
+        super().__init__(
+            name='enable-props',
+            friendly='Enable',
+            fmt_info={'enable-props': props_group}
+        )
         self.__props_group = props_group
-
-    def new_copy(self):
-        return c__enable_props(self.__props_group)
 
     def match(self, *args, **kwargs):
         t = args[0].term()
         return t.enable(self.__props_group)
-
-    def get_info(self, wrap=False):
-        return 'enable-props: {0}'.format(self.__props_group)
-
-    def format(self, fmt):
-        assert fmt == 'dict'
-        return {'enable-props': self.__props_group}
 
 
 class PosSpecs(object):
