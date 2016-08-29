@@ -27,3 +27,27 @@
     }
 }
 
+//
+
+{
+    "type": "relation",
+    "tag": "#building",
+    "subtype-off": ["#object"],
+}
+
+//
+
+{
+    "type": "relation",
+    "word": "дом",
+    "instance-off": ["#building"],
+}
+
+//
+
+{
+    "type": "relation",
+    "tags": ["#window", "#door", "#wall", "#roof", "#floor"],
+    "parts-off": "#building"
+}
+
