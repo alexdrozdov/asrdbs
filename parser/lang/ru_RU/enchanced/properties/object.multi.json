@@ -2,7 +2,7 @@
     "type": "obj-props",
     "tag": "#object",
     "default": {
-        "location": {"default": null, "expects-tag": "#provides-location", "value": "@other/uniq"},
+        "location": {"default": null, "expects-tag": "#location", "value": "@other/uniq"},
         "ownership": "@default",
         "size": "@default",
         "color": "@default"
@@ -10,7 +10,7 @@
     "disabled": {
         "prepositional-case": {
             "tags": [
-                "#provides-location"
+                "#location"
             ]
         }
     }
@@ -21,7 +21,7 @@
 {
     "type": "props-map",
     "property": "location",
-    "requires": "#provides-location",
+    "requires": "#location",
     "reversed": {
         "property": "contains"
     }
@@ -32,7 +32,7 @@
 {
     "type": "relation",
     "tag": "#building",
-    "subtype-off": ["#object"],
+    "subtype-off": ["#object"]
 }
 
 //
@@ -40,7 +40,7 @@
 {
     "type": "relation",
     "word": "дом",
-    "instance-off": ["#building"],
+    "instance-off": ["#building"]
 }
 
 //

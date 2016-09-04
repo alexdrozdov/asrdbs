@@ -14,6 +14,10 @@
             {
                 "tag": "#inanimated",
                 "@animation": "inanimated"
+            },
+            {
+                "tag": "#building",
+                "@word": ["дом"]
             }
             ]
         }
