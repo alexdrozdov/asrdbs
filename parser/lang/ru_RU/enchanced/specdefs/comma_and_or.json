@@ -1,0 +1,28 @@
+{
+    "name": "comma-and-or",
+    "entries": [
+        {
+            "@id": "or",
+            "@inherit": ["once", "anchor"],
+            "uniq-items": [
+                {
+                    "@id": "comma",
+                    "@inherit": ["comma", "once"],
+                    "merges-with": ["comma"]
+                },
+                {
+                    "@id": "and",
+                    "@inherit": ["once", "union"],
+                    "@word": ["и"]
+                },
+                {
+                    "@id": "or",
+                    "@inherit": ["once", "union"],
+                    "@word": ["или"]
+                }
+            ]
+        }
+    ]
+}
+
+

@@ -132,6 +132,7 @@ class Preprocessor(object):
         if 'id' not in d:
             raise PreprocessorError(ctx, "Required key 'id' is missing")
         if 'repeatable' not in d and 'required' not in d:
+            print(d)
             raise PreprocessorError(
                 ctx,
                 "Required key 'repeatable' or 'required' are missing"

@@ -148,3 +148,5 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
             },
             copy.deepcopy(inner_body)
         ]
+        print('raising rerun')
+        raise parser.templates.common.ErrorRerun()

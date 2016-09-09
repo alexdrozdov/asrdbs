@@ -3,7 +3,7 @@
 
 
 from parser.lang.common import SequenceSpec
-from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs, CaseSpecs
+from parser.lang.defs import RepeatableSpecs, AnchorSpecs, WordSpecs, PosSpecs
 from parser.named import template
 
 
@@ -14,52 +14,32 @@ class EntitySpec(SequenceSpec):
 
         self.spec = template("@", "spec")([
             {
-                "id": "$PARENT::definitive",
+                "@id": "definitive",
                 "@inherit": ["any"],
-                "dependency-of": template("dependency")(
-                    "location"
-                ),
-                "include": template("include")("adjective"),
+                "@includes": {"name": "adjective"},
+                "@dependency-of": ["location"]
             },
             {
-                "id": "$PARENT::core",
+                "@id": "core",
                 "@inherit": ["once", "anchor"],
-                "anchor": AnchorSpecs().LocalSpecAnchor(),
                 "uniq-items": [
                     {
-                        "id": "$PARENT::noun",
+                        "@id": "noun",
                         "@inherit": ["#object", "once"],
-                        "include": template("include")("basic-noun", is_static=True),
-                    },
-                    # {
-                    #     "id": "$PARENT::noun",
-                    #     "repeatable": RepeatableSpecs().Once(),
-                    #     "include": {
-                    #         "spec": "basic-pronoun",
-                    #     },
-                    # },
-                ],
+                        "@includes": {"name": "basic-noun", "is_static": True},
+                    }
+                ]
             },
             {
-                "id": "$PARENT::ownership",
+                "@id": "ownership",
                 "@inherit": ["any"],
                 "uniq-items": [
                     {
-                        "id": "$PARENT::location",
+                        "@id": "location",
                         "@inherit": ["once"],
-                        "dependency-of": template("dependency")(
-                            "#entity-entity"
-                        ),
-                        "include": template("include")("entity-location"),
-                    },
-                    {
-                        "id": "$PARENT::ownership",
-                        "@inherit": ["once"],
-                        "dependency-of": template("dependency")(
-                            "location"
-                        ),
-                        "include": template("include")("entity-ownership"),
-                    },
+                        "@includes": {"name": "entity-location"},
+                        "@dependency-of": ["#entity-entity"]
+                    }
                 ]
             }
         ])
@@ -231,34 +211,6 @@ class EntityLocationSpec(SequenceSpec):
                                 {"pos_type": [WordSpecs().IsWord(['на']), ]},
                             ]
                         )
-                    }
-                },
-            ]
-        )
-
-
-class EntityOwnershipSpec(SequenceSpec):
-    def __init__(self):
-        SequenceSpec.__init__(self, 'entity-ownership')
-        self.__compared_with = {}
-
-        self.spec = template("subclass")(
-            base=EntityListSpec,
-            rewrite=[
-                {
-                    "find": {
-                        "id": ".*::common-pre",
-                    },
-                    "extend": {
-                        "repeatable": RepeatableSpecs().Never(),
-                    }
-                },
-                {
-                    "find": {
-                        "id": ".*::#item#",
-                    },
-                    "extend": {
-                        "case": [CaseSpecs().IsCase(["genitive", ]), ],
                     }
                 },
             ]

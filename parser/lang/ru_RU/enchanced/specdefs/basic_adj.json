@@ -1,0 +1,10 @@
+{
+    "name": "basic-adj",
+    "entries": [
+        {
+            "@id": "adj",
+            "@inherit": ["basic-adj", "once", "anchor"]
+        }
+    ]
+}
+

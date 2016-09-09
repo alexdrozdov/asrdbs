@@ -26,3 +26,19 @@ class IncludesSpec(parser.templates.common.SpecTemplate):
             "spec": name,
             "static-only": is_static,
         }
+
+
+class IncludesSpec_js(parser.templates.common.SpecTemplate):
+    def __init__(self):
+        super().__init__(
+            'includes',
+            namespace='specs',
+            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
+        )
+
+    def __call__(self, body, *args):
+        incl_info = body.pop('@includes')
+        body['include'] = {
+            "spec": incl_info['name'],
+            "static-only": incl_info.get('is_static', False),
+        }

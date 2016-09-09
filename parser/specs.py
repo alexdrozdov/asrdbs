@@ -9,6 +9,7 @@ import re
 import functools
 import common.config
 import parser.wordform
+import parser.loader
 import parser.lang.common
 import parser.lang.defs
 from parser.lang.common import RtRule, RtMatchString
@@ -2529,6 +2530,8 @@ class SequenceSpecMatcher(object):
             obj = self.__load_module(specdefs_dir)
             for sd in obj.load_specdefs():
                 self.add_spec(sd())
+        for sd in parser.loader.Specs():
+            self.add_spec(sd)
         self.build_specs()
         export_svg = cfg['/parser/export-svg']
         if export_svg is not None and export_svg:

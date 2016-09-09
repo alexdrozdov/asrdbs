@@ -1,0 +1,40 @@
+{
+    "name": "adjective",
+    "entries": [
+        {
+            "@id": "modifiers",
+            "@repeats": ["any", "separator::strict"],
+            "body": {
+                "@id": "modifier",
+                "@inherit": ["once"],
+                "entries": [
+                    {
+                        "@id": "adv",
+                        "@inherit": ["basic-adv", "once"],
+                        "@dependency-of": ["modifier"]
+                    }
+                ]
+            }
+        },
+        {
+            "@id": "core",
+            "@inherit": ["basic-adj", "once", "anchor"]
+        },
+        {
+            "@id": "dependencies",
+            "@repeats": ["any", "separator::strict"],
+            "body": {
+                "@id": "dependency",
+                "@inherit": ["once"],
+                "uniq-items": [
+                    {
+                        "@id": "entity",
+                        "@inherit": ["once"],
+                        "@dependency-of": ["modifier"],
+                        "@includes": {"name": "entity-list", "is_static": true}
+                    }
+                ]
+            }
+        }
+    ]
+}

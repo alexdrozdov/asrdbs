@@ -6,8 +6,10 @@ import re
 
 
 class SequenceSpec(object):
-    def __init__(self, name):
+    def __init__(self, name, spec=None):
         self.__name = name
+        self.__compared_with = {}
+        self.spec = spec
 
     def get_spec(self):
         return self.spec

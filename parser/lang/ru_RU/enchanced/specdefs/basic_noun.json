@@ -1,0 +1,11 @@
+{
+    "name": "basic-noun",
+    "entries": [
+        {
+            "@id": "noun",
+            "@inherit": ["basic-noun", "once", "anchor"]
+        }
+    ]
+}
+
+

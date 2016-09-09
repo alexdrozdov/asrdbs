@@ -27,7 +27,7 @@ class Named(object):
             if name in self.__objs:
                 return self.__objs[name]()
             if (name[0], None) in self.__objs:
-                return self.__objs[(name[0], None)]
+                return self.__objs[(name[0], None)]()
             raise KeyError('Key {0}:{1} not found'.format(name[1], name[0]))
 
 
