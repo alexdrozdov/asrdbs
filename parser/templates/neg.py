@@ -3,45 +3,34 @@
 
 
 import parser.templates.common
-from parser.lang.defs import RepeatableSpecs, WordSpecs, AnchorSpecs
 
 
 class TemplateNeg(parser.templates.common.SpecTemplate):
     def __init__(self):
-        super(TemplateNeg, self).__init__('neg')
+        super().__init__(
+            'neg',
+            namespace=None,
+            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
+        )
 
-    def __call__(self, entry_id, body, repeatable, strict_neg=False, anchor=False):
-        assert repeatable is not None
-        if isinstance(body, list):
-            body = \
-                {
-                    "id": entry_id,
-                    "repeatable": RepeatableSpecs().Once(),
-                    "entries": body
-                }
-        elif isinstance(body, str):
-            body = \
-                {
-                    "id": "$PARENT::body",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "include": {
-                        "spec": body,
-                        "static-only": True,
-                    }
-                }
-        if anchor:
-            body["anchor"] = AnchorSpecs().LocalSpecAnchor()
-        return \
-            {
-                "id": entry_id,
-                "repeatable": repeatable,
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::neg",
-                        "repeatable": RepeatableSpecs().Once() if strict_neg else RepeatableSpecs().LessOrEqualThan(1),
-                        "pos_type": [WordSpecs().IsWord(['не', ]), ],
-                    },
-                    body
-                ]
+    def __call__(self, body, *args):
+        neg_info = body.pop('@neg')
+        inner_body = body.pop('body')
+
+        if isinstance(inner_body, list):
+            inner_body = {
+                "@id": "body",
+                "@inherit": ["once"],
+                "entries": inner_body
             }
+
+        repeatable = "once" if neg_info['strict'] else "once-or-none"
+        body["entries"] = [
+            {
+                "@id": "neg",
+                "@inherit": [repeatable],
+                "@word": ['не', ],
+            },
+            inner_body
+        ]
+        raise parser.templates.common.ErrorRerun()

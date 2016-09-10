@@ -84,15 +84,18 @@ class TemplateInherit(parser.templates.common.SpecTemplate):
 
     def __call__(self, body, *args):
         inh_list = body.pop('@inherit')
+        rerun_required = False
         for base in inh_list:
             bb = self.__get_base(base)
             for k, v in list(bb.items()):
-                self.__extend_attr(body, k, v)
+                rerun_required |= self.__extend_attr(body, k, v)
+        if rerun_required:
+            raise parser.templates.common.ErrorRerun()
 
     def __extend_attr(self, body, attr, val):
         if not isinstance(val, list):
             body[attr] = val
-            return
+            return attr.startswith('@')
 
         if attr in body:
             v = body[attr]
@@ -102,6 +105,7 @@ class TemplateInherit(parser.templates.common.SpecTemplate):
             v = []
         v.extend(val)
         body[attr] = v
+        return attr.startswith('@')
 
     def __get_base(self, base):
         bases = {
@@ -140,6 +144,12 @@ class TemplateInherit(parser.templates.common.SpecTemplate):
             },
             'genitive': {
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
+            },
+            'soft-neg': {
+                "@neg": {"strict": False},
+            },
+            'neg': {
+                "@neg": {"strict": True},
             },
         }
 

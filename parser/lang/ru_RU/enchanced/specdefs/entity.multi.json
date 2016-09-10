@@ -1,0 +1,52 @@
+{
+    "name": "entity",
+    "entries": [
+        {
+            "@id": "definitive",
+            "@inherit": ["any"],
+            "@includes": {"name": "adjective"},
+            "@dependency-of": ["location"]
+        },
+        {
+            "@id": "core",
+            "@inherit": ["once", "anchor"],
+            "uniq-items": [
+                {
+                    "@id": "noun",
+                    "@inherit": ["#object", "once"],
+                    "@includes": {"name": "basic-noun", "is_static": true}
+                }
+            ]
+        },
+        {
+            "@id": "ownership",
+            "@inherit": ["any"],
+            "uniq-items": [
+                {
+                    "@id": "location",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "entity-location"},
+                    "@dependency-of": ["#entity-entity"]
+                }
+            ]
+        }
+    ]
+}
+
+//
+
+{
+    "name": "entity-neg",
+    "entries": [
+        {
+            "@id": "entity-neg",
+            "@inherit": ["once", "soft-neg"],
+            "body": {
+                "id": "$PARENT::body",
+                "@inherit": ["once", "anchor"],
+                "@includes": {"name": "entity", "is_static": true}
+            }
+        }
+    ]
+}
+

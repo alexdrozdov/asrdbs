@@ -22,13 +22,11 @@ class _Preprocessor(object):
 
         while True:
             try:
-                print(type(spec))
                 for d, k, v in self.__iterspec(spec):
                     if k[0] == '@':
                         self.__handle_tmpl(d, k, v)
                 break
             except parser.templates.common.ErrorRerun:
-                print('caught rerun')
                 continue
 
         return spec

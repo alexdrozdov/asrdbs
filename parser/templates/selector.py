@@ -13,3 +13,16 @@ class SelectorSpec(parser.templates.common.SpecTemplate):
     def __call__(self, body, *args):
         name = args[0]
         body['selector'] = SelectorSpecs().Selector(name)
+
+
+class TemplateSelector(parser.templates.common.SpecTemplate):
+    def __init__(self):
+        super().__init__(
+            'selector',
+            namespace='specs',
+            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
+        )
+
+    def __call__(self, body, *args):
+        name = body.pop('@selector')
+        body['selector'] = SelectorSpecs().Selector(name)
