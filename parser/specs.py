@@ -2526,10 +2526,6 @@ class SequenceSpecMatcher(object):
 
     def __create_specs(self):
         cfg = common.config.Config()
-        for specdefs_dir in cfg['/parser/specdefs']:
-            obj = self.__load_module(specdefs_dir)
-            for sd in obj.load_specdefs():
-                self.add_spec(sd())
         for sd in parser.loader.Specs():
             self.add_spec(sd)
         self.build_specs()
