@@ -23,6 +23,6 @@ class TemplateSelector(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         name = body.pop('@selector')
         body['selector'] = SelectorSpecs().Selector(name)

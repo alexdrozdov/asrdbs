@@ -50,3 +50,103 @@
     ]
 }
 
+//
+
+
+{
+    "name": "entity-list",
+    "entries": [
+        {
+            "@id": "aggregate",
+            "@inherit": ["once"],
+            "@aggregate": {"is_anchor": true},
+            "uniq-items": [
+                {
+                    "@id": "common-pre",
+                    "@inherit": ["once"],
+                    "entries": [
+                        {
+                            "@id": "#pre#",
+                            "@inherit": ["once"]
+                        },
+                        {
+                            "@id": "entity-list",
+                            "@inherit": ["once"],
+                            "@repeats": ["separator::strict"],
+                            "body": {
+                                "@id": "#item#",
+                                "@tag": "object",
+                                "@inherit": ["once"],
+                                "@includes": {"name": "entity-neg", "is_static": true},
+                                "@refers-to": {}
+                            }
+                        }
+                    ]
+                },
+                {
+                    "@id": "entity-list",
+                    "@inherit": ["once"],
+                    "@repeats": ["separator::strict"],
+                    "entries": [
+                        {
+                            "@id": "#pre-internal#",
+                            "@inherit": ["never"],
+                            "@dependency-of": ["#obj-preposition", "#item#"]
+                        },
+                        {
+                            "@id": "#item#",
+                            "@tag": "object-int",
+                            "@inherit": ["once"],
+                            "@refers-to": {},
+                            "@includes": {"name": "entity-neg", "is_static": true}
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+//
+
+{
+    "name": "entity-location",
+    "@subclass": "entity-list",
+    "rewrite": [
+        {
+            "find": {"id": "#pre#"},
+            "extend": {
+                "@id": "prepositions",
+                "@inherit": ["once"],
+                "@tag": "pre",
+                "@foreach": {
+                    "@inherit": ["once", "preposition"],
+                    "dependency-of": ["#obj-preposition", "$TAG(object)"]
+                },
+                "uniq-items": [
+                    {"@word": ["над"]},
+                    {"@word": ["под"]},
+                    {"@word": ["в"]},
+                    {"@word": ["на"]}
+                ]
+            }
+        },
+        {
+            "find": {"id": "#pre-internal#"},
+            "extend": {
+                "@id": "prepositions",
+                "@inherit": ["once"],
+                "@foreach": {
+                    "@inherit": ["once", "preposition"],
+                    "@exclusive-with": ["$TAG(pre)"]
+                },
+                "uniq-items": [
+                    {"@word": ["над"]},
+                    {"@word": ["под"]},
+                    {"@word": ["в"]},
+                    {"@word": ["на"]}
+                ]
+            }
+        }
+    ]
+}

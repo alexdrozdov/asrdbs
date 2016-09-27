@@ -13,7 +13,7 @@ class TemplateNeg(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         neg_info = body.pop('@neg')
         inner_body = body.pop('body')
 

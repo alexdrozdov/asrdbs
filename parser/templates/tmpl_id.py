@@ -13,6 +13,6 @@ class TemplateId(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         id_v = body.pop('@id')
         body["id"] = "$PARENT::" + id_v

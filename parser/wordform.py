@@ -852,7 +852,6 @@ class SpecStateVirtForm(Token):
         keys1 = set(layers1.keys()) - {'private'}
         keys2 = set(layers2.keys()) - {'private'}
         if keys1 != keys2:
-            # print 'differs in keys: {0} -> {1}'.format(keys1, keys2)
             return False
         for k, l1 in list(layers1.items()):
             l2 = layers2[k]
@@ -862,7 +861,6 @@ class SpecStateVirtForm(Token):
                 try:
                     v2 = l2[kk]
                 except:
-                    # print 'key {0}/{1}: is lost'.format(k, kk)
                     if exit_on_difference:
                         return False
                     continue
@@ -870,10 +868,6 @@ class SpecStateVirtForm(Token):
                     continue
                 if v1 == v2:
                     continue
-                # print 'differs in {0}/{1}: {2} -> {3}'.format(
-                #     k, kk,
-                #     v1, v2
-                # )
                 if exit_on_difference:
                     return False
         return True

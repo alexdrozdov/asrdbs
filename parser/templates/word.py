@@ -24,7 +24,7 @@ class TemplateWord(parser.templates.common.SpecTemplate):
         v.extend(val)
         body[attr] = v
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         word_list = body.pop('@word')
         if not isinstance(word_list, (list, tuple)):
             word_list = [word_list, ]

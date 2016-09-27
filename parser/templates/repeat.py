@@ -4,64 +4,6 @@
 
 import copy
 import parser.templates.common
-from parser.lang.defs import RepeatableSpecs
-
-
-class TemplateRepeat(parser.templates.common.SpecTemplate):
-    def __init__(self):
-        super(TemplateRepeat, self).__init__('repeat')
-
-    def __call__(self, entry_id, body, repeatable, separator=None):
-        assert repeatable is not None
-        if isinstance(body, list):
-            body = \
-                {
-                    "id": entry_id,
-                    "repeatable": RepeatableSpecs().Once(),
-                    "entries": body
-                }
-        if separator is None:
-            separator = \
-                {
-                    "id": "$PARENT::comma-and-or",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "include": {
-                        "spec": "comma-and-or"
-                    },
-                }
-        elif isinstance(separator, dict):
-            optional = 'always' in separator and not separator['always']
-            separator = separator['separator'] if 'separator' in separator else None
-            if separator is None:
-                separator = \
-                    {
-                        "id": "$PARENT::comma-and-or",
-                        "repeatable": RepeatableSpecs().Once(),
-                        "include": {
-                            "spec": "comma-and-or"
-                        },
-                    }
-                if optional:
-                    separator['repeatable'] = RepeatableSpecs().LessOrEqualThan(1)
-
-        return \
-            {
-                "id": entry_id,
-                "repeatable": repeatable,
-                "entries":
-                [
-                    {
-                        "id": "$PARENT::optional",
-                        "repeatable": RepeatableSpecs().Any(),
-                        "entries":
-                        [
-                            body,
-                            separator,
-                        ]
-                    },
-                    body
-                ]
-            }
 
 
 class TemplateAtRepeat(parser.templates.common.SpecTemplate):
@@ -82,32 +24,23 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
         )
 
     def __unroll_list_attrs(self, attrs):
-        repeatable = None
         separator = None
         for a in attrs:
-            if a == 'any':
-                repeatable = RepeatableSpecs().Any()
-            elif a == 'once':
-                repeatable = RepeatableSpecs().Once()
-            elif a == 'separator::strict':
+            if a == 'separator::strict':
                 separator = {
-                    "id": "$PARENT::comma-and-or",
-                    "repeatable": RepeatableSpecs().Once(),
-                    "include": {
-                        "spec": "comma-and-or"
-                    },
+                    "@id": "comma-and-or",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "comma-and-or", "is_static": True}
                 }
             elif a == 'separator::optional':
                 separator = {
-                    "id": "$PARENT::comma-and-or",
-                    "repeatable": RepeatableSpecs().LessOrEqualThan(1),
-                    "include": {
-                        "spec": "comma-and-or"
-                    },
+                    "@id": "comma-and-or",
+                    "@inherit": ["once-or-none"],
+                    "@includes": {"name": "comma-and-or", "is_static": True}
                 }
             else:
                 raise ValueError('Unsupported attrs {0}'.format(a))
-        return repeatable, separator
+        return separator
 
     def __unroll_dict_attrs(self, attrs):
         raise ValueError('Unsupported dict format')
@@ -119,27 +52,32 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
             return '@id', body['@id']
         raise KeyError('Neither id nor @id found')
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         attrs = body.pop('@repeats')
-        inner_body = body.pop('body')
+
+        assert 'body' in body or 'entries' in body
+        assert not ('body' in body and 'entries' in body)
+        if 'body' in body:
+            inner_body = body.pop('body')
+        elif 'entries' in body:
+            inner_body = body.pop('entries')
+
         id_k, id_v = self.__get_id_pair(body)
 
-        repeatable, separator = self.__unroll_attrs(attrs)
-        assert repeatable is not None
+        separator = self.__unroll_attrs(attrs)
 
         if isinstance(inner_body, list):
             inner_body = \
                 {
                     id_k: id_v,
-                    "repeatable": RepeatableSpecs().Once(),
-                    "entries": body
+                    "@inherit": "once",
+                    "entries": inner_body
                 }
 
-        body["repeatable"] = repeatable
         body["entries"] = [
             {
-                "id": "$PARENT::optional",
-                "repeatable": RepeatableSpecs().Any(),
+                "@id": "optional",
+                "@inherit": ["any"],
                 "entries":
                 [
                     inner_body,

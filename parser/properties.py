@@ -223,14 +223,12 @@ class _Properties(object):
     def __accumulate_properties(self, tag, order):
         ps = PropSet.empty(tag)
         for t in order:
-            print(ps)
             ps += self.get_by_tag(t)
         return ps
 
     def __aggregate_hierarchy(self, tag, propset):
         hierarchy = self.__preload_hierarchy(tag, propset)
         order = common.c3.C3.linearize(hierarchy)
-        print(order)
         return self.__accumulate_properties(tag, order)
 
     def __getitem__(self, index):

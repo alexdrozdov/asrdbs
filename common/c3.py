@@ -46,12 +46,3 @@ class C3(object):
         ))
         results[head] = res
         return res
-
-
-d = {
-    '#object': ['#term'],
-    '#edible': ['#term'],
-    '#fruit': ['#object', '#edible'],
-    '#apple': ['#fruit'],
-}
-print(C3.linearize(d))

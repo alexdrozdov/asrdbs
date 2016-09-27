@@ -13,28 +13,43 @@ from common.singleton import singleton
 from parser.lang.defs import RequiredSpecs, FsmSpecs
 
 
+class PreprocessScope(object):
+    def __init__(self):
+        self.__specs = {}
+
+    def add_specs(self, compiled_specs, source):
+        for s in compiled_specs:
+            self.__specs[s.get_name()] = {'spec': s, 'source': source}
+
+    def spec(self, name, original_json=True):
+        return self.__specs[name]['source']
+
+
 class _Preprocessor(object):
     def __init__(self):
         pass
 
-    def preprocess(self, spec):
+    def preprocess(self, spec, scope):
         spec = copy.deepcopy(spec)
 
         while True:
             try:
                 for d, k, v in self.__iterspec(spec):
                     if k[0] == '@':
-                        self.__handle_tmpl(d, k, v)
+                        self.__handle_tmpl(d, k, scope)
                 break
             except parser.templates.common.ErrorRerun:
                 continue
+            except:
+                print(d, k, v)
+                raise
 
         return spec
 
-    def __handle_tmpl(self, d, k, v):
+    def __handle_tmpl(self, d, k, scope):
         k = k.replace('@', '')
         tmpl = parser.named.template(k, namespace='specs')
-        tmpl(d)
+        tmpl(d, scope=scope)
 
     def __handle_val_tmpl(self, v):
         return v
@@ -78,8 +93,8 @@ class _PreCompiler(object):
     def __init__(self):
         pass
 
-    def compile(self, js):
-        js = Preprocessor().preprocess(js)
+    def compile(self, js, scope):
+        js = Preprocessor().preprocess(js, scope)
 
         entries = [
             {
@@ -122,14 +137,17 @@ class _Specs(object):
 
     def __load_single(self, path):
         with open(path) as fp:
-            res = PreCompiler().compile(json.load(fp))
+            res = PreCompiler().compile(json.load(fp), scope=None)
             self.__add_specs(res)
 
     def __load_multi(self, path):
         with open(path) as fp:
             data = fp.read()
+            scope = PreprocessScope()
             for s in [_f for _f in re.split('^//.*\n', data, flags=re.MULTILINE) if _f]:
-                res = PreCompiler().compile(json.loads(s))
+                source = json.loads(s)
+                res = PreCompiler().compile(source, scope=scope)
+                scope.add_specs(res, source=source)
                 self.__add_specs(res)
 
     def __add_specs(self, specs):

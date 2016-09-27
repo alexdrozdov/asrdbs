@@ -36,7 +36,7 @@ class IncludesSpec_js(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         incl_info = body.pop('@includes')
         body['include'] = {
             "spec": incl_info['name'],

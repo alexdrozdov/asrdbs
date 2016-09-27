@@ -3,7 +3,8 @@
     "entries": [
         {
             "@id": "modifiers",
-            "@repeats": ["any", "separator::strict"],
+            "@inherit": ["any"],
+            "@repeats": ["separator::strict"],
             "body": {
                 "@id": "modifier",
                 "@inherit": ["once"],
@@ -22,7 +23,8 @@
         },
         {
             "@id": "dependencies",
-            "@repeats": ["any", "separator::strict"],
+            "@inherit": ["any"],
+            "@repeats": ["separator::strict"],
             "body": {
                 "@id": "dependency",
                 "@inherit": ["once"],

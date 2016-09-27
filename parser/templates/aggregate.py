@@ -4,55 +4,69 @@
 
 import uuid
 import parser.templates.common
-from parser.lang.defs import AggregateSpecs, RepeatableSpecs, AnchorSpecs
+from parser.lang.defs import AggregateSpecs
 
 
 class TemplateAggregate(parser.templates.common.SpecTemplate):
     def __init__(self):
-        super(TemplateAggregate, self).__init__('aggregate')
+        super().__init__(
+            'aggregate',
+            namespace='specs',
+            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
+        )
 
-    def __call__(self, entry_id, attributes, body, as_dict=False):
-        if isinstance(body, dict):
-            body = [body, ]
+    def __call__(self, body, *args, **kwargs):
+        agg_info = body.pop('@aggregate')
+        is_anchor = agg_info.get('is_anchor', False)
 
+        if 'body' in body:
+            inner_body = body.pop('body')
+        elif 'uniq-items' in body:
+            inner_body = {
+                "@id": "body",
+                "@inherit": ["once"],
+                "uniq-items": body.pop('uniq-items')
+            }
+        elif 'entries' in body:
+            inner_body = {
+                "@id": "body",
+                "@inherit": ["once"],
+                "uniq-items": body.pop('entries')
+            }
+        else:
+            raise ValueError('neither body, nor entries nor uniq-entries')
+
+        if isinstance(inner_body, dict):
+            inner_body = [inner_body, ]
+
+        agg_open_tag_name = 'agg-open-{0}'.format(uuid.uuid1())
         agg_close_tag_name = 'agg-close-{0}'.format(uuid.uuid1())
 
         agg_open = {
-            "id": entry_id,
-            "virtual": True,
-            "repeatable": RepeatableSpecs().Once(),
+            "@id": "agg-open",
+            "@inherit": ["once"],
             "closed-with": AggregateSpecs().CloseWith(
                 "$TAG({0})".format(agg_close_tag_name)
             ),
+            "virtual": True,
             "closed": False,
         }
-        for k, v in list(attributes.items()):
-            agg_open[k] = v
 
         agg_close = {
-            "id": entry_id + '-close',
+            "@id": 'agg-close',
+            "@inherit": ["once"],
+            "@tag": agg_close_tag_name,
             "virtual": True,
-            "repeatable": RepeatableSpecs().Once(),
-            "anchor": AnchorSpecs().Tag(agg_close_tag_name),
-            "action": AggregateSpecs().Close("$LOCAL_SPEC_ANCHOR"),
             "closed": True,
             "add-to-seq": False,
         }
 
-        if 'anchor' not in agg_open:
-            agg_open['anchor'] = AnchorSpecs().Tag("agg-open")
-            agg_close['action'] = AggregateSpecs().Close("agg-open")
-        elif agg_open['anchor'][1] == 1:  # local_spec_anchor
+        if not is_anchor:
+            agg_open['@tag'] = agg_open_tag_name
+            agg_close['action'] = AggregateSpecs().Close("$TAG({0})".format(agg_open_tag_name))
+        else:
+            agg_open['@inherit'].append("anchor")
             agg_close['action'] = AggregateSpecs().Close("$LOCAL_SPEC_ANCHOR")
-        else:  # tag with name
-            assert agg_open['anchor'][2] is not None
-            agg_close['action'] = AggregateSpecs().Close(agg_open['anchor'][2])
 
-        res = [agg_open, ] + body + [agg_close, ]
-        if not as_dict:
-            return res
-        return {
-            "id": "$PARENT::agg",
-            "repeatable": RepeatableSpecs().Once(),
-            "entries": res
-        }
+        body["entries"] = [agg_open, ] + inner_body + [agg_close, ]
+        raise parser.templates.common.ErrorRerun()

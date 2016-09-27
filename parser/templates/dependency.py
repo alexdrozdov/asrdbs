@@ -38,7 +38,7 @@ class DependencyOfSpec_js(parser.templates.common.SpecTemplate):
             args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
         )
 
-    def __call__(self, body, *args):
+    def __call__(self, body, *args, **kwargs):
         master = None
         dp_info = body.pop('@dependency-of')
         dp_id = dp_info[0]
