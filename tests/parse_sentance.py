@@ -11,8 +11,9 @@ import argparse
 import uuid
 import common.config
 import parser.api
+import parser.build
+import parser.build.loader
 import parser.graph
-import parser.specs
 import parser.selectors
 from contextlib import contextmanager
 from common.output import output as oput
@@ -58,7 +59,9 @@ def execute(opts):
         with timeit_ctx('loading database'):
             tm = parser.api.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            srm = parser.specs.SequenceSpecMatcher(primary=opts.primary)
+            prs = parser.build.loader.Loader(primary=opts.primary)
+        with timeit_ctx('constructing matcher'):
+            srm = parser.engine.rt.Matcher(prs)
 
         base_dir = str(uuid.uuid1()) if opts.make_test else None
         with timeit_ctx('dumping selectos'):

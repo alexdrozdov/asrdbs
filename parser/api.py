@@ -14,21 +14,21 @@ class Tokenizer(object):
         if isinstance(string, list):
             return string
         return [s for s in re.sub(
-                r'\.\s*$',
-                r' . ',
+            r'\.\s*$',
+            r' . ',
+            re.sub(
+                r"(,\s)",
+                r' \1',
                 re.sub(
-                    r"(,\s)",
-                    r' \1',
-                    re.sub(
-                        r"([^\w\.\-\/,])",
-                        r' \1 ',
-                        string,
-                        flags=re.U
-                    ),
+                    r"([^\w\.\-\/,])",
+                    r' \1 ',
+                    string,
                     flags=re.U
                 ),
                 flags=re.U
-            ).split() if s]
+            ),
+            flags=re.U
+        ).split() if s]
 
 
 class TokenMapper(object):
@@ -36,7 +36,10 @@ class TokenMapper(object):
         self.__wff = WordFormFabric(worddb_file)
 
     def map(self, tokens):
-        return [self.__wff.create(word_pos_word[1], word_pos_word[0]) for word_pos_word in enumerate(tokens)]
+        return [
+            self.__wff.create(word_pos_word[1], word_pos_word[0])
+            for word_pos_word in enumerate(tokens)
+        ]
 
 
 class Parser(object):
