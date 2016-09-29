@@ -5,12 +5,8 @@
 import functools
 import common.config
 import parser.wordform
-import parser.lang.common
-import parser.lang.defs
-import parser.matcher
 import parser.build.compiler
 import common.output
-import common.ifmodified
 from argparse import Namespace as ns
 import logging
 import common.argres

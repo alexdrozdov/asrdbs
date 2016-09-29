@@ -7,9 +7,7 @@ import copy
 import re
 import parser.wordform
 import parser.lang.common
-import parser.lang.defs
 import parser.build.preprocessor
-import parser.matcher
 from parser.lang.common import RtMatchString
 from parser.build.objects import SpecStateDef, CompiledSpec
 

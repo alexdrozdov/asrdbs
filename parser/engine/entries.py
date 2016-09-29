@@ -3,20 +3,13 @@
 
 
 import functools
-import common.config
 import parser.wordform
-import parser.lang.common
-import parser.lang.defs
-from parser.lang.common import RtRule, RtMatchString
-import parser.matcher
-import parser.build.compiler
-import parser.build.preprocessor
 import parser.engine.rt
 import parser.engine.matched
-import common.output
 import common.ifmodified
 from argparse import Namespace as ns
 from common.argres import argres
+from parser.lang.common import RtRule, RtMatchString
 
 
 logs_enabled = False
