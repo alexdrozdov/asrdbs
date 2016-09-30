@@ -4,7 +4,7 @@
 
 import uuid
 import json
-import parser.wordform
+import parser.spare.wordform
 import parser.engine.entries
 from common.linewrapper import LineWrapper
 
@@ -301,8 +301,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.wordform.SpecStateIniForm,
-                    parser.wordform.SpecStateFiniForm
+                    parser.spare.wordform.SpecStateIniForm,
+                    parser.spare.wordform.SpecStateFiniForm
                 )
             ):
                 continue
@@ -312,8 +312,8 @@ class MatchedSequence(object):
             if isinstance(
                 me.get_form(),
                 (
-                    parser.wordform.SpecStateIniForm,
-                    parser.wordform.SpecStateFiniForm
+                    parser.spare.wordform.SpecStateIniForm,
+                    parser.spare.wordform.SpecStateFiniForm
                 )
             ):
                 continue

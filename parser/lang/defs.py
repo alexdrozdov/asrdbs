@@ -3,11 +3,11 @@
 
 
 import parser.matcher
-import parser.selectors
-from parser.lang.common import RtRuleFactory, RtRule, BasicDynamicRule, \
-    BasicStaticRule
-from parser.selectors import SelectorRes
+import parser.spare.selectors
 from argparse import Namespace as ns
+from parser.spare.selectors import SelectorRes
+from parser.spare.rules import RtRuleFactory, RtRule, BasicDynamicRule, \
+    BasicStaticRule
 
 
 class FsmSpecs(object):
@@ -584,7 +584,7 @@ class c__dependencyof_spec(LinkingRule):
         if self.__dep_class is not None:
             self.add_creator(
                 self.__dep_class,
-                parser.selectors.selector(self.__dep_class),
+                parser.spare.selectors.selector(self.__dep_class),
                 track=True,
                 rewrite=True,
                 strict=False,
@@ -707,4 +707,4 @@ class c__selector(BasicStaticRule):
 
 class SelectorSpecs(object):
     def Selector(self, name):
-        return RtRuleFactory(c__selector, parser.selectors.selector(name))
+        return RtRuleFactory(c__selector, parser.spare.selectors.selector(name))

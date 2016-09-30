@@ -3,14 +3,14 @@
 
 
 import functools
-import common.config
-import parser.wordform
-import parser.build.compiler
-import common.output
-from argparse import Namespace as ns
 import logging
 import common.argres
+import common.config
+import common.output
+import parser.spare.wordform
+import parser.build.compiler
 from common.argres import argres
+from argparse import Namespace as ns
 from parser.engine.entries import RtMatchEntry, RtTmpEntry, RtVirtualEntry
 from parser.engine.matched import MatchedSequence, SequenceMatchRes
 
@@ -651,7 +651,7 @@ class SpecMatcher(object):
                 ns(
                     matcher=self,
                     initial_entry=RtMatchEntry(None, ns(
-                        form=parser.wordform.SpecStateIniForm(),
+                        form=parser.spare.wordform.SpecStateIniForm(),
                         spec_state_def=ini_spec,
                         rtms_offset=0)
                     ),
@@ -759,7 +759,7 @@ class Matcher(object):
             ctx = self.__create_ctx()
             self.__create_initial_ctxs(ctx)
 
-        sentence += [parser.wordform.SentenceFini(), ]
+        sentence += [parser.spare.wordform.SentenceFini(), ]
 
         for s in sentence:
             s = [s, ]

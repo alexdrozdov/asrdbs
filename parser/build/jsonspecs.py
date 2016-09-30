@@ -6,9 +6,9 @@ import os
 import re
 import json
 import copy
-import parser.named
 import common.config
-import parser.lang.common
+import parser.spare.index
+import parser.spare.rules
 from common.singleton import singleton
 from parser.lang.defs import RequiredSpecs, FsmSpecs
 
@@ -48,7 +48,7 @@ class _Preprocessor(object):
 
     def __handle_tmpl(self, d, k, scope):
         k = k.replace('@', '')
-        tmpl = parser.named.template(k, namespace='specs')
+        tmpl = parser.spare.index.template(k, namespace='specs')
         tmpl(d, scope=scope)
 
     def __handle_val_tmpl(self, v):
@@ -111,7 +111,7 @@ class _PreCompiler(object):
                 "add-to-seq": False,
             }
         ]
-        return [parser.lang.common.SequenceSpec(
+        return [parser.spare.rules.SequenceSpec(
             name=js['name'],
             spec=entries
         ), ]

@@ -7,9 +7,9 @@ import copy
 import traceback
 import functools
 import worddb.worddb
+import parser.spare.properties
 from argparse import Namespace as ns
 from common.singleton import singleton
-import parser.properties
 
 
 class Restricted(object):
@@ -405,7 +405,7 @@ class Term(object):
             self.__layers['ctx']['revision'] = str(uuid.uuid1())
 
         self.__layers[layer][tag] = True
-        tag_props = parser.properties.properties(tag)
+        tag_props = parser.spare.properties.properties(tag)
         if tag_props is not None:
             self.__copy_tag_props(layer, tag_props)
 

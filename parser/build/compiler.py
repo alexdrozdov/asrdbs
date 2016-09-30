@@ -5,10 +5,10 @@
 import uuid
 import copy
 import re
-import parser.wordform
-import parser.lang.common
+import parser.spare.rules
+import parser.spare.wordform
 import parser.build.preprocessor
-from parser.lang.common import RtMatchString
+from parser.spare.rules import RtMatchString
 from parser.build.objects import SpecStateDef, CompiledSpec
 
 
@@ -27,9 +27,9 @@ class SequenceSpecIter(object):
             return None
 
 
-class IterableSequenceSpec(parser.lang.common.SequenceSpec):
+class IterableSequenceSpec(parser.spare.rules.SequenceSpec):
     def __init__(self, spec):
-        parser.lang.common.SequenceSpec.__init__(self, spec.get_name())
+        super().__init__(self, spec.get_name())
         spec = copy.deepcopy(spec)
         self.__unroll_repeatable_entries(spec.get_spec())
         self.__index_all_entries()

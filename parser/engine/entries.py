@@ -3,13 +3,13 @@
 
 
 import functools
-import parser.wordform
+import common.ifmodified
 import parser.engine.rt
 import parser.engine.matched
-import common.ifmodified
+import parser.spare.wordform
 from argparse import Namespace as ns
 from common.argres import argres
-from parser.lang.common import RtRule, RtMatchString
+from parser.spare.rules import RtRule, RtMatchString
 
 
 logs_enabled = False
@@ -196,7 +196,7 @@ class RtMatchEntry(object):
             ),
             []
         ) + list(map(
-            lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
+            lambda trs: (parser.spare.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         ))
 
@@ -491,7 +491,7 @@ class RtVirtualEntry(object):
     def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
         assert form is not None and spec_state_def is not None
         self.__owner = owner
-        self.__form = parser.wordform.SpecStateVirtForm()
+        self.__form = parser.spare.wordform.SpecStateVirtForm()
         self.__spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
@@ -509,7 +509,7 @@ class RtVirtualEntry(object):
     @argres(show_result=False)
     def __init_from_rtme(self, owner, rtme):
         self.__owner = owner
-        self.__form = parser.wordform.SpecStateVirtForm(rtme.get_form())
+        self.__form = parser.spare.wordform.SpecStateVirtForm(rtme.get_form())
         self.__spec = rtme.__spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability
@@ -665,7 +665,7 @@ class RtVirtualEntry(object):
             ),
             []
         ) + list(map(
-            lambda trs: (parser.wordform.SpecStateFiniForm(), trs),
+            lambda trs: (parser.spare.wordform.SpecStateFiniForm(), trs),
             self.__spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         ))
 

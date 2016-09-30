@@ -2,7 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.lang.common import SelectorStaticRule, SelectorRuleFactory, \
+from parser.spare.rules import SelectorStaticRule, SelectorRuleFactory, \
     MultiSelectorRuleFactory
 
 

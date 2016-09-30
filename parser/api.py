@@ -3,7 +3,7 @@
 
 
 import re
-from parser.wordform import WordFormFabric
+from parser.spare.wordform import WordFormFabric
 
 
 class Tokenizer(object):

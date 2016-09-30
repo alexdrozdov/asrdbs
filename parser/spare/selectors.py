@@ -8,8 +8,8 @@ import re
 import json
 import uuid
 import functools
-import parser.named
-import parser.relations
+import parser.spare.index
+import parser.spare.relations
 import common.config
 from common.singleton import singleton
 from argparse import Namespace as ns
@@ -81,16 +81,16 @@ class _TagRelations(object):
             name='subtype',
             description=''
         )
-        parser.relations.Relations().create_term(t_ns)
-        parser.relations.Relations().create_term(r_ns)
+        parser.spare.relations.Relations().create_term(t_ns)
+        parser.spare.relations.Relations().create_term(r_ns)
         for subtag in subtags:
             st_ns = ns(
                 namespace='selectors',
                 name='subtype',
                 description=''
             )
-            parser.relations.Relations().create_term(st_ns)
-            parser.relations.Relations().add_relation(
+            parser.spare.relations.Relations().create_term(st_ns)
+            parser.spare.relations.Relations().add_relation(
                 (t_ns, st_ns),
                 r_ns
             )
@@ -365,7 +365,7 @@ class _Preprocessor(object):
 
     def __handle_tmpl(self, d, k, v):
         k = k.replace('@', '')
-        tmpl = parser.named.template(k, namespace='selectors')
+        tmpl = parser.spare.index.template(k, namespace='selectors')
         tmpl(d)
 
     def __handle_val_tmpl(self, v):

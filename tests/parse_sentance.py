@@ -12,7 +12,7 @@ import uuid
 import parser
 import common.config
 import parser.graph
-import parser.selectors
+import parser.spare.selectors
 from contextlib import contextmanager
 from common.output import output as oput
 
@@ -64,7 +64,7 @@ def execute(opts):
         base_dir = str(uuid.uuid1()) if opts.make_test else None
         with timeit_ctx('dumping selectos'):
             parser.graph.SelectorGraph(img_type='svg').generate(
-                parser.selectors.Selectors(),
+                parser.spare.selectors.Selectors(),
                 oput.get_output_file([base_dir, 'imgs'], 'selector-{0}.svg'.format(0))
             )
 

@@ -3,12 +3,12 @@
 
 
 import uuid
-import parser.wordform
-import parser.lang.common
-import parser.lang.defs
-import parser.build.preprocessor
 import parser.matcher
-from parser.lang.common import RtMatchString
+import parser.lang.defs
+import parser.spare.rules
+import parser.spare.wordform
+import parser.build.preprocessor
+from parser.spare.rules import RtMatchString
 
 
 class TrsDef(object):
@@ -403,7 +403,7 @@ class SpecStateDef(object):
         for r, rule_def in list(rules.items()):
             if not isinstance(rule_def, list):
                 rule_def = [rule_def, ]
-            rule_def = [parser.lang.common.RtRuleFactory(
+            rule_def = [parser.spare.rules.RtRuleFactory(
                 rr,
                 max_level=max_level,
                 original_state=original_state
