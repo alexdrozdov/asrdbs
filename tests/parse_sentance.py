@@ -9,10 +9,8 @@ import json
 import io
 import argparse
 import uuid
+import parser
 import common.config
-import parser.api
-import parser.build
-import parser.build.loader
 import parser.graph
 import parser.selectors
 from contextlib import contextmanager
@@ -57,11 +55,11 @@ def execute(opts):
 
     with timeit_ctx('total'):
         with timeit_ctx('loading database'):
-            tm = parser.api.TokenMapper('./dbs/worddb.db')
+            tm = parser.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            prs = parser.build.loader.Loader(primary=opts.primary)
+            prs = parser.Loader(primary=opts.primary)
         with timeit_ctx('constructing matcher'):
-            srm = parser.engine.rt.Matcher(prs)
+            srm = parser.Matcher(prs)
 
         base_dir = str(uuid.uuid1()) if opts.make_test else None
         with timeit_ctx('dumping selectos'):
@@ -71,7 +69,7 @@ def execute(opts):
             )
 
         with timeit_ctx('tokenizing'):
-            tokens = parser.api.Tokenizer().tokenize(sentence)
+            tokens = parser.Tokenizer().tokenize(sentence)
 
         with timeit_ctx('mapping word forms'):
             parsed_sentence = tm.map(tokens)
