@@ -109,9 +109,197 @@ class RtStaticRule(RtRule):
         return True
 
 
+class RtAnchorRelated(RtDynamicRule):
+    def __init__(self, anchor, optional=False, persistent=False):
+        super(RtAnchorRelated, self).__init__(
+            optional=optional, persistent=persistent
+        )
+        self.__anchor = RtMatchString(anchor)
+
+    def is_applicable(self, rtme, other_rtme):
+        other_name = other_rtme.get_name()
+        assert isinstance(other_name, RtMatchString)
+        if other_name == self.__anchor:
+            return True
+        return False
+
+    def anchor(self):
+        return self.__anchor
+
+    def has_bindings(self):
+        return True
+
+    def get_bindings(self):
+        return [self.__anchor, ]
+
+
+class BasicDynamicRule(RtAnchorRelated):
+    def __init__(self, name, friendly, anchor, optional, persistent, weight):
+        super(BasicDynamicRule, self).__init__(
+            anchor, optional=optional, persistent=persistent
+        )
+        self.__name = name
+        self.__friendly = friendly
+        self.__weight = weight
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def weight(self):
+        return self.__weight
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += ' anchor: {0}{1}'.format(self.anchor(), wrap)
+        s += ' is_persistent: {0}{1}'.format(self.is_persistent(), wrap)
+        s += ' is_optional: {0}{1}'.format(self.is_optional(), wrap)
+        return s
+
+    def __format_dict(self):
+        return {
+            'rule': self.name(),
+            'friendly': self.friendly(),
+            'anchor': self.anchor(),
+            'reliability': self.weight(),
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+        }
+
+    def __repr__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+    def __str__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+
+class BasicStaticRule(RtStaticRule):
+    def __init__(self, name, friendly, fmt_info):
+        super(BasicStaticRule, self).__init__()
+        self.__name = name
+        self.__friendly = friendly
+        self.__fmt_info = fmt_info
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += wrap.join(
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
+        )
+        return s
+
+    def __format_dict(self):
+        return dict(
+            [
+                ('rule', self.name()),
+                ('friendly', self.friendly())
+            ] + list(self.__fmt_info.items())
+        )
+
+    def __repr__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+    def __str__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.anchor()
+        )
+
+
+class SelectorStaticRule(RtStaticRule):
+    def __init__(self, name, friendly, fmt_info):
+        super().__init__()
+        self.__name = name
+        self.__friendly = friendly
+        self.__fmt_info = fmt_info
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dot(self):
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += wrap.join(
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1]))
+             for k_v in list(self.__fmt_info.items())
+             ]
+        )
+        return s
+
+    def __format_dict(self):
+        return dict(
+            [
+                ('rule', self.name()),
+                ('friendly', self.friendly())
+            ] + list(self.__fmt_info.items())
+        )
+
+    def __repr__(self):
+        return "{0}(objid={1}, name='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.name()
+        )
+
+    def __str__(self):
+        return "{0}(objid={1}, name='{2}')".format(
+            self.friendly(),
+            hex(id(self)),
+            self.name()
+        )
+
+
 class RtMatchString(object):
     def __init__(self, string, max_level=None):
-        assert isinstance(string, str) or isinstance(string, str) or isinstance(string, RtMatchString)
+        assert isinstance(string, str) or \
+            isinstance(string, str) or \
+            isinstance(string, RtMatchString)
 
         if isinstance(string, RtMatchString):
             self.__init_from_rtmatchstring(string, max_level)

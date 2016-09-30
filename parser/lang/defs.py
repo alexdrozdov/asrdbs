@@ -4,7 +4,8 @@
 
 import parser.matcher
 import parser.selectors
-from parser.lang.common import RtRuleFactory, RtRule
+from parser.lang.common import RtRuleFactory, RtRule, BasicDynamicRule, \
+    BasicStaticRule
 from parser.selectors import SelectorRes
 from argparse import Namespace as ns
 
@@ -48,88 +49,6 @@ class RepeatableSpecs(object):
         return (None, None)
 
 
-class RtAnchorRelated(parser.lang.common.RtDynamicRule):
-    def __init__(self, anchor, optional=False, persistent=False):
-        super(RtAnchorRelated, self).__init__(
-            optional=optional, persistent=persistent
-        )
-        self.__anchor = parser.lang.common.RtMatchString(anchor)
-
-    def is_applicable(self, rtme, other_rtme):
-        other_name = other_rtme.get_name()
-        assert isinstance(other_name, parser.lang.common.RtMatchString)
-        if other_name == self.__anchor:
-            return True
-        return False
-
-    def anchor(self):
-        return self.__anchor
-
-    def has_bindings(self):
-        return True
-
-    def get_bindings(self):
-        return [self.__anchor, ]
-
-
-class BasicDynamicRule(RtAnchorRelated):
-    def __init__(self, name, friendly, anchor, optional, persistent, weight):
-        super(BasicDynamicRule, self).__init__(
-            anchor, optional=optional, persistent=persistent
-        )
-        self.__name = name
-        self.__friendly = friendly
-        self.__weight = weight
-
-    def name(self):
-        return self.__name
-
-    def friendly(self):
-        return self.__friendly
-
-    def weight(self):
-        return self.__weight
-
-    def format(self, fmt):
-        if fmt == 'dict':
-            return self.__format_dict()
-        elif fmt == 'dot-html':
-            return self.__format_dot()
-        raise ValueError('Unsupported format {0}'.format(fmt))
-
-    def __format_dot(self):
-        wrap = '<BR ALIGN="LEFT"/>'
-        s = '{0}{1}'.format(self.name(), wrap)
-        s += ' anchor: {0}{1}'.format(self.anchor(), wrap)
-        s += ' is_persistent: {0}{1}'.format(self.is_persistent(), wrap)
-        s += ' is_optional: {0}{1}'.format(self.is_optional(), wrap)
-        return s
-
-    def __format_dict(self):
-        return {
-            'rule': self.name(),
-            'friendly': self.friendly(),
-            'anchor': self.anchor(),
-            'reliability': self.weight(),
-            'is_persistent': self.is_persistent(),
-            'is_optional': self.is_optional(),
-        }
-
-    def __repr__(self):
-        return "{0}(objid={1}, anchor='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.anchor()
-        )
-
-    def __str__(self):
-        return "{0}(objid={1}, anchor='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.anchor()
-        )
-
-
 class c__exclusive_with_spec(BasicDynamicRule):
     def __init__(self, anchor):
         super(c__exclusive_with_spec, self).__init__(
@@ -166,57 +85,6 @@ class AnchorSpecs(object):
 
     def ExclusiveWith(self, anchor):
         return RtRuleFactory(c__exclusive_with_spec, anchor=anchor)
-
-
-class BasicStaticRule(parser.lang.common.RtStaticRule):
-    def __init__(self, name, friendly, fmt_info):
-        super(BasicStaticRule, self).__init__()
-        self.__name = name
-        self.__friendly = friendly
-        self.__fmt_info = fmt_info
-
-    def name(self):
-        return self.__name
-
-    def friendly(self):
-        return self.__friendly
-
-    def format(self, fmt):
-        if fmt == 'dict':
-            return self.__format_dict()
-        elif fmt == 'dot-html':
-            return self.__format_dot()
-        raise ValueError('Unsupported format {0}'.format(fmt))
-
-    def __format_dot(self):
-        wrap = '<BR ALIGN="LEFT"/>'
-        s = '{0}{1}'.format(self.name(), wrap)
-        s += wrap.join(
-            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
-        )
-        return s
-
-    def __format_dict(self):
-        return dict(
-            [
-                ('rule', self.name()),
-                ('friendly', self.friendly())
-            ] + list(self.__fmt_info.items())
-        )
-
-    def __repr__(self):
-        return "{0}(objid={1}, anchor='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.anchor()
-        )
-
-    def __str__(self):
-        return "{0}(objid={1}, anchor='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.anchor()
-        )
 
 
 class c__pos_check(BasicStaticRule):

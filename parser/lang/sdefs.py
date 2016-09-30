@@ -2,58 +2,8 @@
 # -*- #coding: utf8 -*-
 
 
-from parser.lang.common import RtStaticRule, SelectorRuleFactory, MultiSelectorRuleFactory
-
-
-class SelectorStaticRule(RtStaticRule):
-    def __init__(self, name, friendly, fmt_info):
-        super().__init__()
-        self.__name = name
-        self.__friendly = friendly
-        self.__fmt_info = fmt_info
-
-    def name(self):
-        return self.__name
-
-    def friendly(self):
-        return self.__friendly
-
-    def format(self, fmt):
-        if fmt == 'dict':
-            return self.__format_dict()
-        elif fmt == 'dot-html':
-            return self.__format_dot()
-        raise ValueError('Unsupported format {0}'.format(fmt))
-
-    def __format_dot(self):
-        wrap = '<BR ALIGN="LEFT"/>'
-        s = '{0}{1}'.format(self.name(), wrap)
-        s += wrap.join(
-            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
-        )
-        return s
-
-    def __format_dict(self):
-        return dict(
-            [
-                ('rule', self.name()),
-                ('friendly', self.friendly())
-            ] + list(self.__fmt_info.items())
-        )
-
-    def __repr__(self):
-        return "{0}(objid={1}, name='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.name()
-        )
-
-    def __str__(self):
-        return "{0}(objid={1}, name='{2}')".format(
-            self.friendly(),
-            hex(id(self)),
-            self.name()
-        )
+from parser.lang.common import SelectorStaticRule, SelectorRuleFactory, \
+    MultiSelectorRuleFactory
 
 
 class c__pos_check(SelectorStaticRule):
