@@ -1,10 +1,73 @@
-#!/usr/bin/env python
-# -*- #coding: utf8 -*-
-
-
+import types
 import functools
 import common.config
 from common.singleton import singleton
+
+
+registry = {}
+
+
+def register(instance, name, namespace):
+    if namespace not in registry:
+        registry[namespace] = {}
+    registry[namespace][name] = instance
+    return instance
+
+
+class Autoreg(type):
+    @classmethod
+    def __prepare__(cls, name, bases, **kwargs):
+        r = super().__prepare__(name, bases, **kwargs)
+        userargs = kwargs['userargs']
+        r['get_name'] = cls.get_name(userargs['name'])
+        r['get_namespace'] = cls.get_name(userargs['namespace'])
+        return r
+
+    def __new__(cls, clsname, bases, namespace, **kwargs):
+        return register(
+            super().__new__(cls, clsname, bases, namespace),
+            kwargs['userargs']['name'],
+            kwargs['userargs']['namespace']
+        )
+
+    def __init__(cls, clsname, bases, namespace, **kwargs):
+        return super().__init__(clsname, bases, namespace)
+
+    def get_name(name):
+        def get_name(*args, **kwargs):
+            return name
+        return get_name
+
+    def get_namespace(namespace):
+        def get_namespace(*args, **kwargs):
+            return namespace
+        return get_namespace
+
+
+def make_autoreg(metaclass, **kwargs):
+    def wrapper(cls):
+        if isinstance(cls, types.FunctionType):
+            return register(cls, kwargs['name'], kwargs['namespace'])
+        else:
+            kwargs_ = {'userargs': kwargs}
+            namespace = cls.__dict__.copy()
+            slots = namespace.get('__slots__', [])
+            slots = slots if isinstance(slots, list) else [slots, ]
+            slots += ['__dict__', '__weak_ref__']
+            namespace = {k: v for k, v in namespace.items() if k not in slots}
+            namespace.update(metaclass.__prepare__(cls.__name__, (), **kwargs_))
+            return metaclass(cls.__name__, cls.__bases__, namespace, **kwargs_)
+    return wrapper
+
+
+def at(**kwargs):
+    return make_autoreg(Autoreg, **kwargs)
+
+
+def constructable(func):
+    def wrapper(*args, **kwargs):
+        return func
+    return wrapper
 
 
 class Named(object):
@@ -71,16 +134,16 @@ class SequentialFuncCall(object):
         return res
 
 
-def template(name, *args, **kwargs):
-    if 'namespace' in kwargs:
-        namespace = kwargs['namespace']
-    else:
-        namespace = None
-
-    if not args:
-        return Templates()[name, namespace]
-    l = [name, ] + list(args)
-    l.reverse()
-    return SequentialFuncCall(
-        [Templates()[n, namespace] for n in l]
+def get(name, *args, **kwargs):
+    namespace = kwargs.get('namespace', None)
+    ns_dict = registry[namespace]
+    if name in ns_dict:
+        return ns_dict[name]()
+    ns_dict = registry[None]
+    if name in ns_dict:
+        return ns_dict[name]()
+    raise KeyError(
+        'Named instance {0} not found in {1}'.format(
+            name, namespace
+        )
     )

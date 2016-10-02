@@ -4,6 +4,7 @@
 
 import parser.graph
 import common.config
+import parser.templates
 import parser.build.jsonspecs
 import parser.build.preprocessor
 import parser.build.compiler

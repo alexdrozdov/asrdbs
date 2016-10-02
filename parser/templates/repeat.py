@@ -3,17 +3,11 @@
 
 
 import copy
-import parser.templates.common
+import parser.spare
 
 
-class TemplateAtRepeat(parser.templates.common.SpecTemplate):
-    def __init__(self):
-        super(TemplateAtRepeat, self).__init__(
-            'repeats',
-            namespace=None,
-            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
-        )
-
+@parser.spare.at(name='repeats', namespace='specs')
+class TemplateAtRepeat(object):
     def __unroll_attrs(self, attrs):
         if isinstance(attrs, list):
             return self.__unroll_list_attrs(attrs)
@@ -86,4 +80,4 @@ class TemplateAtRepeat(parser.templates.common.SpecTemplate):
             },
             copy.deepcopy(inner_body)
         ]
-        raise parser.templates.common.ErrorRerun()
+        parser.spare.again()

@@ -4,17 +4,11 @@
 
 import re
 import copy
-import parser.templates.common
+import parser.spare
 
 
-class TemplateSubclass(parser.templates.common.SpecTemplate):
-    def __init__(self):
-        super().__init__(
-            'subclass',
-            namespace=None,
-            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
-        )
-
+@parser.spare.at(name='subclass', namespace='specs')
+class TemplateSubclass(object):
     def __call__(self, body, *args, **kwargs):
         superclass_spec_name = body.pop('@subclass')
         rewrite = body.pop('rewrite')
@@ -24,7 +18,7 @@ class TemplateSubclass(parser.templates.common.SpecTemplate):
 
         self.__rewrite_spec(spec, rewrite)
         self.__merge_spec(body, spec)
-        raise parser.templates.common.ErrorRerun()
+        parser.spare.again()
 
     def __rewrite_spec(self, spec, rewrite):
         for rule in rewrite:

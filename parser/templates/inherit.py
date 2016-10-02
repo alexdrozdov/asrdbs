@@ -3,18 +3,12 @@
 
 
 import copy
-import parser.templates.common
+import parser.spare
 from parser.lang.defs import PosSpecs, RepeatableSpecs, AnchorSpecs, LinkSpecs, CaseSpecs
 
 
-class TemplateInherit(parser.templates.common.SpecTemplate):
-    def __init__(self):
-        super().__init__(
-            'inherit',
-            namespace='specs',
-            args_mode=parser.templates.common.SpecTemplate.ARGS_MODE_NATIVE
-        )
-
+@parser.spare.at(name='inherit', namespace='specs')
+class TemplateInherit(object):
     def __call__(self, body, *args, **kwargs):
         inh_list = body.pop('@inherit')
         if not isinstance(inh_list, list):
@@ -25,7 +19,7 @@ class TemplateInherit(parser.templates.common.SpecTemplate):
             for k, v in list(bb.items()):
                 rerun_required |= self.__extend_attr(body, k, v)
         if rerun_required:
-            raise parser.templates.common.ErrorRerun()
+            parser.spare.again()
 
     def __extend_attr(self, body, attr, val):
         if not isinstance(val, list):

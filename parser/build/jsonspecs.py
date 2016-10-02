@@ -5,10 +5,9 @@
 import os
 import re
 import json
-import copy
 import common.config
-import parser.spare.index
 import parser.spare.rules
+import parser.spare.atjson
 from common.singleton import singleton
 from parser.lang.defs import RequiredSpecs, FsmSpecs
 
@@ -25,68 +24,9 @@ class PreprocessScope(object):
         return self.__specs[name]['source']
 
 
-class _Preprocessor(object):
+class _Preprocessor(parser.spare.atjson.AtJson):
     def __init__(self):
-        pass
-
-    def preprocess(self, spec, scope):
-        spec = copy.deepcopy(spec)
-
-        while True:
-            try:
-                for d, k, v in self.__iterspec(spec):
-                    if k[0] == '@':
-                        self.__handle_tmpl(d, k, scope)
-                break
-            except parser.templates.common.ErrorRerun:
-                continue
-            except:
-                print(d, k, v)
-                raise
-
-        return spec
-
-    def __handle_tmpl(self, d, k, scope):
-        k = k.replace('@', '')
-        tmpl = parser.spare.index.template(k, namespace='specs')
-        tmpl(d, scope=scope)
-
-    def __handle_val_tmpl(self, v):
-        return v
-
-    def __iterspec(self, rule, exclude=None):
-        if exclude is None:
-            exclude = []
-        elif isinstance(exclude, str):
-            exclude = [exclude, ]
-        keys = list(filter(
-            lambda k: k not in exclude,
-            list(rule.keys()),
-        ))
-
-        for k in keys:
-            v = rule[k]
-            if isinstance(v, dict):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
-            elif isinstance(v, list):
-                for dd, kk, vv in self.__iterlist(v):
-                    yield dd, kk, vv
-
-            yield rule, k, v
-
-    def __iterlist(self, l):
-        for i in range(len(l)):
-            v = l[i]
-            if isinstance(v, str):
-                if v[0] == '@':
-                    l[i] = self.__handle_val_tmpl(v)
-            elif isinstance(v, dict):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
-            elif isinstance(v, list):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
+        super().__init__(namespace='specs')
 
 
 class _PreCompiler(object):

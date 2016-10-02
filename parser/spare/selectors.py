@@ -3,12 +3,11 @@
 
 
 import os
-import copy
 import re
 import json
 import uuid
 import functools
-import parser.spare.index
+import parser.spare.atjson
 import parser.spare.relations
 import common.config
 from common.singleton import singleton
@@ -345,65 +344,9 @@ class SelectorHub(object):
             yield s
 
 
-class _Preprocessor(object):
+class _Preprocessor(parser.spare.atjson.AtJson):
     def __init__(self):
-        pass
-
-    def preprocess(self, rule):
-        rule = copy.deepcopy(rule)
-
-        while True:
-            try:
-                for d, k, v in self.__iterspec(rule, exclude='clarify'):
-                    if k[0] == '@':
-                        self.__handle_tmpl(d, k, v)
-                break
-            except parser.templates.common.ErrorRerun:
-                continue
-
-        return rule
-
-    def __handle_tmpl(self, d, k, v):
-        k = k.replace('@', '')
-        tmpl = parser.spare.index.template(k, namespace='selectors')
-        tmpl(d)
-
-    def __handle_val_tmpl(self, v):
-        return v
-
-    def __iterspec(self, rule, exclude=None):
-        if exclude is None:
-            exclude = []
-        elif isinstance(exclude, str):
-            exclude = [exclude, ]
-        keys = list(filter(
-            lambda k: k not in exclude,
-            list(rule.keys()),
-        ))
-
-        for k in keys:
-            v = rule[k]
-            if isinstance(v, dict):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
-            elif isinstance(v, list):
-                for dd, kk, vv in self.__iterlist(v):
-                    yield dd, kk, vv
-
-            yield rule, k, v
-
-    def __iterlist(self, l):
-        for i in range(len(l)):
-            v = l[i]
-            if isinstance(v, str):
-                if v[0] == '@':
-                    l[i] = self.__handle_val_tmpl(v)
-            elif isinstance(v, dict):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
-            elif isinstance(v, list):
-                for dd, kk, vv in self.__iterspec(v):
-                    yield dd, kk, vv
+        super().__init__(namespace='selectors')
 
 
 class _Compiler(object):
