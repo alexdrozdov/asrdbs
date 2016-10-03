@@ -9,7 +9,7 @@ import common.config
 import parser.spare.rules
 import parser.spare.atjson
 from common.singleton import singleton
-from parser.lang.defs import RequiredSpecs, FsmSpecs
+from parser.lang.base.rules.defs import RequiredSpecs, FsmSpecs
 
 
 class PreprocessScope(object):
@@ -67,7 +67,6 @@ class _Specs(object):
         if not cfg.exists('/parser/specdefs'):
             return
         for d in cfg['/parser/specdefs']:
-            d = 'parser/lang/' + d
             for f in [fname for fname in os.listdir(d) if fname.endswith('.json')]:
                 path = os.path.join(d, f)
                 if path.endswith('.multi.json'):

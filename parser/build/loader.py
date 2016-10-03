@@ -2,9 +2,9 @@
 # -*- #coding: utf8 -*-
 
 
-import parser.graph
+import parser.io.graph
 import common.config
-import parser.templates
+import parser.lang.base.at
 import parser.build.jsonspecs
 import parser.build.preprocessor
 import parser.build.compiler
@@ -91,7 +91,7 @@ class Loader(object):
 
     def export_svg(self):
         for sp in self.__matchers:
-            g = parser.graph.SpecGraph(img_type='svg')
+            g = parser.io.graph.SpecGraph(img_type='svg')
             spec_name = sp.get_name()
             file_name = common.output.output.get_output_file(
                 'specs',

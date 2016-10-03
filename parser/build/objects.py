@@ -4,10 +4,10 @@
 
 import uuid
 import parser.matcher
-import parser.lang.defs
 import parser.spare.rules
 import parser.spare.wordform
 import parser.build.preprocessor
+import parser.lang.base.rules.defs
 from parser.spare.rules import RtMatchString
 
 
@@ -116,8 +116,8 @@ class SpecStateDef(object):
         self.__is_required = "required" in spec_dict and spec_dict["required"]
         self.__is_repeatable = "repeatable" in spec_dict and spec_dict["repeatable"]
         self.__is_local_final = False
-        self.__is_init = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.init
-        self.__is_fini = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.defs.FsmSpecs.fini
+        self.__is_init = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.base.rules.defs.FsmSpecs.init
+        self.__is_fini = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.base.rules.defs.FsmSpecs.fini
         self.__is_virtual = "virtual" in spec_dict and spec_dict["virtual"]
         self.__uid = str(uuid.uuid1())
         if 'include' in spec_dict:
@@ -134,10 +134,10 @@ class SpecStateDef(object):
         if 'anchor' in spec_dict and isinstance(spec_dict['anchor'], list):
             spec_dict['anchor'] = spec_dict['anchor'][0]
         self.__is_local_anchor = 'anchor' in spec_dict and spec_dict['anchor'][1] in [
-            parser.lang.defs.AnchorSpecs.local_spec_anchor,
-            parser.lang.defs.AnchorSpecs.global_anchor
+            parser.lang.base.rules.defs.AnchorSpecs.local_spec_anchor,
+            parser.lang.base.rules.defs.AnchorSpecs.global_anchor
         ]
-        if 'anchor' in spec_dict and spec_dict['anchor'][1] == parser.lang.defs.AnchorSpecs.local_spec_tag:
+        if 'anchor' in spec_dict and spec_dict['anchor'][1] == parser.lang.base.rules.defs.AnchorSpecs.local_spec_tag:
             self.__tag = spec_dict['anchor'][2]
         else:
             self.__tag = None

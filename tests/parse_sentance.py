@@ -11,7 +11,7 @@ import argparse
 import uuid
 import parser
 import common.config
-import parser.graph
+import parser.io.graph
 import parser.spare.selectors
 from contextlib import contextmanager
 from common.output import output as oput
@@ -63,7 +63,7 @@ def execute(opts):
 
         base_dir = str(uuid.uuid1()) if opts.make_test else None
         with timeit_ctx('dumping selectos'):
-            parser.graph.SelectorGraph(img_type='svg').generate(
+            parser.io.graph.SelectorGraph(img_type='svg').generate(
                 parser.spare.selectors.Selectors(),
                 oput.get_output_file([base_dir, 'imgs'], 'selector-{0}.svg'.format(0))
             )
@@ -79,7 +79,7 @@ def execute(opts):
 
         for j, sq in enumerate(matched_sentences.get_sequences()):
             print(sq.format('str'))
-            parser.graph.SequenceGraph(img_type='svg').generate(
+            parser.io.graph.SequenceGraph(img_type='svg').generate(
                 sq,
                 oput.get_output_file([base_dir, 'imgs'], 'sq-{0}.svg'.format(j))
             )
@@ -109,14 +109,14 @@ if __name__ == '__main__':
                 ],
             },
             'parser': {
-                'specdefs': ['ru_RU/enchanced/specdefs', ],
+                'specdefs': ['parser/volume/ru_RU/structure', ],
                 'linkdefs': ['ru_RU/enchanced/linkdefs', ],
-                'selectors': ['parser/lang/ru_RU/enchanced/selectors', ],
+                'selectors': ['parser/volume/ru_RU/selectors', ],
                 'templates': [
                     'parser/templates',
                     'parser/lang/ru_RU/enchanced/templates/selectors'
                 ],
-                'props': ['parser/lang/ru_RU/enchanced/properties', ],
+                'props': ['parser/volume/ru_RU/properties', ],
                 'generate-svg': False
             },
         }
