@@ -44,9 +44,9 @@ class RtEntry(object):
         self.__attributes = attributes
 
         self.__create_name(self._spec.get_name())
-        self.__create_rules()
-        self.__index_rules()
-        self.__create_static_rules()
+        self._create_rules()
+        self._index_rules()
+        self._create_static_rules()
 
     @argres(show_result=False)
     def _init_from_rtme(self, owner, rtme, form=None):
@@ -61,7 +61,7 @@ class RtEntry(object):
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
         self.__copy_attributes(rtme)
-        self.__index_rules()
+        self._index_rules()
         self.__copy_matched_rules(rtme)
 
     @argres(show_result=False)
@@ -69,7 +69,7 @@ class RtEntry(object):
         self.__attributes = {k: v for k, v in list(rtme.__attributes.items())}
 
     @argres(show_result=False)
-    def __create_rules(self):
+    def _create_rules(self):
         self.__pending = []
         for r in self._spec.get_rt_rules():
             assert r is not None
@@ -79,7 +79,7 @@ class RtEntry(object):
             self.__pending.append(r)
 
     @argres(show_result=False)
-    def __create_static_rules(self):
+    def _create_static_rules(self):
         self.__matched = []
         for r in self._spec.get_stateless_rules():
             self.__matched.append(ns(rule=r, rtme=self))
@@ -117,7 +117,7 @@ class RtEntry(object):
         return True
 
     @argres(show_result=False)
-    def __index_rules(self):
+    def _index_rules(self):
         self.__required_count = 0
         for r in self.__pending:
             if not r.is_optional():
@@ -276,32 +276,24 @@ class RtMatchEntry(RtEntry):
         super().__init__(owner, based_on)
 
 
-class RtTmpEntry(object):
-    def __new__(cls, *args, **kwargs):
-        obj = super(RtTmpEntry, cls).__new__(cls)
-        owner = args[0]
-        obj.logger = owner.get_logger() if owner is not None else None
-        return obj
-
-    def get_logger(self):
-        return self.logger
-
+class RtTmpEntry(RtEntry):
     @argres(show_result=False)
     def __init__(self, owner, based_on):
-        assert isinstance(based_on, ns)
-        self.__init_from_form_spec(owner, based_on.form, based_on.spec_state_def, based_on.rtms_offset)
+        super().__init__(owner, based_on)
 
     @argres(show_result=False)
-    def __init_from_form_spec(self, owner, form, spec_state_def, rtms_offset):
-        assert form is not None and spec_state_def is not None
-        self._owner = owner
-        self._form = form
-        self._spec = spec_state_def
-        self.__rtms_offset = rtms_offset
-        self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
+    def _init_from_form_spec(self, owner, form, spec_state_def, rtms_offset, attributes):
+        super()._init_from_form_spec(owner, form, spec_state_def, rtms_offset, attributes)
         self.__sub_ctx = None
 
-        self.__create_name(self._spec.get_name())
+    def _create_rules(self):
+        pass
+
+    def _index_rules(self):
+        pass
+
+    def _create_static_rules(self):
+        pass
 
     def get_matched_rules(self):
         return []
@@ -309,64 +301,9 @@ class RtTmpEntry(object):
     def get_subctx(self):
         return self.__sub_ctx
 
-    @argres(show_result=True)
-    def matched_list_valid(self):
-        for rule_rtme in self.__matched:
-            if isinstance(rule_rtme.rtme, RtMatchEntry):
-                continue
-            return False
-        return True
-
     @argres(show_result=False)
     def resolve_matched_rtmes(self):
         return True
-
-    def __create_name(self, name):
-        self.__name = RtMatchString(name)
-        if self.__name.need_reindex():
-            self.__reindex_name(self.__name)
-
-    def __reindex_name(self, name):
-        stack = self._owner.get_stack()
-        if name.get_max_level() is not None:
-            stack = stack[0:max(name.get_max_level() - 1, 0)]
-        try:
-            name.update(str(name).format(*stack))
-        except IndexError:
-            stack = stack + ['\\d+'] * 20
-            str_name = str(name).replace('[', '\\[').replace(']', '\\]').replace('+', '\\+')
-            name.update(str_name.format(*stack))
-
-    def get_name(self):
-        return self.__name
-
-    def get_owner(self):
-        return self._owner
-
-    def get_form(self):
-        return self._form
-
-    def get_spec(self):
-        return self._spec
-
-    def get_offset(self, base=None):
-        return self.__rtms_offset
-
-    def get_reliability(self):
-        return self.__reliability
-
-    def closed(self):
-        return True
-
-    @argres()
-    def has_pending(self, required_only=False):
-        if required_only:
-            return self.__required_count > 0
-        return len(self.__pending) > 0
-
-    @argres(show_result=False)
-    def add_link(self, link):
-        self._owner.add_link(link)
 
     @argres()
     def find_transitions(self, forms):
@@ -378,9 +315,6 @@ class RtTmpEntry(object):
     @argres()
     def handle_rules(self, on_entry=None):
         return ns(later=False, again=False, valid=True, affected_links=[])
-
-    def modified(self):
-        return False
 
     @argres(show_result=False)
     def set_subctx(self, sub_ctx):
@@ -408,7 +342,7 @@ class RtTmpEntry(object):
             ns(
                 form=subseq_anchor,
                 spec_state_def=self._spec,
-                rtms_offset=self.__rtms_offset,
+                rtms_offset=self.get_offset(),
                 attributes={
                     'subseq': parser.engine.matched.MatchedSequence(res.sq)
                 }
