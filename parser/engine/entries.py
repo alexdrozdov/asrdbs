@@ -260,15 +260,29 @@ class RtEntry(object):
 
     def __repr__(self):
         try:
-            return "RtMatchEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+            return "{0}(objid={1}, name='{2}')".format(
+                self.__class__.__name__,
+                hex(id(self)),
+                self.get_name()
+            )
         except:
-            return "RtMatchEntry(objid={0})".format(hex(id(self)))
+            return "{0}(objid={1})".format(
+                self.__class__.__name__,
+                hex(id(self))
+            )
 
     def __str__(self):
         try:
-            return "RtMatchEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
+            return "{0}(objid={1}, name='{2}')".format(
+                self.__class__.__name__,
+                hex(id(self)),
+                self.get_name()
+            )
         except:
-            return "RtMatchEntry(objid={0})".format(hex(id(self)))
+            return "{0}(objid={1})".format(
+                self.__class__.__name__,
+                hex(id(self))
+            )
 
 
 class RtMatchEntry(RtEntry):
@@ -387,18 +401,6 @@ class RtTmpEntry(RtEntry):
         assert id(sub_ctx) == id(self.__sub_ctx), '{0}, {1}'.format(sub_ctx, self.__sub_ctx)
         self.__sub_ctx = None
 
-    def __repr__(self):
-        try:
-            return "RtTmpEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
-        except:
-            return "RtTmpEntry(objid={0})".format(hex(id(self)))
-
-    def __str__(self):
-        try:
-            return "RtTmpEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
-        except:
-            return "RtTmpEntry(objid={0})".format(hex(id(self)))
-
 
 class RtVirtualEntry(RtEntry):
     @argres(show_result=False)
@@ -483,15 +485,3 @@ class RtVirtualEntry(RtEntry):
         self._form.add_form(rtme.get_form())
         self.__modified = True
         return True
-
-    def __repr__(self):
-        try:
-            return "RtVirtualEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
-        except:
-            return "RtVirtualEntry(objid={0})".format(hex(id(self)))
-
-    def __str__(self):
-        try:
-            return "RtVirtualEntry(objid={0}, name='{1}')".format(hex(id(self)), self.get_name())
-        except:
-            return "RtVirtualEntry(objid={0})".format(hex(id(self)))
