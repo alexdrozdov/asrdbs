@@ -8,7 +8,7 @@ from parser.spare.wordform import WordFormFabric
 
 class Tokenizer(object):
     def __init__(self):
-        pass
+        super().__init__()
 
     def tokenize(self, string):
         if isinstance(string, list):
@@ -33,6 +33,7 @@ class Tokenizer(object):
 
 class TokenMapper(object):
     def __init__(self, worddb_file):
+        super().__init__()
         self.__wff = WordFormFabric(worddb_file)
 
     def map(self, tokens):

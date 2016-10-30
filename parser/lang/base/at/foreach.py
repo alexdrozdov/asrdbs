@@ -21,4 +21,4 @@ def foreach(body, *args, **kwargs):
             else:
                 item[k] = v
         item["@id"] = "phr-{0}".format(i)
-    raise parser.templates.common.ErrorRerun()
+    parser.spare.again()
