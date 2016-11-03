@@ -474,6 +474,18 @@ class _Compiler(object):
             'no one item with clarifies found in {0}'.format(js)
         )
 
+    def __move_js_base_clarifies(self, js, res):
+        if 'clarifies' not in js:
+            return
+
+        d = list(res.values())[0]
+        if 'clarifies' not in d:
+            d['clarifies'] = []
+        elif isinstance(d['clarifies'], str):
+            d['clarifies'] = [d['clarifies'], ]
+        if js['clarifies'] not in d['clarifies']:
+            d['clarifies'].append(js['clarifies'])
+
     def __reshape_js_base(self, js, terms_count):
         if terms_count is None:
             terms_count = self.__eval_terms_count(js)
@@ -481,6 +493,7 @@ class _Compiler(object):
         res = {
             str(deepest): js[str(deepest)]
         }
+        self.__move_js_base_clarifies(js, res)
         for i in range(terms_count):
             if i == deepest:
                 continue
