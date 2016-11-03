@@ -1,0 +1,12 @@
+{
+    "selector": {
+        "clarifies": "#term",
+        "tag-base": "#quality",
+        "clarify": [
+        {
+            "tag": "#adjective",
+            "@pos": ["adjective"]
+        }
+        ]
+    }
+}

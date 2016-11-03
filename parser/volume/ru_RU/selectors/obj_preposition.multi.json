@@ -1,6 +1,7 @@
 // Basic object preposition rule (just test case equality and position
 {
     "multi": {
+        "clarifies": "#grammar",
         "tag-base": "#obj-preposition",
         "@self": {
             "clarifies": "#preposition",
@@ -19,6 +20,7 @@
 // In
 {
     "multi": {
+        "clarifies": "#grammar",
         "tag-base": "#obj-preposition",
         "@self": {
             "clarifies": "#obj-preposition-link",

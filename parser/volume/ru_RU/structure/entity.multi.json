@@ -5,7 +5,7 @@
             "@id": "definitive",
             "@inherit": ["any"],
             "@includes": {"name": "adjective"},
-            "@dependency-of": ["location"]
+            "@dependency-of": ["#entity-definitive"]
         },
         {
             "@id": "core",

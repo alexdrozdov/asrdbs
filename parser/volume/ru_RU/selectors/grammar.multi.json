@@ -1,0 +1,63 @@
+{
+    "multi": {
+        "tag-base": "#grammar",
+        "@self": {
+            "clarifies": "#term",
+            "@break": "#grammar-link"
+        },
+        "@other": {
+            "clarifies": "#term"
+        }
+    }
+}
+
+// In
+
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "tag": "#adjective-noun",
+        "@pos": ["adjective"],
+        "@position": {"1": "left"},
+        "@link": {
+            "label": "#adjective-noun"
+        },
+        "@other": {
+            "@pos": ["noun"],
+            "@case": ["ablative", "prepositional"]
+        }
+    }
+}
+
+//
+
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "tag": "#noun-adjective",
+        "@pos": ["noun"],
+        "@equal-properties": {"1": ["case", "count", "gender"]},
+        "@link": {
+            "label": "#noun-adjective"
+        },
+        "@other": {
+            "@pos": ["adjective"]
+        }
+    }
+}
+
+//
+
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "tag": "#noun-noun",
+        "@pos": ["noun"],
+        "@link": {
+            "label": "#noun-noun"
+        },
+        "@other": {
+            "@pos": ["noun"]
+        }
+    }
+}

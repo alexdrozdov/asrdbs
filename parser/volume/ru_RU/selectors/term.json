@@ -1,0 +1,10 @@
+{
+    "selector": {
+        "tag-base": "#term",
+        "clarify": [
+            {
+                "tag": "#term"
+            }
+        ]
+    }
+}

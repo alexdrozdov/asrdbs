@@ -1,15 +1,12 @@
 {
     "multi": {
         "clarifies": "#grammar",
-        "tag-base": "#entity-entity",
+        "tag-base": "#entity-definitive",
         "@self": {
-            "clarifies": "#object",
+            "clarifies": "#adjective",
             "clarify": {
-                "@other": {
-                    "@bind-props": "0"
-                },
                 "@link": {
-                    "label": "^obj-location"
+                    "label": "^obj-definitive"
                 }
             }
         },
@@ -18,3 +15,4 @@
         }
     }
 }
+
