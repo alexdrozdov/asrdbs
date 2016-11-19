@@ -643,6 +643,7 @@ class SpecCompiler(object):
             return True
         print(self.__parent_spec_name)
         print(binding)
+        print(list(self.__name2state.keys()))
         print(list(self.__name_remap.keys()))
         raise RuntimeError('state name matching not implemented')
 

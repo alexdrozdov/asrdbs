@@ -74,7 +74,7 @@
                             "@inherit": ["once"],
                             "@repeats": ["separator::strict"],
                             "body": {
-                                "@id": "#item#",
+                                "@id": null,
                                 "@tag": "object",
                                 "@inherit": ["once"],
                                 "@includes": {"name": "entity-neg", "is_static": true},
@@ -91,10 +91,10 @@
                         {
                             "@id": "#pre-internal#",
                             "@inherit": ["never"],
-                            "@dependency-of": ["#obj-preposition", "#item#"]
+                            "@dependency-of": ["#obj-preposition", "$TAG(object-int)"]
                         },
                         {
-                            "@id": "#item#",
+                            "@id": null,
                             "@tag": "object-int",
                             "@inherit": ["once"],
                             "@refers-to": {},
