@@ -1,3 +1,4 @@
+import uuid
 import parser.spare
 
 
@@ -5,4 +6,7 @@ import parser.spare
 @parser.spare.constructable
 def at_id(body, *args, **kwargs):
     id_v = body.pop('@id')
-    body["id"] = "$PARENT::" + id_v
+    if id_v is not None:
+        body["id"] = "$PARENT::" + id_v
+    else:
+        body["id"] = "$PARENT::" + str(uuid.uuid1())
