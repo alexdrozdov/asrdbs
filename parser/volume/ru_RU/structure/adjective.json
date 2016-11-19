@@ -12,7 +12,7 @@
                     {
                         "@id": "adv",
                         "@inherit": ["basic-adv", "once"],
-                        "@dependency-of": ["modifier"]
+                        "@dependency-of": ["#grammar"]
                     }
                 ]
             }
@@ -32,7 +32,7 @@
                     {
                         "@id": "entity",
                         "@inherit": ["once"],
-                        "@dependency-of": ["modifier"],
+                        "@dependency-of": ["#grammar"],
                         "@includes": {"name": "entity-list", "is_static": true}
                     }
                 ]

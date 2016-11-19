@@ -42,12 +42,11 @@ class SelectorRes(object):
         return SelectorRes(False)
 
     def __add__(self, other):
-        r = SelectorRes(
+        return SelectorRes(
             self.res,
             dict(list(self.link_attrs.items()) + list(other.link_attrs.items())),
             dict(list(self.info.items()) + list(other.info.items())),
         )
-        return r
 
     def __str__(self):
         return 'SelectorRes({0}, link_attrs={1}, info={2})'.format(
@@ -220,6 +219,7 @@ class MultiSelector(object):
 
         for r in self.__rules:
             if not r.match(*forms):
+                # raise ValueError()
                 return self.__failure()
 
         form = forms[self.__index]

@@ -57,7 +57,11 @@ def other(body, *args, **kwargs):
 @parser.spare.constructable
 def equal_properties(body, *args, **kwargs):
     ep = body.pop('@equal-properties')
-    body['equal-properties'] = [RelationsSpecs().EqualProps(int(other_indx_s[0]), other_indx_s[1]) for other_indx_s in list(ep.items())]
+    body['equal-properties'] = [
+        RelationsSpecs().EqualProps(
+            int(other_indx_s[0]), other_indx_s[1])
+        for other_indx_s in list(ep.items())
+    ]
 
 
 @parser.spare.at(name='position', namespace='selectors')

@@ -2,7 +2,6 @@
 # -*- #coding: utf8 -*-
 
 
-import parser.matcher
 import parser.spare.selectors
 from argparse import Namespace as ns
 from parser.spare.selectors import SelectorRes
@@ -431,7 +430,6 @@ class LinkingRule(BasicDynamicRule):
                     rewrite_existing=c.rewrite_existing
                 )
             )
-
         rtme.add_link(links)
         return RtRule.res_matched
 
@@ -465,7 +463,14 @@ class c__slave_master_spec(LinkingRule):
         )
 
         self.add_creator(None, self.my_info, track=False, rewrite=False, strict=True)
-        self.add_creator('grammar', self.grammar, track=False, rewrite=False, strict=True)
+        self.add_creator(
+            "#grammar",
+            parser.spare.selectors.selector("#continued-#grammar-link"),
+            track=False,
+            rewrite=False,
+            strict=True,
+            break_on_failure=True
+        )
 
     def new_copy(self):
         return c__slave_master_spec(self.anchor(), self.weight())
@@ -478,14 +483,6 @@ class c__slave_master_spec(LinkingRule):
             res=True,
             link_attrs={},
             info=self.format('dict')
-        )
-
-    def grammar(self, rtme_form, other_form):
-        res = parser.matcher.match(other_form, rtme_form)
-        return SelectorRes(
-            res=bool(res),
-            link_attrs={},
-            info=res.to_dict()
         )
 
 
@@ -579,31 +576,30 @@ class c__dependencyof_spec(LinkingRule):
         self.__dep_class = dependency_class
 
         self.add_creator(None, self.my_info, track=False, rewrite=False, strict=True)
-        self.add_creator('grammar', self.grammar, track=False, rewrite=False, strict=True)
 
-        if self.__dep_class is not None:
-            self.add_creator(
-                self.__dep_class,
-                parser.spare.selectors.selector(self.__dep_class),
-                track=True,
-                rewrite=True,
-                strict=False,
-                break_on_failure=True
-            )
+        assert self.__dep_class is not None, "no dep class for {0}".format(anchor)
+        self.add_creator(
+            "#grammar",
+            parser.spare.selectors.selector("#continued-#grammar-link"),
+            track=False,
+            rewrite=False,
+            strict=True,
+            break_on_failure=True
+        )
+        self.add_creator(
+            self.__dep_class,
+            parser.spare.selectors.selector(self.__dep_class),
+            track=True,
+            rewrite=True,
+            strict=True,
+            break_on_failure=True
+        )
 
     def my_info(self, rtme_form, other_form):
         return SelectorRes(
             res=True,
             link_attrs={},
             info=self.format('dict')
-        )
-
-    def grammar(self, rtme_form, other_form):
-        res = parser.matcher.match(other_form, rtme_form)
-        return SelectorRes(
-            res=bool(res),
-            link_attrs={},
-            info=res.to_dict()
         )
 
     def new_copy(self):
