@@ -34,11 +34,13 @@
 {
     "@continue": "#grammar-link",
     "clarify": {
-        "tag": "#noun-adjective",
         "@pos": ["noun"],
-        "@equal-properties": {"1": ["case", "count", "gender"]},
-        "@link": {
-            "label": "#noun-adjective"
+        "clarify": {
+            "tag": "#noun-adjective",
+            "@equal-properties": {"1": ["case", "count", "gender"]},
+            "@link": {
+                "label": "#noun-adjective"
+            }
         },
         "@other": {
             "@pos": ["adjective"]
@@ -51,11 +53,13 @@
 {
     "@continue": "#grammar-link",
     "clarify": {
-        "tag": "#noun-noun",
         "@pos": ["noun"],
-        "@case": ["ablative", "prepositional"],
-        "@link": {
-            "label": "#noun-noun"
+        "clarify": {
+            "tag": "#noun-noun",
+            "@case": ["ablative", "prepositional"],
+            "@link": {
+                "label": "#noun-noun"
+            }
         },
         "@other": {
             "@pos": ["noun"]
@@ -80,12 +84,14 @@
 {
     "@continue": "#grammar-link",
     "clarify": {
-        "tag": "#noun-preposition",
         "@pos": ["preposition"],
-        "@equal-properties": {"1": ["case"]},
-        "@position": {"1": "left"},
-        "@link": {
-            "label": "#noun-preposition"
+        "clarify": {
+            "tag": "#noun-preposition",
+            "@equal-properties": {"1": ["case"]},
+            "@position": {"1": "left"},
+            "@link": {
+                "label": "#noun-preposition"
+            }
         },
         "@other": {
             "@pos": ["noun"]
