@@ -41,8 +41,9 @@ class Loader(object):
     def __create_specs(self):
         for sd in parser.build.jsonspecs.Specs():
             self.__add_spec(sd)
+        self.__generate_debug(['src', ])
         self.__build_specs()
-        self.__generate_debug()
+        self.__generate_debug(['selectors', 'structure'])
 
     def __is_primary(self, name):
         return name == self.__primary_spec
@@ -87,7 +88,7 @@ class Loader(object):
     def get_primary(self):
         return self.__primary
 
-    def __generate_debug(self):
+    def __generate_debug(self, flt_list=None):
         cfg = common.config.Config()
         itr_map = {
             'src': parser.build.jsonspecs.Specs(),
@@ -95,6 +96,8 @@ class Loader(object):
             'selectors': [],
         }
         for group_name, group in cfg['/parser/debug'].items():
+            if flt_list is not None and group_name not in flt_list:
+                continue
             itr = itr_map[group_name]
             self.__generate_debug_group(group_name, group, itr)
 
