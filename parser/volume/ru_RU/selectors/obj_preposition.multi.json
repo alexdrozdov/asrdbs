@@ -1,29 +1,9 @@
-// Basic object preposition rule (just test case equality and position
-{
-    "multi": {
-        "clarifies": "#grammar",
-        "tag-base": "#obj-preposition",
-        "@self": {
-            "clarifies": "#preposition",
-            "clarify": {
-                "tag": "#obj-preposition-link",
-                "@equal-properties": {"1": ["case"]},
-                "@position": {"1": "left"}
-            }
-        },
-        "@other": {
-            "clarifies": "#object"
-        }
-    }
-}
-
 // In
 {
     "multi": {
         "clarifies": "#grammar",
         "tag-base": "#obj-preposition",
         "@self": {
-            "clarifies": "#obj-preposition-link",
             "clarify": {
                 "@word": "в",
                 "@break": "obj-preposition-link[в]"

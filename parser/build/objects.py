@@ -342,6 +342,7 @@ class SpecStateDef(object):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
+                        # print(rd, self.__name)
                         if rd.created():
                             continue
                         target_list.extend(rd.create(compiler, self))

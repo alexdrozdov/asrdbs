@@ -23,6 +23,11 @@ class TemplateSubclass(object):
             for e in self.__iterall(spec):
                 if self.__rule_matched(e, find):
                     self.__rule_apply(e, extend)
+                    break
+            else:
+                raise RuntimeError('Rule pattern not found {0} in {1}'.format(
+                    find, spec
+                ))
 
     def __merge_spec(self, body, spec):
         for k, v in spec.items():
@@ -37,6 +42,12 @@ class TemplateSubclass(object):
         if 'uniq-items' in l:
             for ee in self.__iterall(l['uniq-items']):
                 yield ee
+        if isinstance(l, dict):
+            yield l
+        if isinstance(l, list):
+            for ee in l:
+                for eee in self.__iterall(ee):
+                    yield eee
 
     def __rule_matched(self, e, r):
         for k, v in list(r.items()):

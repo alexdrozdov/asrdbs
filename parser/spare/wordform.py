@@ -459,7 +459,8 @@ class Term(object):
             return None
         if missing_is_missing:
             return Missing()
-        raise KeyError('{0}:{1} doesnt exist'.format(layer, property))
+        raise KeyError('{0}:{1} doesnt exist in {2}'.format(
+            layer, property, self.__layers))
 
     def restrict_property(self, property, layer=None):
         if layer is not None:

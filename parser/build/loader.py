@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import json
 import parser.io.graph
 import common.config
 import parser.lang.base.at
@@ -38,13 +39,10 @@ class Loader(object):
         return obj
 
     def __create_specs(self):
-        cfg = common.config.Config()
         for sd in parser.build.jsonspecs.Specs():
             self.__add_spec(sd)
         self.__build_specs()
-        export_svg = cfg['/parser/export-svg']
-        if export_svg is not None and export_svg:
-            self.__export_svg()
+        self.__generate_debug()
 
     def __is_primary(self, name):
         return name == self.__primary_spec
@@ -89,12 +87,43 @@ class Loader(object):
     def get_primary(self):
         return self.__primary
 
-    def export_svg(self):
-        for sp in self.__matchers:
-            g = parser.io.graph.SpecGraph(img_type='svg')
-            spec_name = sp.get_name()
-            file_name = common.output.output.get_output_file(
-                'specs',
-                '{0}.svg'.format(spec_name)
+    def __generate_debug(self):
+        cfg = common.config.Config()
+        itr_map = {
+            'src': parser.build.jsonspecs.Specs(),
+            'structure': self.__matchers,
+            'selectors': [],
+        }
+        for group_name, group in cfg['/parser/debug'].items():
+            itr = itr_map[group_name]
+            self.__generate_debug_group(group_name, group, itr)
+
+    def __generate_debug_group(self, name, group, itr):
+        itr = list(itr)
+        tgt_dir = group['path']
+        fmts = {
+            'json': {'extension': '.json'},
+            'svg': {'extension': '.svg'},
+        }
+        for fmt in (i for i in fmts if i in group and group[i]):
+            self.__generate_debug_fmt(
+                itr=itr,
+                fmt=fmt,
+                tgt_dir=tgt_dir,
+                file_ext=fmts[fmt]['extension']
             )
-            g.generate(sp.get_compiled_spec().get_states(), file_name)
+
+    def __generate_debug_fmt(self, itr, fmt, tgt_dir, file_ext):
+        for e in itr:
+            name = e.get_name()
+            file_name = common.output.output.get_output_file(
+                tgt_dir,
+                '{0}{1}'.format(name, file_ext)
+            )
+            try:
+                data = e.format(fmt)
+            except:
+                d = e.format('dict')
+                data = json.dumps(d)
+            with open(file_name, 'w') as f:
+                f.write(data)

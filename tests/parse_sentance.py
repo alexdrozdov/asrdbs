@@ -117,7 +117,23 @@ if __name__ == '__main__':
                     'parser/lang/ru_RU/enchanced/templates/selectors'
                 ],
                 'props': ['parser/volume/ru_RU/properties', ],
-                'generate-svg': False
+                'debug': {
+                    'src': {
+                        'svg': False,
+                        'json': True,
+                        'path': 'preprocessor'
+                    },
+                    'structure': {
+                        'svg': False,
+                        'json': False,
+                        'path': 'structure'
+                    },
+                    'selectors': {
+                        'svg': False,
+                        'json': False,
+                        'path': 'selectors'
+                    }
+                }
             },
         }
     )

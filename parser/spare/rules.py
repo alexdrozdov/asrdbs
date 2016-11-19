@@ -20,6 +20,34 @@ class SequenceSpec(object):
     def get_validate(self):
         return None
 
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__fmt_dict()
+        raise Exception('Not implemented')
+
+    def __fmt_dict(self):
+        return {
+            'name': self.get_name(),
+            'entries': self.__plain(self.spec)
+        }
+
+    def __plain(self, obj):
+        if isinstance(obj, dict):
+            return self.__plain_dict(obj)
+        if isinstance(obj, (list, tuple)):
+            return self.__plain_list(obj)
+        if isinstance(obj, (int, bool)):
+            return obj
+        if hasattr(obj, 'format'):
+            return obj.format('dict')
+        return str(obj)
+
+    def __plain_dict(self, obj):
+        return {k: self.__plain(v) for k, v in obj.items()}
+
+    def __plain_list(self, obj):
+        return [self.__plain(i) for i in obj]
+
 
 class RtRule(object):
     res_none = 0
@@ -467,6 +495,20 @@ class RtRuleFactory(object):
 
     def created(self):
         return self.__created
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__fmt_dict()
+        raise Exception('Not implemented')
+
+    def __fmt_dict(self):
+        return {
+            'classname': str(self.__classname),
+            'max_level': self.__max_level,
+            'original_state': self.__original_state,
+            'args': str(self.__args),
+            'kwargs': str(self.__kwargs)
+        }
 
 
 class SingleToMultiRuleAdapter(object):

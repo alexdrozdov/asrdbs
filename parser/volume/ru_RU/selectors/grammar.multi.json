@@ -61,3 +61,21 @@
         }
     }
 }
+
+// Basic object preposition rule (just test case equality and position
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "tag": "#noun-preposition",
+        "@pos": ["preposition"],
+        "@equal-properties": {"1": ["case"]},
+        "@position": {"1": "left"},
+        "@link": {
+            "label": "#noun-preposition"
+        },
+        "@other": {
+            "@pos": ["noun"]
+        }
+    }
+}
+
