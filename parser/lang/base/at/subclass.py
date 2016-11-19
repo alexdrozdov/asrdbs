@@ -61,4 +61,10 @@ class TemplateSubclass(object):
 
     def __rule_apply(self, e, extend):
         for k, v in list(extend.items()):
+            k_name = k.strip('@')
+            if k_name in e:
+                e.pop(k_name)
+            k_name = '@' + k_name
+            if k_name in e:
+                e.pop(k_name)
             e[k] = v
