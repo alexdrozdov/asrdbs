@@ -3,7 +3,6 @@
 
 
 import uuid
-import parser.matcher
 import parser.spare.rules
 import parser.spare.wordform
 import parser.build.preprocessor

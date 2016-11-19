@@ -21,11 +21,7 @@ class Loader(object):
         self.__spec_by_name = {}
         self.__matcher_by_name = {}
         self.__preprocessor = parser.build.preprocessor.Preprocessor()
-        self.__load_linkdefs()
         self.__create_specs()
-
-    def __load_linkdefs(self):
-        parser.matcher.load()
 
     def __load_module(self, path):
         parts = ['parser', 'lang'] + path.split('/')
