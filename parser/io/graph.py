@@ -4,6 +4,7 @@
 
 import os
 import json
+import uuid
 import traceback
 
 
@@ -350,27 +351,40 @@ class SelectorGraphGen(GraphGen):
 
         label += '</TABLE>'
 
+        uid = hash(uuid.uuid1())
         s = '\t"{0}" [label=< {1} >, style="filled", fillcolor="white"];\r\n'.format(
-            self.get_obj_id(selector.get_uniq()),
-            label)
-        return s
+            uid, label)
 
-    # def __link_entries(self, link):
-    #     s = u'\t{0}->{1}->{2} [style="filled"];\r\n'.format(
-    #         self.get_obj_id(link.get_master()),
-    #         self.get_obj_id(link),
-    #         self.get_obj_id(link.get_slave()))
-    #     return s
+        for c in selector.get_clarifies():
+            s += '{0} -> cluster_node_{1} [lhead=cluster_{1}];\r\n'.format(
+                uid, self.get_hub_id(c)
+            )
+        return uid, s
+
+    def get_hub_id(self, hub_tag):
+        if hub_tag in self.__hub2clustid:
+            hub_id = self.__hub2clustid[hub_tag]
+        else:
+            hub_id = hash(uuid.uuid1())
+            self.__hub2clustid[hub_tag] = hub_id
+        return hub_id
 
     def generate(self, selectors):
+        self.__hub2clustid = {}
         s = 'digraph D {\r\n'
+        s += 'compound=true;\r\n'
 
         for hub in selectors:
+            uids = ['cluster_node_{0}'.format(self.get_hub_id(hub.get_tag())), ]
             for selector in hub:
-                if self.obj_exists(selector.get_uniq()):
-                    continue
-                self.add_obj(selector.get_uniq())
-                s += self.__gen_selector(selector)
+                uid, ss = self.__gen_selector(selector)
+                s += ss
+                uids.append(uid)
+
+            s += 'subgraph cluster_{0} {{\r\n'.format(
+                self.get_hub_id(hub.get_tag()))
+            s += ' '.join([str(u) for u in uids])
+            s += '}\r\n'
 
         s += '}\r\n'
 

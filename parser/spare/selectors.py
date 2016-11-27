@@ -109,6 +109,9 @@ class Selector(object):
     def get_uniq(self):
         return self.__uniq
 
+    def get_clarifies(self):
+        return self.__clarifies
+
     def apply(self, form):
         return self.__apply(form, test_only=False)
 
@@ -199,6 +202,9 @@ class MultiSelector(object):
 
     def get_uniq(self):
         return self.__uniq
+
+    def get_clarifies(self):
+        return self.__clarifies
 
     def apply(self, *forms):
         return self.__apply(forms, test_only=False)
@@ -316,6 +322,9 @@ class SelectorHub(object):
 
     def __is_single_selector(self):
         return self.__is_single
+
+    def get_selectors(self):
+        return self.__selectors
 
     def apply(self, *argc, **argv):
         return self.__apply(*argc, test_only=False)
