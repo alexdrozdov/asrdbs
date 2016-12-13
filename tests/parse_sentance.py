@@ -117,6 +117,15 @@ if __name__ == '__main__':
                     'parser/lang/ru_RU/enchanced/templates/selectors'
                 ],
                 'props': ['parser/volume/ru_RU/properties', ],
+                'io': {
+                    'jinja2': {
+                        'templates': ['parser/volume/io/jinja2/templates', ],
+                        'styles': 'parser/volume/io/jinja2/styles',
+                        'fmtmap': {
+                            'graph': 'graph.dot.tmpl'
+                        }
+                    }
+                },
                 'debug': {
                     'src': {
                         'svg': False,
@@ -129,8 +138,8 @@ if __name__ == '__main__':
                         'path': 'structure'
                     },
                     'selectors': {
-                        'svg': False,
-                        'json': False,
+                        'svg': True,
+                        'json': True,
                         'path': 'selectors'
                     }
                 }

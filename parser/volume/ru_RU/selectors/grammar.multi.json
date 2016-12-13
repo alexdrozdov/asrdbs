@@ -56,7 +56,9 @@
         "@pos": ["noun"],
         "clarify": {
             "tag": "#noun-noun",
-            "@case": ["ablative", "prepositional"],
+            "not": {
+                "@case": ["nominative", "accusative"]
+            },
             "@link": {
                 "label": "#noun-noun"
             }

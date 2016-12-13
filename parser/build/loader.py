@@ -2,14 +2,13 @@
 # -*- #coding: utf8 -*-
 
 
-import json
-import parser.io.graph
 import common.config
 import parser.lang.base.at
 import parser.build.jsonspecs
 import parser.build.preprocessor
 import parser.build.compiler
 import parser.engine.rt
+import parser.io.fmtconvert
 from argparse import Namespace as ns
 
 
@@ -89,7 +88,10 @@ class Loader(object):
         itr_map = {
             'src': parser.build.jsonspecs.Specs(),
             'structure': self.__matchers,
-            'selectors': [],
+            'selectors': (
+                common.dg.Subgraph.from_node(n)
+                for n in parser.spare.selectors.Selectors()
+            ),
         }
         for group_name, group in cfg['/parser/debug'].items():
             if flt_list is not None and group_name not in flt_list:
@@ -122,7 +124,9 @@ class Loader(object):
             try:
                 data = e.format(fmt)
             except:
-                d = e.format('dict')
-                data = json.dumps(d)
+                data = parser.io.fmtconvert.convert(
+                    e.format('dict'),
+                    'dict', fmt
+                )
             with open(file_name, 'w') as f:
                 f.write(data)

@@ -1,0 +1,85 @@
+{% macro style_from_style(style, caller='') -%}
+    {% if 'color' in style %}
+        COLOR="{{ style['color'] }}" 
+    {% endif %}
+    {% if 'bg-color' in style %}
+        BGCOLOR="{{ style['bg-color'] }}" 
+    {% endif %}
+    {% if 'align' in style %}
+        ALIGN="{{ style['align'] }}" 
+    {% endif %}
+{%- endmacro %}
+
+{% macro ifstyle(key, value, style, caller='') -%}
+    {% if value|string in style %}
+        {% call style_from_style(style[value|string]) %}{% endcall %}
+    {% endif %}
+{%- endmacro %}
+
+{% macro kstyle(key, value='', caller='') -%}
+    {% if styles and key in styles %}
+        {% if 'if-value' in styles[key] %}
+            {% call ifstyle(key, value, styles[key]['if-value']) %}{% endcall %}
+        {% else %}
+            {% call style_from_style(styles[key]) %}{% endcall %}
+        {% endif %}
+    {% endif %}
+{%- endmacro %}
+
+{% macro vrender(value, caller='') -%}
+    {% if value is mapping %}
+        <TABLE>
+        {% for k, v in value.items() %}
+            <TR>
+                <TD{% call kstyle(k, v) %}{% endcall %}>{{ k }}</TD>
+                <TD{% call kstyle(k, v) %}{% endcall %}>{% call vrender(v) %}{% endcall %}</TD>
+            </TR>
+        {% endfor %}
+        </TABLE>
+    {% elif value and value is iterable and value is not string %}
+        <TABLE>
+        {% for v in value %}
+            <TR>
+                <TD>{% call vrender(v) %}{% endcall %}</TD>
+            </TR>
+        {% endfor %}
+        </TABLE>
+    {% else %}
+        {{ value }}
+    {% endif %}
+{%- endmacro %}
+
+digraph D {
+    compound=true;
+
+    {% for node in g.nodes %} 
+        "{{ node.uuid }}" [label= <
+            <TABLE>
+            {% for k, v in node.data.items() %}
+                <TR>
+                    <TD{% call kstyle(k, v) %}{% endcall %}>{{ k }}</TD>
+                    <TD{% call kstyle(k, v) %}{% endcall %}>{% call vrender(v) %}{% endcall %}</TD>
+                </TR>
+            {% endfor %}
+            </TABLE>
+            >, shape=box];
+    {% endfor %}
+
+    {% for group in g.groups %} 
+        "clust_{{ group.uuid }}" [label="" fontsize=2 style=invis];
+    {% endfor %}
+
+    {% for group in g.groups %} 
+        subgraph "cluster_{{ group.uuid }}" {
+            label="{{ group.data.tag }}";
+            "clust_{{ group.uuid }}"
+            {% for node in group.objects %}
+                "{{ node }}"
+            {% endfor %}
+        }
+    {% endfor %}
+
+    {% for link in g.links %} 
+        "{{ link.from }}" -> "clust_{{ link.to }}" [lhead="cluster_{{ link.to }}"];
+    {% endfor %}
+}

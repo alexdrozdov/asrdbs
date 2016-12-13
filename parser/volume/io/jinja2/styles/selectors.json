@@ -1,0 +1,12 @@
+{
+    "name": "selectors",
+    "style": {
+        "rules": {"bg-color": "peachpuff"},
+        "tags": {"bg-color": "palegoldenrod"},
+        "clarifies": {"bg-color": "lavenderblush"},
+        "index": {
+            "if-value": {"0": {"bg-color": "red"}, "1": {"bg-color": "blue"}}
+        }
+    }
+}
+

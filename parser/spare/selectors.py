@@ -10,6 +10,7 @@ import functools
 import parser.spare.atjson
 import parser.spare.relations
 import common.config
+import common.dg
 from common.singleton import singleton
 from argparse import Namespace as ns
 
@@ -94,7 +95,7 @@ class _TagRelations(object):
             )
 
 
-class Selector(object):
+class Selector(common.dg.SingleNode):
     def __init__(self, tags, clarifies, rules):
         assert None not in tags
         assert None not in clarifies
@@ -111,6 +112,9 @@ class Selector(object):
 
     def get_clarifies(self):
         return self.__clarifies
+
+    def get_slaves(self):
+        return [Selectors()[tag] for tag in self.__clarifies]
 
     def apply(self, form):
         return self.__apply(form, test_only=False)
@@ -160,6 +164,22 @@ class Selector(object):
         return self.__apply(argc[0], test_only=test_only)
 
     def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html-rows':
+            return self.__format_dot_html_rows()
+        else:
+            raise RuntimeError('Unsupported format {0}'.format(fmt))
+
+    def __format_dict(self):
+        return {
+            'type': 'selector',
+            'tags': list(self.__tags),
+            'clarifies': list(self.__clarifies),
+            'rules': [r.format('dict') for r in self.__rules]
+        }
+
+    def __format_dot_html_rows(self):
         s = '<TR><TD BGCOLOR="darkseagreen1">type:selector</TD></TR>'
         s += '<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
             ' '.join(self.__clarifies)
@@ -188,7 +208,7 @@ class Selector(object):
         )
 
 
-class MultiSelector(object):
+class MultiSelector(common.dg.SingleNode):
     def __init__(self, tags, clarifies, rules, link_attrs, index):
         self.__uniq = uuid.uuid1()
         self.__tags = tags
@@ -205,6 +225,9 @@ class MultiSelector(object):
 
     def get_clarifies(self):
         return self.__clarifies
+
+    def get_slaves(self):
+        return [Selectors()[tag] for tag in self.__clarifies]
 
     def apply(self, *forms):
         return self.__apply(forms, test_only=False)
@@ -270,6 +293,23 @@ class MultiSelector(object):
         return self.__apply(argc, test_only=test_only)
 
     def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        elif fmt == 'dot-html-rows':
+            return self.__format_dot_html_rows()
+        else:
+            raise RuntimeError('Unsupported format {0}'.format(fmt))
+
+    def __format_dict(self):
+        return {
+            'index': self.__index,
+            'type': 'multiselector',
+            'tags': [vars(t) for t in self.__tags],
+            'clarifies': list(self.__clarifies),
+            'rules': [r.format('dict') for r in self.__rules]
+        }
+
+    def __format_dot_html_rows(self):
         s = '<TR><TD BGCOLOR="darkseagreen1">type: multiselector</TD></TR>'
         s += '<TR><TD BGCOLOR="darkseagreen1">clarifies: {0}</TD></TR>'.format(
             ' '.join(self.__clarifies)
@@ -298,7 +338,7 @@ class MultiSelector(object):
         )
 
 
-class SelectorHub(object):
+class SelectorHub(common.dg.MultiNode):
     def __init__(self, tag):
         self.__tag = tag
         self.__selectors = []
@@ -326,6 +366,9 @@ class SelectorHub(object):
     def get_selectors(self):
         return self.__selectors
 
+    def get_objects(self):
+        return self.__selectors
+
     def apply(self, *argc, **argv):
         return self.__apply(*argc, test_only=False)
 
@@ -338,6 +381,21 @@ class SelectorHub(object):
         if self.__is_single_selector():
             return self.__apply(args[fixed_index], test_only=test_only)
         return self.__apply(*args, test_only=test_only)
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__to_dict()
+        raise RuntimeError('Unsupported format {0}'.format(fmt))
+
+    def __to_dict(self):
+        return {
+            'type':
+                'single' if self.__is_single else
+                'none' if self.__is_single is None else
+                'multy',
+            'tag': self.__tag,
+            'name': self.__tag,
+        }
 
     def __call__(self, *argc, **argv):
         return self.__apply(*argc, **argv)

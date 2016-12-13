@@ -347,7 +347,7 @@ class SelectorGraphGen(GraphGen):
         tags = ' '.join(selector.get_tags())
         label += '<TR><TD BGCOLOR="darkseagreen1">{0}</TD></TR>'.format(tags)
 
-        label += selector.format('dot-html')
+        label += selector.format('dot-html-rows')
 
         label += '</TABLE>'
 
