@@ -107,6 +107,9 @@ class Selector(common.dg.SingleNode):
     def get_tags(self):
         return self.__tags
 
+    def get_autotag(self):
+        return self.__tags[-1]
+
     def get_uniq(self):
         return self.__uniq
 
@@ -219,6 +222,12 @@ class MultiSelector(common.dg.SingleNode):
 
     def get_tags(self):
         return [t.name for t in self.__tags]
+
+    def get_autotag(self):
+        for t in self.__tags:
+            if t.auto:
+                return t.name
+        return None
 
     def get_uniq(self):
         return self.__uniq
@@ -484,26 +493,31 @@ class _Compiler(object):
         if link_attrs or tags:
             selector_tags += base_tags
 
+        ss = []
+        sss = []
+        i_index = self.__find_internal_layer(js, terms_count)
+        if i_index is not None:
+            i_js = js[str(i_index)]
+            rrr = self.__compile_layer(
+                terms_count,
+                i_index,
+                i_js,
+                None,   # auto_tag.name,
+                base_tags
+            )
+
+            ss.extend(rrr)
+            sss.append(rrr[0])
+
         s = [MultiSelector(
             selector_tags,
-            clarifies,
+            clarifies + [ssss.get_autotag() for ssss in sss],
             rules,
             link_attrs,
             index=index
         ), ]
 
-        i_index = self.__find_internal_layer(js, terms_count)
-        if i_index is not None:
-            i_js = js[str(i_index)]
-            s.extend(
-                self.__compile_layer(
-                    terms_count,
-                    i_index,
-                    i_js,
-                    auto_tag.name,
-                    base_tags
-                )
-            )
+        s.extend(ss)
 
         clarify = self.__get_property_list(js, 'clarify')
         for c_js in clarify:

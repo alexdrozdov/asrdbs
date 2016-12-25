@@ -13,14 +13,14 @@ from argparse import Namespace as ns
 
 
 class Loader(object):
-    def __init__(self, primary=None):
+    def __init__(self, primary=None, structure=True, selectors=True):
         self.__primary_spec = 'sentence' if primary is None else primary
         self.__matchers = []
         self.__primary = []
         self.__spec_by_name = {}
         self.__matcher_by_name = {}
         self.__preprocessor = parser.build.preprocessor.Preprocessor()
-        self.__create_specs()
+        self.__create_specs(structure=structure, selectors=selectors)
 
     def __load_module(self, path):
         parts = ['parser', 'lang'] + path.split('/')
@@ -33,11 +33,11 @@ class Loader(object):
             obj = __import__(path, globals(), locals(), p)
         return obj
 
-    def __create_specs(self):
+    def __create_specs(self, structure, selectors):
         for sd in parser.build.jsonspecs.Specs():
             self.__add_spec(sd)
         self.__generate_debug(['src', ])
-        self.__build_specs()
+        self.__build_specs(structure=structure)
         self.__generate_debug(['selectors', 'structure'])
 
     def __is_primary(self, name):
@@ -69,7 +69,9 @@ class Loader(object):
         if self.__is_primary(matcher.get_name()):
             self.__primary.append(matcher)
 
-    def __build_specs(self):
+    def __build_specs(self, structure):
+        if not structure:
+            return
         for spec_name in list(self.__spec_by_name.keys()):
             if self.__is_primary(spec_name):
                 self.__build_spec(spec_name)
@@ -102,6 +104,7 @@ class Loader(object):
     def __generate_debug_group(self, name, group, itr):
         itr = list(itr)
         tgt_dir = group['path']
+        flt = group.get('filter')
         fmts = {
             'json': {'extension': '.json'},
             'svg': {'extension': '.svg'},
@@ -111,12 +114,15 @@ class Loader(object):
                 itr=itr,
                 fmt=fmt,
                 tgt_dir=tgt_dir,
-                file_ext=fmts[fmt]['extension']
+                file_ext=fmts[fmt]['extension'],
+                flt=flt
             )
 
-    def __generate_debug_fmt(self, itr, fmt, tgt_dir, file_ext):
+    def __generate_debug_fmt(self, itr, fmt, tgt_dir, file_ext, flt):
         for e in itr:
             name = e.get_name()
+            if flt is not None and name not in flt:
+                continue
             file_name = common.output.output.get_output_file(
                 tgt_dir,
                 '{0}{1}'.format(name, file_ext)

@@ -31,6 +31,13 @@ def parse_opts():
     parser.add_argument('-t', '--test')
     parser.add_argument('-p', '--primary')
     parser.add_argument('-m', '--make-test', action='store_true', default=False)
+    parser.add_argument(
+        '-b', '--build-only',
+        action='store_true', default=False
+    )
+    parser.add_argument('--no-structure', action='store_true', default=False)
+    parser.add_argument('--no-selectors', action='store_true', default=False)
+    parser.add_argument('--no-database', action='store_true', default=False)
     res = parser.parse_args(sys.argv[1:])
 
     if res.sentence is None and res.test is None:
@@ -54,49 +61,56 @@ def execute(opts):
             sentence = data['input']
 
     with timeit_ctx('total'):
-        with timeit_ctx('loading database'):
-            tm = parser.TokenMapper('./dbs/worddb.db')
+        if not opts.no_database:
+            with timeit_ctx('loading database'):
+                tm = parser.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
-            prs = parser.Loader(primary=opts.primary)
+            prs = parser.Loader(
+                primary=opts.primary,
+                structure=not opts.no_structure,
+                selectors=not opts.no_selectors
+            )
         with timeit_ctx('constructing matcher'):
             srm = parser.Matcher(prs)
 
-        base_dir = str(uuid.uuid1()) if opts.make_test else None
-        with timeit_ctx('dumping selectos'):
-            parser.io.graph.SelectorGraph(img_type='svg').generate(
-                parser.spare.selectors.Selectors(),
-                oput.get_output_file([base_dir, 'imgs'], 'selector-{0}.svg'.format(0))
-            )
+        if not opts.build_only:
+            base_dir = str(uuid.uuid1()) if opts.make_test else None
+            with timeit_ctx('tokenizing'):
+                tokens = parser.Tokenizer().tokenize(sentence)
 
-        with timeit_ctx('tokenizing'):
-            tokens = parser.Tokenizer().tokenize(sentence)
+            with timeit_ctx('mapping word forms'):
+                parsed_sentence = tm.map(tokens)
 
-        with timeit_ctx('mapping word forms'):
-            parsed_sentence = tm.map(tokens)
+            with timeit_ctx('matching sentences'):
+                matched_sentences = srm.match_sentence(
+                    parsed_sentence,
+                    most_complete=True
+                )
 
-        with timeit_ctx('matching sentences'):
-            matched_sentences = srm.match_sentence(parsed_sentence, most_complete=True)
+            for j, sq in enumerate(matched_sentences.get_sequences()):
+                print(sq.format('str'))
+                parser.io.graph.SequenceGraph(img_type='svg').generate(
+                    sq,
+                    oput.get_output_file(
+                        [base_dir, 'imgs'],
+                        'sq-{0}.svg'.format(j)
+                    )
+                )
 
-        for j, sq in enumerate(matched_sentences.get_sequences()):
-            print(sq.format('str'))
-            parser.io.graph.SequenceGraph(img_type='svg').generate(
-                sq,
-                oput.get_output_file([base_dir, 'imgs'], 'sq-{0}.svg'.format(j))
-            )
-
-        jf_name = 'test.json' if opts.make_test else 'res.json'
-        with io.open(
-            oput.get_output_file([base_dir, ''], jf_name), 'w', encoding='utf8'
-        ) as jf:
-            s = json.dumps(
-                {
-                    'input': sentence,
-                    'graph': matched_sentences.export_obj()
-                },
-                jf,
-                ensure_ascii=False
-            )
-            jf.write(s)
+            jf_name = 'test.json' if opts.make_test else 'res.json'
+            with io.open(
+                oput.get_output_file([base_dir, ''], jf_name),
+                'w', encoding='utf8'
+            ) as jf:
+                s = json.dumps(
+                    {
+                        'input': sentence,
+                        'graph': matched_sentences.export_obj()
+                    },
+                    jf,
+                    ensure_ascii=False
+                )
+                jf.write(s)
 
 
 if __name__ == '__main__':
@@ -140,7 +154,8 @@ if __name__ == '__main__':
                     'selectors': {
                         'svg': True,
                         'json': True,
-                        'path': 'selectors'
+                        'path': 'selectors',
+                        # 'filter': ['#grammar', ]
                     }
                 }
             },
