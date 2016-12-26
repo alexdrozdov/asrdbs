@@ -477,11 +477,9 @@ class _Compiler(object):
         else:
             link_attrs = {}
 
-        rules = functools.reduce(
-            lambda x, y: x + y,
-            [self.__mk_multi_rule(index, r_v[0], r_v[1])
-             for r_v in self.__rules(js)],
-            []
+        rules = self.__rules(
+            js,
+            lambda rule: self.__mk_multi_rule(index, rule)
         )
 
         auto_tag = ns(
@@ -596,10 +594,9 @@ class _Compiler(object):
         clarifies = self.__as_list(clarifies)
 
         clarifies.extend(self.__get_property_list(js, 'clarifies'))
-        rules = functools.reduce(
-            lambda x, y: x + y,
-            [self.__mk_single_rule(r_v1[0], r_v1[1]) for r_v1 in self.__rules(js)],
-            []
+        rules = self.__rules(
+            js,
+            lambda rule: self.__mk_single_rule(rule)
         )
 
         if tags:
@@ -632,34 +629,50 @@ class _Compiler(object):
             v = [v, ]
         return list(v)
 
-    def __rules_from_dict(self, d, negate=False):
+    def __rules_from_dict(self, rule_prototype, d, mk_rule):
         known_rules = [
             'pos', 'case', 'animation',
             'position', 'equal-properties',
             'word', 'bind-props', 'enable-props',
         ]
-        return [
-            (k, d[k], negate)
-            for k in [k for k in list(d.keys()) if k in known_rules]
-        ]
+        rules = []
+        for k, v in d.items():
+            if k in known_rules:
+                rules.extend(mk_rule(v))
+                continue
 
-    def __positive_rules(self, js):
-        return self.__rules_from_dict(js, negate=False)
+            if k == 'not':
+                xprototype = parser.spare.rules.RuleNot
+            elif k == 'or':
+                xprototype = parser.spare.rules.RuleOr
+            elif k == 'and':
+                xprototype = parser.spare.rules.RuleAnd
+            elif k == 'xor':
+                xprototype = parser.spare.rules.RuleXor
+            else:
+                continue
 
-    def __negative_rules(self, js):
-        if 'not' not in js:
-            return []
-        return self.__rules_from_dict(js['not'], negate=True)
+            rules.extend(
+                self.__rules_from_dict(
+                    xprototype,
+                    v,
+                    mk_rule
+                )
+            )
+        return [rule_prototype(rules=rules), ]
 
-    def __rules(self, js):
-        return self.__positive_rules(js) + self.__negative_rules(js)
+    def __rules(self, js, mk_rule):
+        return self.__rules_from_dict(
+            parser.spare.rules.RuleAnd,
+            js,
+            mk_rule)[0].subrules()
 
-    def __mk_single_rule(self, k, v):
+    def __mk_single_rule(self, v):
         if not isinstance(v, list):
             return [v.create_single(), ]
         return [vv.create_single() for vv in v]
 
-    def __mk_multi_rule(self, index, k, v):
+    def __mk_multi_rule(self, index, v):
         if not isinstance(v, list):
             return [v.create_multi(index), ]
         return [vv.create_multi(index) for vv in v]

@@ -323,6 +323,74 @@ class SelectorStaticRule(RtStaticRule):
         )
 
 
+class CombinatorialSelectorRule(SelectorStaticRule):
+    def __init__(self, name, rules):
+        super().__init__(name=name, friendly=name, fmt_info={})
+        self.__rules = rules
+
+    def subrules(self):
+        return self.__rules
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dict(self):
+        return {
+            'rule': self.name(),
+            'friendly': self.friendly(),
+            'sub': [subrule.format('dict') for subrule in self.subrules()]
+        }
+
+
+class RuleNot(CombinatorialSelectorRule):
+    def __init__(self, rules):
+        super().__init__('not', rules)
+
+    def match(self, *args, **kwargs):
+        for r in self.subrules():
+            if not r.match(*args, **kwargs):
+                return True
+
+        return False
+
+
+class RuleOr(CombinatorialSelectorRule):
+    def __init__(self, rules):
+        super().__init__('or', rules)
+
+    def match(self, *args, **kwargs):
+        for r in self.subrules():
+            if r.match(*args, **kwargs):
+                return True
+
+        return False
+
+
+class RuleAnd(CombinatorialSelectorRule):
+    def __init__(self, rules):
+        super().__init__('and', rules)
+
+    def match(self, *args, **kwargs):
+        for r in self.subrules():
+            if not r.match(*args, **kwargs):
+                return False
+
+        return True
+
+
+class RuleXor(CombinatorialSelectorRule):
+    def __init__(self, rules):
+        assert len(rules) == 2
+        super().__init__('xor', rules)
+
+    def match(self, *args, **kwargs):
+        r1 = self.subrules()[0].match(*args, **kwargs)
+        r2 = self.subrules()[1].match(*args, **kwargs)
+        return r1 != r2
+
+
 class RtMatchString(object):
     def __init__(self, string, max_level=None):
         assert isinstance(string, str) or \
