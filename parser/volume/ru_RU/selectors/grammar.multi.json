@@ -34,7 +34,7 @@
 {
     "@continue": "#grammar-link",
     "clarify": {
-        "@pos": ["noun"],
+        "@pos": ["adjective"],
         "clarify": {
             "tag": "#noun-adjective",
             "@equal-properties": {"1": ["case", "count", "gender"]},
@@ -43,7 +43,7 @@
             }
         },
         "@other": {
-            "@pos": ["adjective"]
+            "@pos": ["noun"]
         }
     }
 }

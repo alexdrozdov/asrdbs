@@ -11,4 +11,8 @@ output/*
 tags
 vim_session.vim
 *.bak
+bin/
+lib/
+lib64
+pyvenv.cfg
 

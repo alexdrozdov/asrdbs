@@ -479,7 +479,8 @@ class _Compiler(object):
 
         rules = functools.reduce(
             lambda x, y: x + y,
-            [self.__mk_multi_rule(index, r_v[0], r_v[1]) for r_v in self.__rules(js)],
+            [self.__mk_multi_rule(index, r_v[0], r_v[1])
+             for r_v in self.__rules(js)],
             []
         )
 
@@ -631,13 +632,27 @@ class _Compiler(object):
             v = [v, ]
         return list(v)
 
-    def __rules(self, js):
+    def __rules_from_dict(self, d, negate=False):
         known_rules = [
             'pos', 'case', 'animation',
             'position', 'equal-properties',
             'word', 'bind-props', 'enable-props',
         ]
-        return [(k, js[k]) for k in [k for k in list(js.keys()) if k in known_rules]]
+        return [
+            (k, d[k], negate)
+            for k in [k for k in list(d.keys()) if k in known_rules]
+        ]
+
+    def __positive_rules(self, js):
+        return self.__rules_from_dict(js, negate=False)
+
+    def __negative_rules(self, js):
+        if 'not' not in js:
+            return []
+        return self.__rules_from_dict(js['not'], negate=True)
+
+    def __rules(self, js):
+        return self.__positive_rules(js) + self.__negative_rules(js)
 
     def __mk_single_rule(self, k, v):
         if not isinstance(v, list):
