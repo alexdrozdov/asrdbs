@@ -11,7 +11,7 @@
     }
 }
 
-// In
+# In
 
 {
     "@continue": "#grammar-link",
@@ -29,7 +29,7 @@
     }
 }
 
-//
+#
 
 {
     "@continue": "#grammar-link",
@@ -48,7 +48,7 @@
     }
 }
 
-//
+#
 
 {
     "@continue": "#grammar-link",
@@ -71,18 +71,18 @@
 
 
 
-//            if wf1.get_case() == 'nominative' and wf2.get_case() == 'nominative':
-//                return independentFalse(self.get_name())
-//            if wf2.get_case() == 'accusative':
-//                return independentFalse(self.get_name())
-//            if wf1.get_case() == 'nominative' and wf2.get_case() != 'nominative':
-//                return possibleTrue(self.get_name())
-//            if wf1.get_case() != 'nominative' and wf2.get_case() == 'nominative':
-//                return independentFalse(self.get_name())
-//
-//
-//
-// Basic object preposition rule (just test case equality and position
+#            if wf1.get_case() == 'nominative' and wf2.get_case() == 'nominative':
+#                return independentFalse(self.get_name())
+#            if wf2.get_case() == 'accusative':
+#                return independentFalse(self.get_name())
+#            if wf1.get_case() == 'nominative' and wf2.get_case() != 'nominative':
+#                return possibleTrue(self.get_name())
+#            if wf1.get_case() != 'nominative' and wf2.get_case() == 'nominative':
+#                return independentFalse(self.get_name())
+#
+#
+#
+# Basic object preposition rule (just test case equality and position
 {
     "@continue": "#grammar-link",
     "clarify": {

@@ -16,7 +16,7 @@
     }
 }
 
-//
+#
 
 {
     "type": "props-map",
@@ -27,7 +27,7 @@
     }
 }
 
-//
+#
 
 {
     "type": "relation",
@@ -35,7 +35,7 @@
     "subtype-off": ["#object"]
 }
 
-//
+#
 
 {
     "type": "relation",
@@ -43,7 +43,7 @@
     "instance-off": ["#building"]
 }
 
-//
+#
 
 {
     "type": "relation",

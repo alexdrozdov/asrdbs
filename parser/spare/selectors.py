@@ -3,14 +3,13 @@
 
 
 import os
-import re
-import json
 import uuid
 import functools
 import parser.spare.atjson
 import parser.spare.relations
 import common.config
 import common.dg
+import common.multijson
 from common.singleton import singleton
 from argparse import Namespace as ns
 
@@ -689,23 +688,13 @@ class _Selectors(object):
             return
         for d in cfg['/parser/selectors']:
             for f in [fname for fname in os.listdir(d) if fname.endswith('.json')]:
-                path = os.path.join(d, f)
-                if path.endswith('.multi.json'):
-                    self.__load_multi(path)
-                else:
-                    self.__load_single(path)
+                self.__load_file(os.path.join(d, f))
 
-    def __load_single(self, path):
-        with open(path) as fp:
-            res = Compiler().compile(json.load(fp))
+    def __load_file(self, filename):
+        mj = common.multijson.MultiJsonFile(filename)
+        for j in mj.dicts():
+            res = Compiler().compile(j)
             self.__add_selectors(res)
-
-    def __load_multi(self, path):
-        with open(path) as fp:
-            data = fp.read()
-            for s in [_f for _f in re.split('^//.*\n', data, flags=re.MULTILINE) if _f]:
-                res = Compiler().compile(json.loads(s))
-                self.__add_selectors(res)
 
     def __add_selectors(self, r):
         for s in r:

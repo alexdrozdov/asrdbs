@@ -3,9 +3,8 @@
 
 
 import os
-import re
-import json
 import common.config
+import common.multijson
 import parser.spare.rules
 import parser.spare.atjson
 from common.singleton import singleton
@@ -68,26 +67,15 @@ class _Specs(object):
             return
         for d in cfg['/parser/specdefs']:
             for f in [fname for fname in os.listdir(d) if fname.endswith('.json')]:
-                path = os.path.join(d, f)
-                if path.endswith('.multi.json'):
-                    self.__load_multi(path)
-                else:
-                    self.__load_single(path)
+                self.__load_file(os.path.join(d, f))
 
-    def __load_single(self, path):
-        with open(path) as fp:
-            res = PreCompiler().compile(json.load(fp), scope=None)
+    def __load_file(self, filename):
+        scope = PreprocessScope()
+        mj = common.multijson.MultiJsonFile(filename)
+        for j in mj.dicts():
+            res = PreCompiler().compile(j, scope=scope)
+            scope.add_specs(res, source=j)
             self.__add_specs(res)
-
-    def __load_multi(self, path):
-        with open(path) as fp:
-            data = fp.read()
-            scope = PreprocessScope()
-            for s in [_f for _f in re.split('^//.*\n', data, flags=re.MULTILINE) if _f]:
-                source = json.loads(s)
-                res = PreCompiler().compile(source, scope=scope)
-                scope.add_specs(res, source=source)
-                self.__add_specs(res)
 
     def __add_specs(self, specs):
         for s in specs:
