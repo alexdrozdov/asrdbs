@@ -3,6 +3,7 @@
 
 
 import os
+import copy
 import common.config
 import common.multijson
 import parser.spare.rules
@@ -73,8 +74,8 @@ class _Specs(object):
         scope = PreprocessScope()
         mj = common.multijson.MultiJsonFile(filename)
         for j in mj.dicts():
-            res = PreCompiler().compile(j, scope=scope)
-            scope.add_specs(res, source=j)
+            res = PreCompiler().compile(copy.deepcopy(j), scope=scope)
+            scope.add_specs(res, source=copy.deepcopy(j))
             self.__add_specs(res)
 
     def __add_specs(self, specs):

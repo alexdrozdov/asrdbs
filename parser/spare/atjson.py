@@ -39,6 +39,22 @@ class AtJson(object):
     def __handle_val_tmpl(self, v):
         return v
 
+    def __sort_keys(self, keys, order):
+        def cmpfcn(x, y):
+            x_in_order = x in order
+            y_in_order = y in order
+            if not x_in_order and not y_in_order:
+                return (x > y) - (y < x)
+            if x_in_order and not y_in_order:
+                return -1
+            if y_in_order and not x_in_order:
+                return 1
+            x_index = order.index(x)
+            y_index = order.index(y)
+            return (x_index > y_index) - (x_index < y_index)
+
+        return sorted(keys, key=cmp_to_key(cmpfcn))
+
     def __iterspec(self, rule, exclude=None):
         if exclude is None:
             exclude = []
@@ -49,7 +65,7 @@ class AtJson(object):
             list(rule.keys()),
         ))
 
-        for k in keys:
+        for k in self.__sort_keys(keys, ['@subclass']):
             v = rule[k]
             if isinstance(v, dict):
                 for dd, kk, vv in self.__iterspec(v):
@@ -72,3 +88,29 @@ class AtJson(object):
             elif isinstance(v, list):
                 for dd, kk, vv in self.__iterspec(v):
                     yield dd, kk, vv
+
+
+def cmp_to_key(mycmp):
+    'Convert a cmp= function into a key= function'
+    class K:
+        def __init__(self, obj, *args):
+            self.obj = obj
+
+        def __lt__(self, other):
+            return mycmp(self.obj, other.obj) < 0
+
+        def __gt__(self, other):
+            return mycmp(self.obj, other.obj) > 0
+
+        def __eq__(self, other):
+            return mycmp(self.obj, other.obj) == 0
+
+        def __le__(self, other):
+            return mycmp(self.obj, other.obj) <= 0
+
+        def __ge__(self, other):
+            return mycmp(self.obj, other.obj) >= 0
+
+        def __ne__(self, other):
+            return mycmp(self.obj, other.obj) != 0
+    return K

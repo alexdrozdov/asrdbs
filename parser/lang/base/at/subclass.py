@@ -7,12 +7,14 @@ import parser.spare
 class TemplateSubclass(object):
     def __call__(self, body, *args, **kwargs):
         superclass_spec_name = body.pop('@subclass')
-        rewrite = body.pop('rewrite')
         scope = kwargs['scope']
         spec = scope.spec(superclass_spec_name, original_json=True)
         spec = copy.deepcopy(spec)
 
-        self.__rewrite_spec(spec, rewrite)
+        if 'rewrite' in body:
+            rewrite = body.pop('rewrite')
+            self.__rewrite_spec(spec, rewrite)
+
         self.__merge_spec(body, spec)
         parser.spare.again()
 

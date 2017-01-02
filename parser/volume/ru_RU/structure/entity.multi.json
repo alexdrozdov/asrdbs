@@ -15,18 +15,28 @@
                     "@id": "noun",
                     "@inherit": ["#object", "once"],
                     "@includes": {"name": "basic-noun", "is_static": true}
+                },
+                {
+                    "@id": "pronoun",
+                    "@inherit": ["once", "pronoun", "nominative"]
                 }
             ]
         },
         {
-            "@id": "ownership",
+            "@id": "post",
             "@inherit": ["any"],
+            "@foreach": {
+                "@inherit": ["once"],
+                "@dependency-of": ["#entity-entity"]
+            },
             "uniq-items": [
                 {
                     "@id": "location",
-                    "@inherit": ["once"],
-                    "@includes": {"name": "entity-location"},
-                    "@dependency-of": ["#entity-entity"]
+                    "@includes": {"name": "entity-location"}
+                },
+                {
+                    "@id": "ownership",
+                    "@includes": {"name": "entity-ownership"}
                 }
             ]
         }
@@ -67,7 +77,7 @@
                     "entries": [
                         {
                             "@id": "#pre#",
-                            "@inherit": ["once"]
+                            "@inherit": ["never"]
                         },
                         {
                             "@id": "entity-list",
@@ -149,4 +159,11 @@
             }
         }
     ]
+}
+
+#
+
+{
+    "name": "entity-ownership",
+    "@subclass": "entity-list"
 }

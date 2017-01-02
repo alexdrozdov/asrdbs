@@ -49,6 +49,9 @@ class TemplateInherit(object):
             'union': {
                 "pos_type": [PosSpecs().IsUnion(), ]
             },
+            'pronoun': {
+                "pos_type": [PosSpecs().IsPronoun(), ]
+            },
             'comma': {
                 "pos_type": [PosSpecs().IsComma(), ]
             },
@@ -75,6 +78,9 @@ class TemplateInherit(object):
             },
             'genitive': {
                 "case": [CaseSpecs().IsCase(["genitive", ]), ],
+            },
+            'nominative': {
+                "case": [CaseSpecs().IsCase(["nominative", ]), ],
             },
             'soft-neg': {
                 "@neg": {"strict": False},
