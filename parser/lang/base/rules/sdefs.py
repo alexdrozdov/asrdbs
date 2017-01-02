@@ -113,7 +113,8 @@ class c__bind_props(SelectorStaticRule):
     def match(self, *args, **kwargs):
         t1 = args[self.__indx0].term()
         t2 = args[self.__indx1].term()
-        return t1.bind_props(t2)
+        t1.bind_props(t2)
+        return True
 
 
 class c__enable_props(SelectorStaticRule):
