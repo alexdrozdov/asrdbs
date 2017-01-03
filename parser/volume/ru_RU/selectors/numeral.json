@@ -1,0 +1,13 @@
+{
+    "selector": {
+        "clarifies": "#term",
+        "tag-base": "#count",
+        "clarify": [
+            {
+                "tag": "#numeral",
+                "@pos": ["numeral"]
+            }
+        ]
+    }
+}
+

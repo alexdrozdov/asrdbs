@@ -2,6 +2,12 @@
     "name": "entity",
     "entries": [
         {
+            "@id": "numeral",
+            "@inherit": ["any"],
+            "@includes": {"name": "numeral"},
+            "@dependency-of": ["#entity-count"]
+        },
+        {
             "@id": "definitive",
             "@inherit": ["any"],
             "@includes": {"name": "adjective"},

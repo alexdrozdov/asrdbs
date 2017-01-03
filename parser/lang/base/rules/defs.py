@@ -202,6 +202,9 @@ class PosSpecs(object):
     def IsPronoun(self):
         return RtRuleFactory(c__pos_check, ["pronoun", ])
 
+    def IsNumeral(self):
+        return RtRuleFactory(c__pos_check, ["numeral", ])
+
     def IsPreposition(self):
         return RtRuleFactory(c__pos_check, ["preposition", ])
 

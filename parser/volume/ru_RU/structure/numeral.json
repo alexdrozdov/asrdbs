@@ -1,0 +1,39 @@
+{
+    "name": "numeral",
+    "entries": [
+        {
+            "@id": "hundreds",
+            "@inherit": ["once-or-none"],
+            "entries": [
+                {
+                    "@id": "count",
+                    "@inherit": ["once-or-none", "numeral"],
+                    "@word-forms": ["сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восьмьсот", "девятьсот"]
+                }
+            ]
+        },
+        {
+            "@id": "dozens",
+            "@inherit": ["once-or-none"],
+            "entries": [
+                {
+                    "@id": "count",
+                    "@inherit": ["once-or-none", "numeral"],
+                    "@word-forms": ["десять", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"]
+                }
+            ]
+        },
+        {
+
+            "@id": "units",
+            "@inherit": ["once-or-none"],
+            "entries": [
+                {
+                    "@id": "count",
+                    "@inherit": ["once-or-none", "numeral"],
+                    "@word-forms": ["ноль", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+                }
+            ]
+        }
+    ]
+}

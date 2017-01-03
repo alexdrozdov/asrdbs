@@ -52,6 +52,9 @@ class TemplateInherit(object):
             'pronoun': {
                 "pos_type": [PosSpecs().IsPronoun(), ]
             },
+            'numeral': {
+                "pos_type": [PosSpecs().IsNumeral(), ]
+            },
             'comma': {
                 "pos_type": [PosSpecs().IsComma(), ]
             },

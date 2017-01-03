@@ -49,7 +49,6 @@
 }
 
 #
-
 {
     "@continue": "#grammar-link",
     "clarify": {
@@ -69,19 +68,49 @@
     }
 }
 
+#
 
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "@pos": ["noun"],
+        "clarify": {
+            "tag": "#pronoun-noun",
+            "not": {
+                "@case": ["nominative", "accusative"]
+            },
+            "@other": {
+                "@case": ["nominative"]
+            },
+            "@link": {
+                "label": "#pronoun-noun"
+            }
+        },
+        "@other": {
+            "@pos": ["pronoun"]
+        }
+    }
+}
 
-#            if wf1.get_case() == 'nominative' and wf2.get_case() == 'nominative':
-#                return independentFalse(self.get_name())
-#            if wf2.get_case() == 'accusative':
-#                return independentFalse(self.get_name())
-#            if wf1.get_case() == 'nominative' and wf2.get_case() != 'nominative':
-#                return possibleTrue(self.get_name())
-#            if wf1.get_case() != 'nominative' and wf2.get_case() == 'nominative':
-#                return independentFalse(self.get_name())
 #
-#
-#
+
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "@pos": ["numeral"],
+        "clarify": {
+            "tag": "#noun-numeral",
+            "@equal-properties": {"1": ["case", "count"]},
+            "@link": {
+                "label": "#noun-numeral"
+            }
+        },
+        "@other": {
+            "@pos": ["noun"]
+        }
+    }
+}
+
 # Basic object preposition rule (just test case equality and position
 {
     "@continue": "#grammar-link",
