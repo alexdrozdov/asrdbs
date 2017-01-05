@@ -2,6 +2,62 @@
     "name": "numeral",
     "entries": [
         {
+            "@id": "billions",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["милиард"]}
+                }
+            ]
+        },
+        {
+            "@id": "millions",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["милион"]}
+                }
+            ]
+        },
+        {
+            "@id": "thousands",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["тысяча"]}
+                }
+            ]
+        },
+    ]
+}
+
+#
+
+{
+    "name": "symbolic-number-with-unit",
+     "@inherit": ["once-or-none"],
+     "entries": [
+         {
+             "@id": "number",
+             "@inherit": ["once"],
+             "@include": {"name": "symbolic-number"}
+         },
+         {
+             "@id": "unit",
+             "@inherit": ["once"],
+         }
+     ]
+}
+
+#
+
+{
+    "name": "symbolic-number",
+    "entries": [
+        {
             "@id": "hundreds",
             "@inherit": ["once-or-none"],
             "entries": [
