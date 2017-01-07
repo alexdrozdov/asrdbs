@@ -314,7 +314,9 @@ class SpecCompiler(object):
         if '$PARENT' in name:
             assert name.find('$PARENT') == 0, '$PARENT must be first'
             parent_path = self.__create_parent_path(ref_state)
+#             original_name = name
             name = name.replace('$PARENT', parent_path)
+#            print(ref_state, original_name, ' -> ', name)
         elif '$SPEC' in name:
             assert name.find('$SPEC') == 0, '$SPEC must be first'
             spec_path = self.__create_spec_path()

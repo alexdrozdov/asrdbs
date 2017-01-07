@@ -7,6 +7,8 @@ from parser.lang.base.rules.defs import RefersToSpecs
 def refers_to(body, *args, **kwargs):
     refto_info = body.pop('@refers-to')
     master = refto_info.get('master', None)
+    selectors = refto_info.get('selectors', None)
     if master is None:
         master = "$LOCAL_SPEC_ANCHOR"
-    body['refers-to'] = [RefersToSpecs().AttachTo(master), ]
+    body['refers-to'] = [
+        RefersToSpecs().AttachTo(master, selectors=selectors), ]

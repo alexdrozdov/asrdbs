@@ -21,7 +21,7 @@ def aggregate(body, *args, **kwargs):
         inner_body = {
             "@id": "body",
             "@inherit": ["once"],
-            "uniq-items": body.pop('entries')
+            "entries": body.pop('entries')
         }
     else:
         raise ValueError('neither body, nor entries nor uniq-entries')

@@ -11,3 +11,25 @@
     }
 }
 
+#
+
+{
+    "multi": {
+        "@self": {
+            "clarifies": "#numeral",
+            "clarify": {
+                "tag": "#numeric-samecase",
+                "@other": {
+                    "or": {
+                        "@case": [null],
+                        "@equal-properties": {"0": ["case"]}
+                    }
+                }
+            }
+        },
+        "@other": {
+            "clarifies": "#numeral"
+        }
+    }
+}
+

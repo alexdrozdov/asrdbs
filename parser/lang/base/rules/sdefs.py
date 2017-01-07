@@ -30,7 +30,7 @@ class c__case_check(SelectorStaticRule):
 
     def match(self, *args, **kwargs):
         try:
-            return args[0].get_case() in self.__cases
+            return args[0].get_case(missing_is_none=True) in self.__cases
         except:
             pass
         return False
@@ -50,9 +50,12 @@ class c__equal_properties_check(SelectorStaticRule):
     def match(self, *args, **kwargs):
         f1 = args[self.__indx0]
         f2 = args[self.__indx1]
-        for p in self.__props:
-            if f1.get_property(p) != f2.get_property(p):
-                return False
+        try:
+            for p in self.__props:
+                if f1.get_property(p) != f2.get_property(p):
+                    return False
+        except:
+            return False
         return True
 
 

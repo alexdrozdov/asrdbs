@@ -64,6 +64,7 @@ class Preprocessor(object):
             'closed': lambda ctx_v18: True,
             'exclusive-with': lambda ctx_v19: True,
             'selector': lambda ctx_v20: True,
+            'do-not-compile': lambda ctx_v21: True,
         }
 
     def __on_id(self, v):
