@@ -738,7 +738,8 @@ class Matcher(object):
                 parser.engine.rt.MatcherContext(
                     ctx,
                     '__root',
-                    sequence_matched_fcn=lambda sq_ctx_sq: ctx.matched_sqs.add(sq_ctx_sq[1]),
+                    sequence_matched_fcn=lambda sq_ctx_sq:
+                        ctx.matched_sqs.add(sq_ctx_sq[1]),
                 )
             ),
             self.__compiled.get_primary()
