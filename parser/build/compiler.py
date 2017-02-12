@@ -410,9 +410,9 @@ class SpecCompiler(object):
                 state.inherit_parent_reliability(self.get_reliability())
 
             if state.has_include():
+                in_spec_name = state.get_include_name()
+                in_spec = self.__owner.get_spec(in_spec_name)
                 if self.__spec_depth <= 1 or state.include_is_static_only():
-                    in_spec_name = state.get_include_name()
-                    in_spec = self.__owner.get_spec(in_spec_name)
                     compiler = SpecCompiler(
                         owner=self.__owner,
                         stack=self.__stack,
@@ -629,6 +629,16 @@ class SpecCompiler(object):
             if state not in tagged_states:
                 state.force_tag(None)
 
+    def __aggregate_entrance_rules(self):
+        ini = self.__states[0]
+        transitions = ini.get_transitions()
+        reachable_states = [trs.get_to() for trs in transitions]
+        static_states = [st for st in reachable_states if st.fixed()]
+        # dynamic_states = [st for st in reachable_states if not st.fixed()]
+        rules = [AndRule(st.get_stateless_rules()) for st in static_states]
+        aggregated_rule = OrRule(rules)
+        ini.set_stateless_rules([aggregated_rule, ])
+
     def register_rule_binding(self, rule, binding):
         return
 
@@ -688,6 +698,7 @@ class SpecCompiler(object):
         self.__create_state_rules()
         self.__review_anchors()
         self.__review_tags()
+        self.__aggregate_entrance_rules()
 
         cs = CompiledSpec(
             spec,

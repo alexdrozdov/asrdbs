@@ -349,9 +349,9 @@ class SpecStateDef(object):
                     if not rule_def.created():
                         target_list.extend(rule_def.create(compiler, self))
 
-    def __create_stateless_rules(self, comiler):
+    def __create_stateless_rules(self, compiler):
         self.__create_rule_list(
-            comiler,
+            compiler,
             True,
             SpecStateDef.static_rules,
             self.__stateless_rules
@@ -430,6 +430,9 @@ class SpecStateDef(object):
 
     def get_stateless_rules(self):
         return [r.new_copy() for r in self.__stateless_rules]
+
+    def set_stateless_rules(self, rules):
+        self.__stateless_rules = rules
 
     def has_rules(self):
         return len(set(SpecStateDef.all_rules).intersection(list(self.__spec_dict.keys()))) > 0
