@@ -1,5 +1,20 @@
 {
     "multi": {
+        "@self": {
+            "clarifies": "#term",
+            "tag": "#void",
+            "clarify": {
+            }
+        },
+        "@other": {
+            "clarifies": "#term"
+        }
+    }
+}
+
+# In
+{
+    "multi": {
         "tag-base": "#grammar",
         "@self": {
             "clarifies": "#term",
@@ -107,6 +122,24 @@
         },
         "@other": {
             "@pos": ["noun"]
+        }
+    }
+}
+
+#
+
+{
+    "@continue": "#grammar-link",
+    "clarify": {
+        "@pos": ["numeral"],
+        "clarify": {
+            "tag": "#numeral-numeral",
+            "@link": {
+                "label": "#noun-numeral"
+            }
+        },
+        "@other": {
+            "@pos": ["numeral"]
         }
     }
 }

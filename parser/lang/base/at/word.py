@@ -24,3 +24,16 @@ def word(body, *args, **kwargs):
         "pos_type",
         [WordSpecs().IsWord(word_list), ]
     )
+
+
+@parser.spare.at(name='word-forms', namespace=None)
+@parser.spare.constructable
+def wordforms(body, *args, **kwargs):
+    word_list = body.pop('@word-forms')
+    if not isinstance(word_list, (list, tuple)):
+        word_list = [word_list, ]
+    extend_attr(
+        body,
+        "pos_type",
+        [WordSpecs().IsWord(word_list), ]
+    )

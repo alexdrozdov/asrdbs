@@ -79,6 +79,9 @@ class MatcherContext(object):
             target: fcns[source] if source in fcns else default_fcn for source, target, default_fcn in MatcherContext.fcns_map
         }
 
+    def get_fcns(self):
+        return self.__fcns
+
     def set_sequences(self, sequences):
         self.sequences = sequences
 
@@ -359,7 +362,11 @@ class RtMatchSequence(object):
         rtme_pares = self.__find_affected_pares(rtme, find_all=True)
         while rtme_pares:
             e, ee = rtme_pares.pop(0)
-            res = e.handle_rules(on_entry=ee)
+            try:
+                res = e.handle_rules(on_entry=ee)
+            except:
+                print(self.__ctx.sequence_failed, self.__ctx.get_fcns())
+                raise
             if res.later:
                 continue
             if res.again:
@@ -714,7 +721,15 @@ class Matcher(object):
             ctx.matched_sqs,
             0
         )
-        ctx.matched_sqs = list(filter(lambda msq: max_entries <= msq.get_entry_count(hidden=False), ctx.matched_sqs))
+        ctx.matched_sqs = list(
+            filter(
+                lambda msq:
+                    max_entries <= msq.get_entry_count(
+                        hidden=False, virtual=False
+                    ),
+                ctx.matched_sqs
+            )
+        )
 
     def __create_initial_ctxs(self, ctx):
         ctx.ctxs = list(map(
@@ -723,7 +738,8 @@ class Matcher(object):
                 parser.engine.rt.MatcherContext(
                     ctx,
                     '__root',
-                    sequence_matched_fcn=lambda sq_ctx_sq: ctx.matched_sqs.add(sq_ctx_sq[1]),
+                    sequence_matched_fcn=lambda sq_ctx_sq:
+                        ctx.matched_sqs.add(sq_ctx_sq[1]),
                 )
             ),
             self.__compiled.get_primary()

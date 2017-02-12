@@ -558,8 +558,8 @@ class TermRoMethods(object):
     def get_pos(self):
         return self.term().get_property('parts_of_speech', 'ro')
 
-    def get_case(self):
-        return self.term().get_property('case')
+    def get_case(self, missing_is_none=False):
+        return self.term().get_property('case', missing_is_none=missing_is_none)
 
     def get_gender(self):
         return self.term().get_property('gender')
@@ -745,7 +745,7 @@ class SpecStateVirtForm(Token):
                 original_word=word,
                 info={'parts_of_speech': 'virt'},
                 pos=None,
-                uniq=0
+                uniq=str(uuid.uuid1())
             )
         )
 
@@ -757,7 +757,7 @@ class SpecStateVirtForm(Token):
                 original_word=word,
                 info={'parts_of_speech': 'virt'},
                 pos=None,
-                uniq=0
+                uniq=str(uuid.uuid1())
             )
         )
 
@@ -897,10 +897,14 @@ class SpecStateVirtForm(Token):
             self.term().restrict_property(k)
 
     def __resolve_countable(self, form, k):
-        my_prop = self.term().get_property(k)
-        other_prop = form.term().get_property(k)
-        if my_prop is None and other_prop is not None:
+        my_prop = self.term().get_property(k, missing_is_missing=True)
+        other_prop = form.term().get_property(k, missing_is_missing=True)
+        if my_prop == Restricted() or other_prop == Restricted():
+            self.term().restrict_property(k)
+        elif my_prop is None and other_prop is not None:
             self.term().add_property(k, 'ctx', other_prop)
+        elif my_prop == Missing() or other_prop == Missing():
+            self.term().restrict_property(k)
         else:
             self.term().add_property(k, 'ctx', 'plural')
 

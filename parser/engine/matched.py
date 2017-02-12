@@ -349,7 +349,8 @@ class MatchedSequence(object):
         if me.is_anchor():
             self.__anchors.append(me)
         self.__uid2me[me.get_uniq()] = me
-        self.__entries_csum.add(me.get_uniq())
+        if not me.is_hidden() and not me.is_virtual():
+            self.__entries_csum.add(me.get_uniq())
 
     def __append_links(self, me_from, me_to, link):
         # assert not self.__link_exists(me_from, me_to)

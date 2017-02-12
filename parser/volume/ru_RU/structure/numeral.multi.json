@@ -1,0 +1,110 @@
+#
+
+{
+    "name": "symbolic-number",
+    "@aggregate": {"is_anchor": true},
+    "entries": [
+        {
+            "@id": "hundreds",
+            "@inherit": ["once-or-none", "numeral"],
+            "@refers-to": {"selectors": ["#numeric-samecase"]},
+            "@word-forms": [
+                "сто", "двести", "триста", "четыреста", "пятьсот",
+                "шестьсот", "семьсот", "восьмьсот", "девятьсот"]
+        },
+        {
+            "@id": "dozens",
+            "@inherit": ["once-or-none", "numeral"],
+            "@refers-to": {"selectors": ["#numeric-samecase"]},
+            "@word-forms": [
+                "десять", "двадцать", "тридцать", "сорок", "пятьдесят",
+                "шестьдесят", "семьдесят", "восемьдесят", "девяносто"]
+        },
+        {
+
+            "@id": "units",
+            "@inherit": ["once-or-none", "numeral"],
+            "@refers-to": {"selectors": ["#numeric-samecase"]},
+            "@word-forms": [
+                "ноль", "один", "два", "три", "четыре", "пять",
+                "шесть", "семь", "восемь", "девять"]
+        }
+    ]
+}
+
+#
+
+{
+    "name": "symbolic-number-with-unit",
+    "do-not-compile": true,
+    "@inherit": ["once-or-none"],
+    "entries": [
+        {
+            "@id": "number",
+            "@inherit": ["once"],
+            "entries": [
+                {
+                    "@id": "dfdsf",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "symbolic-number", "is_static": true}
+                }
+            ],
+            "@dependency-of": ["#numeric-samecase", "$PARENT::unit"]
+        },
+        {
+            "@id": "unit",
+            "@inherit": ["once", "numeral"],
+            "@refers-to": {"selectors": ["#numeric-samecase"]}
+        }
+    ]
+}
+
+#
+
+{
+    "name": "numeral",
+    "@aggregate": {"is_anchor": true},
+    "body": {
+    "@id": null,
+    "@inherit": ["once"],
+    "entries": [
+        {
+            "@id": "billions",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["милиард"]}
+                }
+            ]
+        },
+        {
+            "@id": "millions",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["милион"]}
+                }
+            ]
+        },
+        {
+            "@id": "thousands",
+            "@subclass": "symbolic-number-with-unit",
+            "rewrite": [
+                {
+                    "find": {"@id": "unit"},
+                    "extend": {"@word-forms": ["тысяча"]}
+                }
+            ]
+        },
+        {
+            "@id": "units",
+            "@refers-to": {"selectors": ["#numeric-samecase"]},
+            "@inherit": ["once-or-none"],
+            "@includes": {"name": "symbolic-number", "is_static": true}
+        }
+    ]
+    }
+}
+

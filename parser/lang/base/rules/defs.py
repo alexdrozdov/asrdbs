@@ -528,7 +528,7 @@ class LinkSpecs(object):
 
 
 class c__refersto_spec(LinkingRule):
-    def __init__(self, anchor):
+    def __init__(self, anchor, selectors=None):
         super(c__refersto_spec, self).__init__(
             name='refers-to',
             friendly='RefersTo',
@@ -537,17 +537,31 @@ class c__refersto_spec(LinkingRule):
             persistent=False,
             weight=1.0
         )
+        self.__selectors = selectors
         self.add_creator(None, self.my_info, track=True, rewrite=True, strict=True)
 
+        if selectors is not None:
+            for s in selectors:
+                self.add_creator(
+                    s,
+                    parser.spare.selectors.selector(s),
+                    track=True,
+                    rewrite=True,
+                    strict=True,
+                    break_on_failure=True
+                )
+
     def new_copy(self):
-        return c__refersto_spec(self.anchor())
+        return c__refersto_spec(self.anchor(), self.__selectors)
 
     def clone(self):
-        return c__refersto_spec(self.anchor())
+        return c__refersto_spec(self.anchor(), self.__selectors)
 
     def apply_on(self, rtme, other_rtme, link_creators=None):
-        other_rtme.attach_referer(rtme)
-        super(c__refersto_spec, self).apply_on(rtme, other_rtme, link_creators)
+        res = super().apply_on(rtme, other_rtme, link_creators)
+        if res == RtRule.res_matched:
+            other_rtme.attach_referer(rtme)
+        return res
 
     def my_info(self, rtme_form, other_form):
         return SelectorRes(
@@ -558,10 +572,11 @@ class c__refersto_spec(LinkingRule):
 
 
 class RefersToSpecs(object):
-    def AttachTo(self, anchor):
+    def AttachTo(self, anchor, selectors=None):
         return RtRuleFactory(
             c__refersto_spec,
-            anchor=anchor
+            anchor=anchor,
+            selectors=selectors
         )
 
 
