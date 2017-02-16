@@ -26,6 +26,12 @@
     {% endif %}
 {%- endmacro %}
 
+{% macro itr_style(value, caller='') -%}
+    {% if styles and value is string and value in styles %}
+        {% call style_from_style(styles[value]) %}{% endcall %}
+    {% endif %}
+{%- endmacro %}
+
 {% macro vrender(value, caller='') -%}
     {% if value is mapping %}
         <TABLE>
@@ -40,7 +46,7 @@
         <TABLE>
         {% for v in value %}
             <TR>
-                <TD>{% call vrender(v) %}{% endcall %}</TD>
+                <TD{% call itr_style(v) %}{% endcall %}>{% call vrender(v) %}{% endcall %}</TD>
             </TR>
         {% endfor %}
         </TABLE>
@@ -79,7 +85,13 @@ digraph D {
         }
     {% endfor %}
 
-    {% for link in g.links %} 
-        "{{ link.from }}" -> "clust_{{ link.to }}" [lhead="cluster_{{ link.to }}"];
-    {% endfor %}
+    {% if g.groups %}
+        {% for link in g.links %} 
+            "{{ link.from }}" -> "clust_{{ link.to }}" [lhead="cluster_{{ link.to }}"];
+        {% endfor %}
+    {% else %}
+        {% for link in g.links %} 
+            "{{ link.from }}" -> "{{ link.to }}";
+        {% endfor %}
+    {% endif %}
 }

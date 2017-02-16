@@ -147,8 +147,8 @@ if __name__ == '__main__':
                         'path': 'preprocessor'
                     },
                     'structure': {
-                        'svg': False,
-                        'json': False,
+                        'svg': True,
+                        'json': True,
                         'path': 'structure'
                     },
                     'selectors': {

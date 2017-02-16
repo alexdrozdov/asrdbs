@@ -198,7 +198,7 @@ class BasicDynamicRule(RtAnchorRelated):
         return {
             'rule': self.name(),
             'friendly': self.friendly(),
-            'anchor': self.anchor(),
+            'anchor': str(self.anchor()),
             'reliability': self.weight(),
             'is_persistent': self.is_persistent(),
             'is_optional': self.is_optional(),

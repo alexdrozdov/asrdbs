@@ -83,7 +83,7 @@ class DictToSvg(Convertor):
             ['dot', '-T', 'svg'],
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
+            stderr=None)
         return p.communicate(input=dot_data.encode())[0].decode()
 
 

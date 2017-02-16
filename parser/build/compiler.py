@@ -636,10 +636,10 @@ class SpecCompiler(object):
         transitions = ini.get_transitions()
         reachable_states = [trs.get_to() for trs in transitions]
         static_states = [st for st in reachable_states if st.fixed()]
-        # dynamic_states = [st for st in reachable_states if not st.fixed()]
-        rules = [AndRule(st.get_stateless_rules()) for st in static_states]
-        aggregated_rule = OrRule(rules)
-        ini.set_stateless_rules([aggregated_rule, ])
+        dynamic_states = [st for st in reachable_states if not st.fixed()]
+        # rules = [AndRule(st.get_stateless_rules()) for st in static_states]
+        # aggregated_rule = OrRule(rules)
+        # ini.set_stateless_rules([aggregated_rule, ])
 
     def register_rule_binding(self, rule, binding):
         return

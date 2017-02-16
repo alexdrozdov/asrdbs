@@ -1,0 +1,15 @@
+{
+    "name": "structure",
+    "style": {
+        "name": {"bg-color": "mediumseagreen"},
+        "tag": {"bg-color": "khaki"},
+        "attributes": {"bg-color": "lavender"},
+        "rules": {"bg-color": "peachpuff"},
+        "anchor": {"bg-color": "dodgerblue"},
+        "init": {"bg-color": "lightpink"},
+        "fini": {"bg-color": "lightpink"},
+        "dynamic": {"bg-color": "lavenderblush"},
+        "stateless": {"bg-color": "lightcyan"}
+    }
+}
+

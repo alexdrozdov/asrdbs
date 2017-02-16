@@ -3,6 +3,7 @@
 
 
 import uuid
+import collections
 import parser.spare.rules
 import parser.spare.wordform
 import parser.build.preprocessor
@@ -15,6 +16,7 @@ class TrsDef(object):
         assert restrict_default is None
         assert compiler is None
         assert st_to is not None or trs_to is not None
+        self.__uid = str(uuid.uuid1())
         if st_to is not None:
             self.__init_from_stto(compiler, st_from, st_to)
         else:
@@ -66,6 +68,9 @@ class TrsDef(object):
     def get_levelpath(self):
         return self.__levelpath
 
+    def get_uid(self):
+        return self.__uid
+
     def unlink(self, must_exists=True):
         self.__from.remove_trs(self, must_exists=must_exists)
         if self.__to is not self.__from:
@@ -89,6 +94,21 @@ class TrsDef(object):
 
     def __hash__(self):
         return hash(self.__repr__())
+
+    def format(self, fmt):
+        if fmt != 'dict':
+            raise RuntimeError('Unsupported format {0}'.format(fmt))
+        return self.__format_dict()
+
+    def __format_dict(self):
+        return {
+            'uuid': self.get_uid(),
+            'data': {
+                'from': self.get_from().get_uid(),
+                'to': self.get_to().get_uid(),
+                'level-path': self.__levelpath
+            }
+        }
 
 
 class SpecStateDef(object):
@@ -475,6 +495,49 @@ class SpecStateDef(object):
     def __str__(self):
         return "SpecStateDef(name='{0}')".format(self.get_name())
 
+    def format(self, fmt):
+        if fmt != 'dict':
+            raise RuntimeError('Unsupported format {0}'.format(fmt))
+        return self.__format_dict()
+
+    def __format_dict(self):
+        attributes = [
+            text_repr for is_true, text_repr in [
+                (self.__is_required, 'required'),
+                (self.__is_repeatable, 'repeatable'),
+                (self.__is_init, 'init'),
+                (self.__is_fini, 'fini'),
+                (self.__is_virtual, 'virtual'),
+                (self.__is_local_anchor, 'anchor'),
+                (self.__is_local_final, 'local_final'),
+                (self.__closed, 'closed'),
+                (self.__fixed and self.__incapsulate_spec is not None, 'fixed'),
+                (not self.__add_to_seq, 'hidden'),
+            ] if is_true
+        ]
+        data = collections.OrderedDict(
+            [(k, v) for k, v in [
+                ('name', str(self.__name)),
+                ('uuid', self.__uid),
+                ('tag', str(self.__tag) if self.__tag is not None else None),
+                ('attributes', attributes),
+                ('merges-with', list(self.__merges_with)),
+                ('rules', {
+                    'stateless': [
+                        r.format('dict') for r in self.__stateless_rules],
+                    'dynamic': [
+                        r.format('dict') for r in self.__rt_rules],
+                }),
+                ('level', self.__level),
+                ('glevel', self.__glevel),
+            ] if v is not None and (v or isinstance(v, int))
+            ]
+        )
+        return {
+            'uuid': self.get_uid(),
+            'data': data
+        }
+
 
 class CompiledSpec(object):
     def __init__(self, src_spec, name, states, inis, finis, local_spec_anchors, name_remap, validator):
@@ -511,3 +574,38 @@ class CompiledSpec(object):
 
     def get_validate(self):
         return self.__validator
+
+    def format(self, fmt):
+        if fmt != 'dict':
+            raise RuntimeError('Unsupported format {0}'.format(fmt))
+        return self.__format_dict()
+
+    def __format_dict(self):
+        nodes, links = self.__nodes_and_links()
+        return {
+            '__fmt_scheme': 'dg',
+            '__fmt_hint': 'graph',
+            '__style_hint': 'structure',
+            'nodes': nodes,
+            'groups': [],
+            'links': links
+        }
+
+    def __nodes_and_links(self):
+        nodes = []
+        links = []
+        for st in self.__states:
+            nodes.append(st.format('dict'))
+            for trs in st.get_transitions():
+                nodes.append(trs.format('dict'))
+                links.append({
+                    'from': trs.get_from().get_uid(),
+                    'to': trs.get_uid(),
+                    'single2single': True
+                })
+                links.append({
+                    'from': trs.get_uid(),
+                    'to': trs.get_to().get_uid(),
+                    'single2single': True
+                })
+        return nodes, links

@@ -89,7 +89,7 @@ class Loader(object):
         cfg = common.config.Config()
         itr_map = {
             'src': parser.build.jsonspecs.Specs(),
-            'structure': self.__matchers,
+            'structure': (m.get_compiled_spec() for m in self.__matchers),
             'selectors': (
                 common.dg.Subgraph.from_node(n)
                 for n in parser.spare.selectors.Selectors()
