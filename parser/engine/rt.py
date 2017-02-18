@@ -284,10 +284,10 @@ class RtMatchSequence(object):
     @argres()
     def handle_forms(self, forms):
         new_sq = []
-        again = [self, ]
+        again = [(self, forms), ]
         while again:
-            sq = again.pop(0)
-            r = sq.__handle_forms(forms)
+            sq, frms = again.pop(0)
+            r = sq.__handle_forms(frms)
             new_sq.extend(r.results)
             again.extend(r.again)
         return new_sq
@@ -322,7 +322,7 @@ class RtMatchSequence(object):
                     if not r.again:
                         hres.results.append(r)
                     else:
-                        hres.again.append(r.sq)
+                        hres.again.append((r.sq, [form, ]))
                 else:
                     self.__ctx.sequence_failed(r.sq)
                 if r.fini:
@@ -362,11 +362,7 @@ class RtMatchSequence(object):
         rtme_pares = self.__find_affected_pares(rtme, find_all=True)
         while rtme_pares:
             e, ee = rtme_pares.pop(0)
-            try:
-                res = e.handle_rules(on_entry=ee)
-            except:
-                print(self.__ctx.sequence_failed, self.__ctx.get_fcns())
-                raise
+            res = e.handle_rules(on_entry=ee)
             if res.later:
                 continue
             if res.again:

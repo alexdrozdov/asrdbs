@@ -697,6 +697,9 @@ class WordForms(object):
     def get_word(self):
         return self.__word
 
+    def __iter__(self):
+        return iter(self.__forms)
+
 
 class SpecStateIniForm(Token):
     def __init__(self, *args, **argv):
@@ -957,6 +960,9 @@ class SentenceFini(object):
 
     def get_forms(self):
         return self.__entries
+
+    def __iter__(self):
+        return iter(self.__entries)
 
 
 class WordFormFabric(object):

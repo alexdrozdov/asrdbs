@@ -189,7 +189,7 @@ class RtEntry(object):
                             self._spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
                         )
                     ),
-                forms.get_forms()
+                forms
             ),
             []
         ) + list(map(
@@ -322,8 +322,12 @@ class RtTmpEntry(RtEntry):
     @argres()
     def find_transitions(self, forms):
         return list(map(
-            lambda f: (f, parser.build.objects.TrsDef(None, self.get_spec(), st_to=self.get_spec())),
-            forms.get_forms()
+            lambda f: (f, parser.build.objects.TrsDef(
+                None,
+                self.get_spec(),
+                st_to=self.get_spec()
+            )),
+            forms
         ))
 
     @argres()
@@ -416,7 +420,6 @@ class RtVirtualEntry(RtEntry):
         )
 
         self.__referers = []
-        self.__modified = False
         self.__first_handle = True
         self.__closed = spec_state_def.is_closed()
 
@@ -428,7 +431,6 @@ class RtVirtualEntry(RtEntry):
         super()._init_from_rtme(owner, rtme, form=form)
 
         self.__referers = []
-        self.__modified = rtme.__modified
         self.__first_handle = rtme.__first_handle
         self.__closed = rtme.__closed
         self.__copy_referers(rtme)
@@ -465,8 +467,6 @@ class RtVirtualEntry(RtEntry):
             return ns(later=False, again=True, valid=False, affected_links=[])
 
         res = super().handle_rules(on_entry=on_entry)
-        if res.valid:
-            self.__modified = False
         return res
 
     def close_aggregator(self):
@@ -483,5 +483,4 @@ class RtVirtualEntry(RtEntry):
         if rtme not in self.__referers:
             self.__referers.append(rtme)
         self._form.add_form(rtme.get_form())
-        self.__modified = True
         return True
