@@ -243,7 +243,9 @@ class BasicStaticRule(RtStaticRule):
         wrap = '<BR ALIGN="LEFT"/>'
         s = '{0}{1}'.format(self.name(), wrap)
         s += wrap.join(
-            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1])) for k_v in list(self.__fmt_info.items())]
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1]))
+             for k_v in list(self.__fmt_info.items())
+             ]
         )
         return s
 
@@ -326,6 +328,8 @@ class SelectorStaticRule(RtStaticRule):
 class CombinatorialSelectorRule(SelectorStaticRule):
     def __init__(self, name, rules):
         super().__init__(name=name, friendly=name, fmt_info={})
+        if rules is None:
+            rules = []
         self.__rules = rules
 
     def subrules(self):
@@ -334,6 +338,8 @@ class CombinatorialSelectorRule(SelectorStaticRule):
     def format(self, fmt):
         if fmt == 'dict':
             return self.__format_dict()
+        elif fmt == 'dot-html':
+            return self.__format_dot()
         raise ValueError('Unsupported format {0}'.format(fmt))
 
     def __format_dict(self):
@@ -342,6 +348,20 @@ class CombinatorialSelectorRule(SelectorStaticRule):
             'friendly': self.friendly(),
             'sub': [subrule.format('dict') for subrule in self.subrules()]
         }
+
+    def __format_dot(self):
+        wrap = '<BR ALIGN="LEFT"/>'
+        s = '{0}{1}'.format(self.name(), wrap)
+        s += wrap.join(
+            ['{0}: {1}'.format(str(k_v[0]), str(k_v[1]))
+             for k_v in list(self.__format_dict().items())
+             ]
+        )
+        return s
+
+    def __iadd__(self, other):
+        self.__rules.append(other)
+        return self
 
 
 class RuleNot(CombinatorialSelectorRule):
@@ -357,7 +377,7 @@ class RuleNot(CombinatorialSelectorRule):
 
 
 class RuleOr(CombinatorialSelectorRule):
-    def __init__(self, rules):
+    def __init__(self, rules=None):
         super().__init__('or', rules)
 
     def match(self, *args, **kwargs):
@@ -367,9 +387,15 @@ class RuleOr(CombinatorialSelectorRule):
 
         return False
 
+    def new_copy(self):
+        return RuleOr(rules=self.subrules())
+
+    def clone(self):
+        return RuleOr(rules=self.subrules())
+
 
 class RuleAnd(CombinatorialSelectorRule):
-    def __init__(self, rules):
+    def __init__(self, rules=None):
         super().__init__('and', rules)
 
     def match(self, *args, **kwargs):
@@ -379,9 +405,15 @@ class RuleAnd(CombinatorialSelectorRule):
 
         return True
 
+    def new_copy(self):
+        return RuleAnd(rules=self.subrules())
+
+    def clone(self):
+        return RuleAnd(rules=self.subrules())
+
 
 class RuleXor(CombinatorialSelectorRule):
-    def __init__(self, rules):
+    def __init__(self, rules=None):
         assert len(rules) == 2
         super().__init__('xor', rules)
 
@@ -389,6 +421,12 @@ class RuleXor(CombinatorialSelectorRule):
         r1 = self.subrules()[0].match(*args, **kwargs)
         r2 = self.subrules()[1].match(*args, **kwargs)
         return r1 != r2
+
+    def new_copy(self):
+        return RuleXor(rules=self.subrules())
+
+    def clone(self):
+        return RuleXor(rules=self.subrules())
 
 
 class RtMatchString(object):

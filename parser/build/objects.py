@@ -413,6 +413,20 @@ class SpecStateDef(object):
     def get_rtransitions(self):
         return self.__rtransitions[:]
 
+    def get_accessable(self, virtual=False, follow_virtual=False):
+        for st in (t.get_to() for t in self.__transitions):
+            if not st.is_virtual():
+                yield st
+            else:
+                if virtual:
+                    yield st
+                if follow_virtual:
+                    for n_st in st.get_accessable(
+                        virtual=virtual,
+                        follow_virtual=follow_virtual
+                    ):
+                        yield n_st
+
     def is_static_applicable(self, form):
         for r in self.__stateless_rules:
             if not r.match(form):

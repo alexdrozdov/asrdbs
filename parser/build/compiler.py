@@ -633,13 +633,23 @@ class SpecCompiler(object):
 
     def __aggregate_entrance_rules(self):
         ini = self.__states[0]
-        transitions = ini.get_transitions()
-        reachable_states = [trs.get_to() for trs in transitions]
-        static_states = [st for st in reachable_states if st.fixed()]
-        dynamic_states = [st for st in reachable_states if not st.fixed()]
-        # rules = [AndRule(st.get_stateless_rules()) for st in static_states]
-        # aggregated_rule = OrRule(rules)
-        # ini.set_stateless_rules([aggregated_rule, ])
+
+        aggregated_rule = parser.spare.rules.RuleOr()
+        for st in ini.get_accessable(virtual=True, follow_virtual=False):
+            aggregated_rule += parser.spare.rules.RuleAnd(st.get_stateless_rules())
+        ini.set_stateless_rules([aggregated_rule, ])
+
+    def __aggregate_virtual_entries_rules(self):
+        for state in self.__states:
+            if not state.is_virtual():
+                continue
+            self.__aggregate_virtual_entry_rules(state)
+
+    def __aggregate_virtual_entry_rules(self, state):
+        aggregated_rule = parser.spare.rules.RuleOr()
+        for st in state.get_accessable(virtual=False, follow_virtual=True):
+            aggregated_rule += parser.spare.rules.RuleAnd(st.get_stateless_rules())
+        state.set_stateless_rules([aggregated_rule, ])
 
     def register_rule_binding(self, rule, binding):
         return
@@ -700,6 +710,7 @@ class SpecCompiler(object):
         self.__create_state_rules()
         self.__review_anchors()
         self.__review_tags()
+        self.__aggregate_virtual_entries_rules()
         self.__aggregate_entrance_rules()
 
         cs = CompiledSpec(
