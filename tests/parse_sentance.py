@@ -6,7 +6,7 @@ import os
 import sys
 import time
 import json
-import io
+# import io
 import argparse
 import uuid
 import parser
@@ -89,28 +89,36 @@ def execute(opts):
 
             for j, sq in enumerate(matched_sentences.get_sequences()):
                 print(sq.format('str'))
-                parser.io.graph.SequenceGraph(img_type='svg').generate(
-                    sq,
-                    oput.get_output_file(
-                        [base_dir, 'imgs'],
-                        'sq-{0}.svg'.format(j)
+                fmt = 'svg'
+                file_ext = '.svg'
+                file_name = common.output.output.get_output_file(
+                    'sequences',
+                    '{0}{1}'.format(j, file_ext)
+                )
+                try:
+                    data = sq.format(fmt)
+                except:
+                    data = parser.io.fmtconvert.convert(
+                        sq.format('dict'),
+                        'dict', fmt
                     )
-                )
+                with open(file_name, 'w') as f:
+                    f.write(data)
 
-            jf_name = 'test.json' if opts.make_test else 'res.json'
-            with io.open(
-                oput.get_output_file([base_dir, ''], jf_name),
-                'w', encoding='utf8'
-            ) as jf:
-                s = json.dumps(
-                    {
-                        'input': sentence,
-                        'graph': matched_sentences.export_obj()
-                    },
-                    jf,
-                    ensure_ascii=False
-                )
-                jf.write(s)
+            # jf_name = 'test.json' if opts.make_test else 'res.json'
+            # with io.open(
+            #     oput.get_output_file([base_dir, ''], jf_name),
+            #     'w', encoding='utf8'
+            # ) as jf:
+            #     s = json.dumps(
+            #         {
+            #             'input': sentence,
+            #             'graph': matched_sentences.export_obj()
+            #         },
+            #         jf,
+            #         ensure_ascii=False
+            #     )
+            #     jf.write(s)
 
 
 if __name__ == '__main__':
@@ -156,6 +164,11 @@ if __name__ == '__main__':
                         'json': True,
                         'path': 'selectors',
                         # 'filter': ['#grammar', ]
+                    },
+                    'sequences': {
+                        'svg': True,
+                        'json': True,
+                        'path': 'sequences'
                     }
                 }
             },

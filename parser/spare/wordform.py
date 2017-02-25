@@ -120,6 +120,23 @@ class _PredefinedFormats(object):
             }
         )
 
+        self.__register(
+            'dict-public',
+            self.__format_public_dict,
+            {
+                'layer-filter': lambda l: True,
+                'tag-filter': lambda t: True,
+                'property-filter': lambda p: not p.startswith('__'),
+                'aggregate-layer-tags': False,
+                'deep': False,
+                'merge-layers': False,
+                'style': {
+                },
+                '__fmt': {
+                }
+            }
+        )
+
         self.__register('dot-html-table', self.__format_dot_html_table, {})
         self.__register('dict', self.__format_dict, {})
 
@@ -236,6 +253,20 @@ class _PredefinedFormats(object):
             lprops = properties[l]
             for p, v in list(lprops.items()):
                 res[p] = v
+        return res
+
+    def __format_public_dict(self, fmt, term):
+        layers, tags, properties = self.__prepare_data(fmt, term)
+        res = {}
+        for l in layers:
+            if tags[l] or properties[l]:
+                res[l] = dict(
+                    [(k, v) for k, v in [
+                        ('tags', tags[l]),
+                        ('props', properties[l])
+                    ] if v
+                    ]
+                )
         return res
 
     def __format_dot_html_table(self, fmt, term):

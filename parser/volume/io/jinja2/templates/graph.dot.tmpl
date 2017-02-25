@@ -33,7 +33,7 @@
 {%- endmacro %}
 
 {% macro vrender(value, caller='') -%}
-    {% if value is mapping %}
+    {% if value and value is mapping %}
         <TABLE>
         {% for k, v in value.items() %}
             <TR>
@@ -60,14 +60,7 @@ digraph D {
 
     {% for node in g.nodes %} 
         "{{ node.uuid }}" [label= <
-            <TABLE>
-            {% for k, v in node.data.items() %}
-                <TR>
-                    <TD{% call kstyle(k, v) %}{% endcall %}>{{ k }}</TD>
-                    <TD{% call kstyle(k, v) %}{% endcall %}>{% call vrender(v) %}{% endcall %}</TD>
-                </TR>
-            {% endfor %}
-            </TABLE>
+            {% call vrender(node.data) %}{% endcall %}
             >, shape=box];
     {% endfor %}
 

@@ -8,8 +8,8 @@
         "anchor": {"bg-color": "dodgerblue"},
         "init": {"bg-color": "lightpink"},
         "fini": {"bg-color": "lightpink"},
-        "dynamic": {"bg-color": "lavenderblush"},
-        "stateless": {"bg-color": "lightcyan"}
+        "dynamic": {"bg-color": "burlywood1"},
+        "stateless": {"bg-color": "darkolivegreen1"}
     }
 }
 

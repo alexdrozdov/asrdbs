@@ -1,0 +1,19 @@
+{
+    "name": "sequence",
+    "style": {
+        "name": {"bg-color": "darkseagreen1"},
+        "word": {"bg-color": "darkseagreen2"},
+        "tag": {"bg-color": "khaki"},
+        "attributes": {"bg-color": "lavender"},
+        "rules": {"bg-color": "peachpuff"},
+        "anchor": {"bg-color": "dodgerblue"},
+        "dynamic": {"bg-color": "burlywood1"},
+        "stateless": {"bg-color": "darkolivegreen1"},
+        "ro": {"bg-color": "palegoldenrod"},
+        "w_once": {"bg-color": "papayawhip"},
+        "morf": {"bg-color": "peachpuff"},
+        "ctx": {"bg-color": "lavenderblush"},
+        "sentence": {"bg-color": "white"}
+    }
+}
+

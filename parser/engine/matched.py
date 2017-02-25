@@ -3,10 +3,9 @@
 
 
 import uuid
-import json
+import collections
 import parser.spare.wordform
 import parser.engine.entries
-from common.linewrapper import LineWrapper
 
 
 def todict(obj, classkey=None):
@@ -45,97 +44,16 @@ class Link(object):
     def get_slave(self):
         return self.__slave
 
-    def export_dict(self):
-        return {
-            'from': self.__master,
-            'to': self.__slave,
-            'udata': todict(self.__details),
-        }
-
     def format(self, fmt):
         if fmt == 'dict':
-            return self.export_dict()
-        if fmt == 'dot-html-table':
-            return self.__fmt_dot_html_table()
+            return self.__format_dict()
         raise ValueError('Unsupported fmt {0}'.format(fmt))
 
-    def __fmt_dot_html_table(self):
-        lw = LineWrapper(60, 70, [' ', '::'], 4, False)
-        s = '<TABLE CELLSPACING="0">'
-        s += '<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
-            self.get_uniq()
-        )
-        s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">master: {0}</FONT></TD></TR>'.format(
-            self.get_master()
-        )
-        s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">slave: {0}</FONT></TD></TR>'.format(
-            self.get_slave()
-        )
-
-        for d in self.get_details():
-            s += '<TR><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
-                self.__format_dot_html_dict(d, lw)
-            )
-        s += '</TABLE>'
-        return s
-
-    def __format_dot_html_dict(self, d, line_wrapper):
-        s = '<TABLE CELLSPACING="0">'
-        row_fmt = ('<TR>'
-                   '<TD {align} {valign} {bgcolor}>{k}</TD>'
-                   '<TD {align} {valign} {bgcolor}>{v}</TD>'
-                   '</TR>')
-        align = 'ALIGN="LEFT"'
-        valign = 'VALIGN="TOP"'
-        bgcolor = 'BGCOLOR="WHITE"'
-        for k, v in list(d.items()):
-            if isinstance(v, dict) and v:
-                v_str = self.__format_dot_html_dict(v, line_wrapper)
-            elif isinstance(v, list) and v:
-                v_str = self.__format_dot_html_list(v, line_wrapper)
-            else:
-                v_str = line_wrapper.wrap(
-                    str(v),
-                    linebreak='<BR/>',
-                    indent_char='&nbsp;'
-                )
-            s += row_fmt.format(
-                align=align,
-                valign=valign,
-                bgcolor=bgcolor,
-                k=k,
-                v=v_str
-            )
-        s += '</TABLE>'
-        return s
-
-    def __format_dot_html_list(self, l, line_wrapper):
-        s = '<TABLE CELLSPACING="0">'
-        row_fmt = ('<TR>'
-                   '<TD {align} {valign} {bgcolor}>{v}</TD>'
-                   '</TR>')
-        align = 'ALIGN="LEFT"'
-        valign = 'VALIGN="TOP"'
-        bgcolor = 'BGCOLOR="WHITE"'
-        for v in l:
-            if isinstance(v, dict) and v:
-                v_str = self.__format_dot_html_dict(v, line_wrapper)
-            elif isinstance(v, list) and v:
-                v_str = self.__format_dot_html_list(v, line_wrapper)
-            else:
-                v_str = line_wrapper.wrap(
-                    str(v),
-                    linebreak='<BR/>',
-                    indent_char='&nbsp;'
-                )
-            s += row_fmt.format(
-                align=align,
-                valign=valign,
-                bgcolor=bgcolor,
-                v=v_str
-            )
-        s += '</TABLE>'
-        return s
+    def __format_dict(self):
+        return {
+            'uuid': self.get_uniq(),
+            'data': todict(self.__details),
+        }
 
 
 class MatchedEntry(object):
@@ -176,21 +94,6 @@ class MatchedEntry(object):
         self.__slaves = []
         self.__masters_csum = set()
         self.__slaves_csum = set()
-
-    def export_dict(self):
-        return {
-            'uniq': self.get_uniq(),
-            'udata': {
-                'name': str(self.__name),
-                'position': self.__form.get_position(),
-                'word': self.__form.get_word(),
-                'reliability': self.__reliability,
-                'hidden': self.__is_hidden,
-                'virtual': self.__is_virtual,
-                'anchor': self.__is_anchor,
-                'form': self.__form.format('dict-form'),
-            },
-        }
 
     def get_name(self):
         return self.__name
@@ -242,33 +145,46 @@ class MatchedEntry(object):
         return self.__rules
 
     def format(self, fmt):
-        if fmt == 'dot-html-table':
-            return self.__fmt_dot_html_table()
         if fmt == 'dict':
-            return self.export_dict()
+            return self.__format_dict()
         raise ValueError('unsupported format {0}'.format(fmt))
 
-    def __fmt_dot_html_table(self):
-        s = '<TABLE CELLSPACING="0">'
-        s += '<TH><TD BGCOLOR="darkseagreen1"><FONT FACE="ARIAL">{0}</FONT></TD></TH>'.format(
-            self.get_name()
-        )
-
-        s += '<TR><TD BGCOLOR="darkseagreen2"><FONT FACE="ARIAL"><B>{0}: {1}</B></FONT></TD></TR>'.format(
-            self.get_form().get_word(),
-            self.get_form().get_position(),
-        )
-
-        s += '<TR><TD BGCOLOR="white"><FONT FACE="ARIAL">{0}</FONT></TD></TR>'.format(
-            self.get_form().format('dot-html-table')
-        )
-
+    def __format_dict(self):
+        static_rules = []
+        dynamic_rules = []
         for r in self.get_rules():
-            s += '<TR><TD ALIGN="LEFT" BGCOLOR="{0}"><FONT FACE="ARIAL">{1}</FONT></TD></TR>'.format(
-                'darkolivegreen1' if r.is_static() else 'burlywood1',
-                r.format('dot-html'))
-        s += '</TABLE>'
-        return s
+            if r.is_static():
+                if not self.is_virtual():
+                    static_rules.append(r.format('dict'))
+                else:
+                    static_rules.append(str(r))
+            else:
+                dynamic_rules.append(r.format('dict'))
+        rules = collections.OrderedDict(
+            [(k, v) for k, v in [
+                ('stateless', static_rules),
+                ('dynamic', dynamic_rules),
+            ] if v
+            ]
+        )
+        data = collections.OrderedDict(
+            [(k, v) for k, v in [
+                ('name', str(self.__name)),
+                ('word', self.__form.get_word()),
+                ('form', self.__form.format('dict-public')),
+                ('rules', rules),
+                ('position', self.__form.get_position()),
+                ('reliability', self.__reliability),
+                ('hidden', self.__is_hidden),
+                ('virtual', self.__is_virtual),
+                ('anchor', self.__is_anchor),
+            ] if v is not None and (v or isinstance(v, int))
+            ]
+        )
+        return {
+            'uuid': self.get_uniq(),
+            'data': data,
+        }
 
 
 class MatchedSequence(object):
@@ -388,7 +304,13 @@ class MatchedSequence(object):
         return self.__reliability
 
     def format(self, fmt):
-        assert fmt == 'str'
+        if fmt == 'str':
+            return self.__format_str()
+        elif fmt == 'dict':
+            return self.__format_dict()
+        raise RuntimeError('Unsupported format {0}'.format(fmt))
+
+    def __format_str(self):
         res = '{0} <'.format(self.get_name())
         for e in self.__all_entries:
             f = e.get_form()
@@ -403,21 +325,38 @@ class MatchedSequence(object):
         )
         return res
 
-    def export_dict(self):
-        nodes = list(map(
-            lambda e: e.export_dict(),
-            self.__all_entries
-        ))
-        edges = list(map(
-            lambda l: l.export_dict(),
-            self.__all_links
-        ))
+    def __format_dict(self):
+        nodes, links = self.__nodes_and_links()
         return {
-            'name': self.__name,
-            'reliability': self.__reliability,
+            '__fmt_scheme': 'dg',
+            '__fmt_hint': 'graph',
+            '__style_hint': 'sequence',
             'nodes': nodes,
-            'edges': edges,
+            'groups': [],
+            'links': links
         }
+
+    def __nodes_and_links(self):
+        nodes = []
+        links = []
+        for e in self.__entries:
+            nodes.append(e.format('dict'))
+
+        for l in self.__links:
+            nodes.append(l.format('dict'))
+
+            links.append({
+                'from': l.get_master(),
+                'to': l.get_uniq(),
+                'single2single': True
+            })
+            links.append({
+                'from': l.get_uniq(),
+                'to': l.get_slave(),
+                'single2single': True
+            })
+
+        return nodes, links
 
     def __repr__(self):
         r = "MatchedSequence(objid={0}, entries=[{1}])".format(
@@ -454,14 +393,3 @@ class SequenceMatchRes(object):
 
     def get_sequences(self):
         return self.__sqs
-
-    def export_obj(self):
-        return list(map(
-            lambda s: s.export_dict(),
-            self.__sqs
-        ))
-
-    def export_json(self):
-        return json.dumps(
-            self.export_obj()
-        )
