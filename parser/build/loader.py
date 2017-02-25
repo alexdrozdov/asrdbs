@@ -2,13 +2,13 @@
 # -*- #coding: utf8 -*-
 
 
-import common.config
 import parser.lang.base.at
 import parser.build.jsonspecs
 import parser.build.preprocessor
 import parser.build.compiler
 import parser.engine.rt
-import parser.io.fmtconvert
+import parser.io.export
+import common.dg
 from argparse import Namespace as ns
 
 
@@ -36,9 +36,10 @@ class Loader(object):
     def __create_specs(self, structure, selectors):
         for sd in parser.build.jsonspecs.Specs():
             self.__add_spec(sd)
-        self.__generate_debug(['src', ])
+        self.__generate_src_debug()
         self.__build_specs(structure=structure)
-        self.__generate_debug(['selectors', 'structure'])
+        self.__generate_selectors_debug()
+        self.__generate_structure_debug()
 
     def __is_primary(self, name):
         return name == self.__primary_spec
@@ -85,54 +86,23 @@ class Loader(object):
     def get_primary(self):
         return self.__primary
 
-    def __generate_debug(self, flt_list=None):
-        cfg = common.config.Config()
-        itr_map = {
-            'src': parser.build.jsonspecs.Specs(),
-            'structure': (m.get_compiled_spec() for m in self.__matchers),
-            'selectors': (
+    def __generate_src_debug(self):
+        parser.io.export.generate(
+            cfg_path='/parser/debug',
+            src=parser.build.jsonspecs.Specs()
+        )
+
+    def __generate_selectors_debug(self):
+        parser.io.export.generate(
+            cfg_path='/parser/debug',
+            selectors=(
                 common.dg.Subgraph.from_node(n)
                 for n in parser.spare.selectors.Selectors()
             ),
-        }
-        for group_name, group in cfg['/parser/debug'].items():
-            if flt_list is not None and group_name not in flt_list:
-                continue
-            itr = itr_map[group_name]
-            self.__generate_debug_group(group_name, group, itr)
+        )
 
-    def __generate_debug_group(self, name, group, itr):
-        itr = list(itr)
-        tgt_dir = group['path']
-        flt = group.get('filter')
-        fmts = {
-            'json': {'extension': '.json'},
-            'svg': {'extension': '.svg'},
-        }
-        for fmt in (i for i in fmts if i in group and group[i]):
-            self.__generate_debug_fmt(
-                itr=itr,
-                fmt=fmt,
-                tgt_dir=tgt_dir,
-                file_ext=fmts[fmt]['extension'],
-                flt=flt
-            )
-
-    def __generate_debug_fmt(self, itr, fmt, tgt_dir, file_ext, flt):
-        for e in itr:
-            name = e.get_name()
-            if flt is not None and name not in flt:
-                continue
-            file_name = common.output.output.get_output_file(
-                tgt_dir,
-                '{0}{1}'.format(name, file_ext)
-            )
-            try:
-                data = e.format(fmt)
-            except:
-                data = parser.io.fmtconvert.convert(
-                    e.format('dict'),
-                    'dict', fmt
-                )
-            with open(file_name, 'w') as f:
-                f.write(data)
+    def __generate_structure_debug(self):
+        parser.io.export.generate(
+            cfg_path='/parser/debug',
+            structure=(m.get_compiled_spec() for m in self.__matchers)
+        )

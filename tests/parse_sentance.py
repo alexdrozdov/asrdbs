@@ -6,15 +6,14 @@ import os
 import sys
 import time
 import json
-# import io
 import argparse
-import uuid
-import parser
-import common.config
-import parser.io.graph
-import parser.spare.selectors
 from contextlib import contextmanager
-from common.output import output as oput
+
+
+import common.fake
+import common.config
+import parser
+import parser.io.export
 
 
 @contextmanager
@@ -74,7 +73,6 @@ def execute(opts):
             srm = parser.Matcher(prs)
 
         if not opts.build_only:
-            base_dir = str(uuid.uuid1()) if opts.make_test else None
             with timeit_ctx('tokenizing'):
                 tokens = parser.Tokenizer().tokenize(sentence)
 
@@ -87,38 +85,12 @@ def execute(opts):
                     most_complete=True
                 )
 
-            for j, sq in enumerate(matched_sentences.get_sequences()):
-                print(sq.format('str'))
-                fmt = 'svg'
-                file_ext = '.svg'
-                file_name = common.output.output.get_output_file(
-                    'sequences',
-                    '{0}{1}'.format(j, file_ext)
+            with timeit_ctx('exporting results'):
+                parser.io.export.generate(
+                    cfg_path='/parser/debug',
+                    sequences=(common.fake.named(sq, i)
+                               for i, sq in enumerate(matched_sentences))
                 )
-                try:
-                    data = sq.format(fmt)
-                except:
-                    data = parser.io.fmtconvert.convert(
-                        sq.format('dict'),
-                        'dict', fmt
-                    )
-                with open(file_name, 'w') as f:
-                    f.write(data)
-
-            # jf_name = 'test.json' if opts.make_test else 'res.json'
-            # with io.open(
-            #     oput.get_output_file([base_dir, ''], jf_name),
-            #     'w', encoding='utf8'
-            # ) as jf:
-            #     s = json.dumps(
-            #         {
-            #             'input': sentence,
-            #             'graph': matched_sentences.export_obj()
-            #         },
-            #         jf,
-            #         ensure_ascii=False
-            #     )
-            #     jf.write(s)
 
 
 if __name__ == '__main__':
@@ -151,23 +123,23 @@ if __name__ == '__main__':
                 'debug': {
                     'src': {
                         'svg': False,
-                        'json': True,
+                        'json': False,
                         'path': 'preprocessor'
                     },
                     'structure': {
-                        'svg': True,
-                        'json': True,
+                        'svg': False,
+                        'json': False,
                         'path': 'structure'
                     },
                     'selectors': {
-                        'svg': True,
-                        'json': True,
-                        'path': 'selectors',
-                        # 'filter': ['#grammar', ]
+                        'svg': False,
+                        'json': False,
+                        'path': 'selectors'
                     },
                     'sequences': {
                         'svg': True,
                         'json': True,
+                        'str': True,
                         'path': 'sequences'
                     }
                 }

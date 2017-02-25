@@ -314,15 +314,13 @@ class MatchedSequence(object):
         res = '{0} <'.format(self.get_name())
         for e in self.__all_entries:
             f = e.get_form()
-            if not e.is_hidden():
-                res += '{0} '.format(f.get_word())
-            else:
-                res += '< {0} >'.format(f.get_word())
-        res += 'reliability={0}, entries_csum={1}, links_csum={2}>'.format(
-            self.get_reliability(),
-            self.__entries_csum,
-            self.__links_csum
-        )
+            t = f.get_word()
+            if e.is_virtual():
+                t = '{{{0}}}'.format(t)
+            if e.is_hidden():
+                t = '({0})'.format(t)
+            res += t + ' '
+        res += '>'
         return res
 
     def __format_dict(self):
@@ -393,3 +391,6 @@ class SequenceMatchRes(object):
 
     def get_sequences(self):
         return self.__sqs
+
+    def __iter__(self):
+        return iter(self.__sqs)
