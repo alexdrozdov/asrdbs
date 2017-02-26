@@ -10,6 +10,7 @@ from parser.spare.rules import RtRuleFactory, RtRule, BasicDynamicRule, \
 
 
 class FsmSpecs(object):
+    none = 0
     init = 1
     fini = 2
 

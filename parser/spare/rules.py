@@ -325,6 +325,14 @@ class SelectorStaticRule(RtStaticRule):
         )
 
 
+class UnresolvedDynamicInclude(object):
+    def __init__(self, name):
+        self.__name = name
+
+    def get_name(self):
+        return self.__name
+
+
 class CombinatorialSelectorRule(SelectorStaticRule):
     def __init__(self, name, rules):
         super().__init__(name=name, friendly=name, fmt_info={})

@@ -118,54 +118,114 @@ class SpecStateDef(object):
     all_rules = static_rules + dynamic_rules
 
     def __init__(self, compiler, name, spec_dict, parent=None):
+        self.__uid = str(uuid.uuid1())
+        self.__spec_dict = spec_dict
         self.__name = RtMatchString(name)
+        self.__parent = parent
+        self.__clevel = compiler.get_level()
+
         if self.__name.need_resolve():
-            self.__name.update(compiler.resolve_name(spec_dict, str(self.__name)))
+            self.__name.update(
+                compiler.resolve_name(spec_dict, str(self.__name))
+            )
+
+        self.__init_defaults()
+        self.__init_from_spec_dict()
+
+    def __init_defaults(self):
         self.__transitions = []
         self.__neighbour_transitions = []
         self.__child_transitions = []
         self.__rtransitions = []
-        self.__spec_dict = spec_dict
-        self.__parent = parent
-        self.__is_container = "entries" in spec_dict
-        self.__is_uniq_container = "uniq-items" in spec_dict
-        self.__is_contained = False
-        if self.__parent:
-            self.__is_contained = True
-        self.__is_required = "required" in spec_dict and spec_dict["required"]
-        self.__is_repeatable = "repeatable" in spec_dict and spec_dict["repeatable"]
+        self.__is_contained = self.__parent is not None
         self.__is_local_final = False
-        self.__is_init = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.base.rules.defs.FsmSpecs.init
-        self.__is_fini = "fsm" in spec_dict and spec_dict["fsm"] == parser.lang.base.rules.defs.FsmSpecs.fini
-        self.__is_virtual = "virtual" in spec_dict and spec_dict["virtual"]
-        self.__uid = str(uuid.uuid1())
-        if 'include' in spec_dict:
-            self.__incapsulate_spec_name = spec_dict['include']['spec']
-            self.__static_only_include = spec_dict['include']['static-only'] if 'static-only' in spec_dict['include'] else False
-        else:
-            self.__incapsulate_spec_name = None
-            self.__static_only_include = False
+        self.__is_local_anchor = False
+
+        self.__incapsulate_spec_name = None
         self.__incapsulate_spec = None
+        self.__static_only_include = False
+        self.__dynamic_only_include = False
+
         self.__stateless_rules = []
         self.__rt_rules = []
-        self.__level = spec_dict['level']
-        self.__glevel = compiler.get_level() + self.__level
-        if 'anchor' in spec_dict and isinstance(spec_dict['anchor'], list):
-            spec_dict['anchor'] = spec_dict['anchor'][0]
-        self.__is_local_anchor = 'anchor' in spec_dict and spec_dict['anchor'][1] in [
-            parser.lang.base.rules.defs.AnchorSpecs.local_spec_anchor,
-            parser.lang.base.rules.defs.AnchorSpecs.global_anchor
-        ]
-        if 'anchor' in spec_dict and spec_dict['anchor'][1] == parser.lang.base.rules.defs.AnchorSpecs.local_spec_tag:
-            self.__tag = spec_dict['anchor'][2]
-        else:
-            self.__tag = None
+
         self.__transitions_merged = False
-        self.__add_to_seq = spec_dict['add-to-seq'] if 'add-to-seq' in spec_dict else True
-        self.__reliability = spec_dict['reliability'] if 'reliability' in spec_dict else 1.0
-        self.__merges_with = set(spec_dict['merges-with']) if 'merges-with' in spec_dict else set()
-        self.__closed = spec_dict['closed'] if 'closed' in spec_dict else True
+
         self.__fixed = True
+        self.__tag = None
+
+    def __init_from_spec_dict(self):
+        self.__is_container = self.__if_exists("entries")
+        self.__is_uniq_container = self.__if_exists("uniq-items")
+
+        self.__is_required = self.__from_spec_dict("required", False)
+        self.__is_repeatable = self.__from_spec_dict("repeatable", False)
+
+        self.__is_init = self.__from_spec_dict(
+            "fsm", 0) == parser.lang.base.rules.defs.FsmSpecs.init
+        self.__is_fini = self.__from_spec_dict(
+            "fsm", 0) == parser.lang.base.rules.defs.FsmSpecs.fini
+
+        self.__is_virtual = self.__from_spec_dict("virtual", False)
+
+        self.__add_to_seq = self.__from_spec_dict('add-to-seq', True)
+        self.__reliability = self.__from_spec_dict('reliability', 1.0)
+        self.__merges_with = set(self.__from_spec_dict('merges-with', []))
+        self.__closed = self.__from_spec_dict('closed', True)
+
+        self.__level = self.__from_spec_dict('level', None, strict=True)
+        self.__glevel = self.__clevel + self.__level
+
+        self.__handle_include()
+        self.__handle_anchor()
+
+    def __handle_include(self):
+        if not self.__if_exists('include'):
+            return
+
+        self.__incapsulate_spec_name = self.__from_spec_dict(
+            'include/spec', None, strict=True)
+        self.__static_only_include = self.__from_spec_dict(
+            'include/static-only', False)
+        self.__dynamic_only_include = self.__from_spec_dict(
+            'include/dynamic-only', False)
+
+    def __handle_anchor(self):
+        anchor = self.__from_spec_dict('anchor', None)
+        if anchor is None:
+            return
+
+        if not isinstance(anchor, list):
+            anchor = [anchor, ]
+
+        for a in anchor:
+            if a[1] in [
+                parser.lang.base.rules.defs.AnchorSpecs.local_spec_anchor,
+                parser.lang.base.rules.defs.AnchorSpecs.global_anchor
+            ]:
+                self.__is_local_anchor = True
+                continue
+
+            if a[1] in [
+                parser.lang.base.rules.defs.AnchorSpecs.local_spec_tag
+            ]:
+                self.__tag = a[2]
+
+    def __from_spec_dict(self, path, default, strict=False):
+        sd = self.__spec_dict
+        for p in (pp for pp in path.split('/') if pp):
+            if p not in sd:
+                if strict:
+                    raise KeyError(path)
+                return default
+            sd = sd[p]
+        return sd
+
+    def __if_exists(self, path):
+        v = self.__from_spec_dict(path, False)
+        if not v:
+            return v
+        return True
 
     def get_name(self):
         return self.__name
