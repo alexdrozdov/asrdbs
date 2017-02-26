@@ -236,7 +236,7 @@ class SpecStateDef(object):
     def can_merge(self, other):
         return bool(self.__merges_with & other.__merges_with)
 
-    def inherit_parent_reliability(self, reliability):
+    def inherit_reliability(self, reliability):
         self.__reliability *= reliability
 
     def get_parent_state(self):

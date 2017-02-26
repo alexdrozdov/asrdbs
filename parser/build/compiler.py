@@ -392,48 +392,57 @@ class SpecCompiler(object):
 
         self.__get_tag_entries_list(tag_name).append(state)
 
+    def __handle_include_state(self, state):
+        in_spec_name = state.get_include_name()
+        in_spec = self.__owner.get_spec(in_spec_name)
+        if self.__spec_depth <= 1 or state.include_is_static_only():
+            compiler = SpecCompiler(
+                owner=self.__owner,
+                stack=self.__stack,
+                level=state.get_glevel() + 1,
+                reliability=state.get_reliability()
+            )
+            compiled_in_spec = compiler.compile(
+                in_spec,
+                parent_spec_name=str(state.get_name())
+            )
+            state.set_incapsulated_spec(compiled_in_spec)
+        else:
+            state.set_dynamic()
+
+    def __create_state(self, spec, st):
+        state_name = self.gen_state_name(st)
+        state = SpecStateDef(self, state_name, st)
+        if state.get_level() > 0:
+            parent_st = spec.get_parent(st)
+            parent_state_name = str(self.gen_state_name(parent_st))
+            parent_state = self.__name2state[parent_state_name]
+            state.set_parent_state(parent_state)
+            if parent_state.is_anchor():
+                state.force_anchor()
+            if parent_state.is_tagged():
+                state.force_tag(parent_state.get_tag())
+            state.inherit_reliability(parent_state.get_reliability())
+            self.__add_name_remap(parent_state_name, state_name)
+        else:
+            state.inherit_reliability(self.get_reliability())
+
+        if state.has_include():
+            self.__handle_include_state(state)
+
+        if state.is_anchor():
+            self.__handle_anchor_state(state)
+
+        if state.is_tagged():
+            self.__handle_tag_state(state)
+
+        self.__add_include_remap(state)
+        self.__add_state(state)
+
     def __create_states(self, spec):
         spec_iter = spec.get_state_iter()
         for st in spec_iter.get_all_entries():
-            state_name = self.gen_state_name(st)
-            state = SpecStateDef(self, state_name, st)
-            if state.get_level() > 0:
-                parent_st = spec.get_parent(st)
-                parent_state_name = str(self.gen_state_name(parent_st))
-                parent_state = self.__name2state[parent_state_name]
-                state.set_parent_state(parent_state)
-                if parent_state.is_anchor():
-                    state.force_anchor()
-                if parent_state.is_tagged():
-                    state.force_tag(parent_state.get_tag())
-                state.inherit_parent_reliability(parent_state.get_reliability())
-                self.__add_name_remap(parent_state_name, state_name)
-            else:
-                state.inherit_parent_reliability(self.get_reliability())
-
-            if state.has_include():
-                in_spec_name = state.get_include_name()
-                in_spec = self.__owner.get_spec(in_spec_name)
-                if self.__spec_depth <= 1 or state.include_is_static_only():
-                    compiler = SpecCompiler(
-                        owner=self.__owner,
-                        stack=self.__stack,
-                        level=state.get_glevel() + 1,
-                        reliability=state.get_reliability()
-                    )
-                    compiled_in_spec = compiler.compile(in_spec, parent_spec_name=str(state.get_name()))
-                    state.set_incapsulated_spec(compiled_in_spec)
-                else:
-                    state.set_dynamic()
-
-            if state.is_anchor():
-                self.__handle_anchor_state(state)
-
-            if state.is_tagged():
-                self.__handle_tag_state(state)
-
-            self.__add_include_remap(state)
-            self.__add_state(state)
+            self.__create_state(spec, st)
 
     def __create_downgrading_trs(self, spec):
         deepest = spec.get_level_count()
@@ -551,16 +560,6 @@ class SpecCompiler(object):
                 state.get_glevel(),
                 original_state=state
             )
-
-    def __rebind_rules(self, spec):
-        return
-        for state in self.__states:
-            if not state.has_rules():
-                continue
-            rules = state.get_rules_list()
-            for r, v in list(rules.items()):
-                pass
-                # print r, v
 
     def __remove_containers(self):
         states = []
@@ -702,7 +701,6 @@ class SpecCompiler(object):
         self.__eval_local_final(spec)
         self.__create_upgrading_trs(spec)
         self.__propagate_container_rules(spec)
-        self.__rebind_rules(spec)
         self.__remove_containers()
         self.__merge_transitions()
         self.__incapsulate_rules()
