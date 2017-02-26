@@ -10,6 +10,7 @@ import parser.spare.wordform
 import parser.build.preprocessor
 from parser.spare.rules import RtMatchString
 from parser.build.objects import SpecStateDef, CompiledSpec
+from contextlib import contextmanager
 
 
 class SequenceSpecIter(object):
@@ -392,29 +393,43 @@ class SpecCompiler(object):
 
         self.__get_tag_entries_list(tag_name).append(state)
 
-    def __handle_include_state(self, state):
+    def __handle_static_include(self, state):
         in_spec_name = state.get_include_name()
         in_spec = self.__owner.get_spec(in_spec_name)
-        if self.__spec_depth <= 1 or state.include_is_static_only():
-            compiler = SpecCompiler(
-                owner=self.__owner,
-                stack=self.__stack,
-                level=state.get_glevel() + 1,
-                reliability=state.get_reliability()
-            )
-            compiled_in_spec = compiler.compile(
-                in_spec,
-                parent_spec_name=str(state.get_name())
-            )
-            state.set_incapsulated_spec(compiled_in_spec)
-        else:
-            state.set_dynamic()
+        compiler = SpecCompiler(
+            owner=self.__owner,
+            stack=self.__stack,
+            level=state.get_glevel() + 1,
+            reliability=state.get_reliability()
+        )
+        compiled_in_spec = compiler.compile(
+            in_spec,
+            parent_spec_name=str(state.get_name())
+        )
+        state.set_incapsulated_spec(compiled_in_spec)
 
-    def __create_state(self, spec, st):
+    def __handle_dynamic_include(self, state):
+        in_spec_name = state.get_include_name()
+        in_spec = self.__owner.get_spec(in_spec_name)
+        compiler = SpecCompiler(owner=self.__owner)
+        compiled = compiler.compile(in_spec, no_recursive_dynamic_includes=True)
+
+        rules = compiled.get_entrance_rules()
+        state.set_stateless_rules(rules)
+
+        state.set_dynamic()
+
+    def __handle_include_state(self, state):
+        if self.__spec_depth <= 1 or state.include_is_static_only():
+            self.__handle_static_include(state)
+        else:
+            self.__handle_dynamic_include(state)
+
+    def __create_state(self, st):
         state_name = self.gen_state_name(st)
         state = SpecStateDef(self, state_name, st)
         if state.get_level() > 0:
-            parent_st = spec.get_parent(st)
+            parent_st = self.__spec.get_parent(st)
             parent_state_name = str(self.gen_state_name(parent_st))
             parent_state = self.__name2state[parent_state_name]
             state.set_parent_state(parent_state)
@@ -439,22 +454,22 @@ class SpecCompiler(object):
         self.__add_include_remap(state)
         self.__add_state(state)
 
-    def __create_states(self, spec):
-        spec_iter = spec.get_state_iter()
+    def __create_states(self):
+        spec_iter = self.__spec.get_state_iter()
         for st in spec_iter.get_all_entries():
-            self.__create_state(spec, st)
+            self.__create_state(st)
 
-    def __create_downgrading_trs(self, spec):
-        deepest = spec.get_level_count()
+    def __create_downgrading_trs(self):
+        deepest = self.__spec.get_level_count()
 
         if deepest < 2:
             return
 
         for level in range(deepest - 2, -1, -1):  # -2 = -1 -1 - Enumerated from zero and no need to build downgrading trs for deepest level
-            spec_iter = spec.get_level_iter(level)
+            spec_iter = self.__spec.get_level_iter(level)
             for st in spec_iter.get_all_entries():
                 state = self.__name2state[str(self.gen_state_name(st))]
-                child_iter = spec.get_child_iter(st)
+                child_iter = self.__spec.get_child_iter(st)
                 for c_st in child_iter.get_all_entries():
                     c_state = self.__name2state[str(self.gen_state_name(c_st))]
                     if any((
@@ -467,8 +482,8 @@ class SpecCompiler(object):
                     if c_state.is_required() and state.is_container():
                         break
 
-    def __create_single_level_trs(self, spec, base=None):
-        spec_iter = spec.get_hierarchical_iter(base)
+    def __create_single_level_trs(self, base=None):
+        spec_iter = self.__spec.get_hierarchical_iter(base)
 
         for st in spec_iter.get_all_entries():
             state = self.__name2state[str(self.gen_state_name(st))]
@@ -488,28 +503,28 @@ class SpecCompiler(object):
             if state.is_container() or state.is_uniq_container():
                 self.__add_container_to_process(state)
 
-    def __create_upper_level_trs(self, spec):
-        self.__create_single_level_trs(spec, base=None)
+    def __create_upper_level_trs(self):
+        self.__create_single_level_trs(base=None)
 
     def __add_container_to_process(self, state):
         if state not in self.__containers_qq:
             self.__containers_qq.append(state)
 
-    def __create_lower_level_trs(self, spec):
+    def __create_lower_level_trs(self):
         self.__containers_qq = [c for c in self.__containers if c.is_container()]
         while len(self.__containers_qq):
             container = self.__containers_qq[0]
             self.__containers_qq = self.__containers_qq[1:]
             st = container.get_spec()
-            self.__create_single_level_trs(spec, st)
+            self.__create_single_level_trs(st)
 
-    def __eval_local_final(self, spec):
+    def __eval_local_final(self):
         self.__containers_qq = [c for c in self.__containers]
         while len(self.__containers_qq):
             container = self.__containers_qq[0]
             self.__containers_qq = self.__containers_qq[1:]
             st = container.get_spec()
-            spec_iter = spec.get_hierarchical_iter(st)
+            spec_iter = self.__spec.get_hierarchical_iter(st)
 
             sts = [i for i in spec_iter.get_all_entries()]
 
@@ -525,8 +540,8 @@ class SpecCompiler(object):
                     state = self.__name2state[str(self.gen_state_name(s))]
                     state.set_local_final()
 
-    def __create_upgrading_trs(self, spec):
-        spec_iter = spec.get_state_iter()
+    def __create_upgrading_trs(self):
+        spec_iter = self.__spec.get_state_iter()
         for st in spec_iter.get_all_entries():
             state = self.__name2state[str(self.gen_state_name(st))]
             if state.is_contained() and state.is_local_final():
@@ -536,23 +551,23 @@ class SpecCompiler(object):
                     parent = parent.get_parent_state()
                     state.add_parent_trs(parent)
 
-    def __propagate_container_rules(self, spec):
-        deepest = spec.get_level_count()
+    def __propagate_container_rules(self):
+        deepest = self.__spec.get_level_count()
 
         for level in range(deepest):
-            spec_iter = spec.get_level_iter(level)
+            spec_iter = self.__spec.get_level_iter(level)
             for st in spec_iter.get_all_entries():
                 state = self.__name2state[str(self.gen_state_name(st))]
                 if not state.is_container() and not state.is_uniq_container():
                     continue
                 if not state.has_rules():
                     continue
-                self.__propagate_rules_to_childs(spec, state)
+                self.__propagate_rules_to_childs(state)
 
-    def __propagate_rules_to_childs(self, spec, state):
+    def __propagate_rules_to_childs(self, state):
         rules_to_incapsulate = state.get_rules_list()
 
-        spec_iter = spec.get_hierarchical_iter(state.get_spec())
+        spec_iter = self.__spec.get_hierarchical_iter(state.get_spec())
         for s in spec_iter.get_all_entries():
             c_state = self.__name2state[str(self.gen_state_name(s))]
             c_state.extend_rules(
@@ -686,21 +701,19 @@ class SpecCompiler(object):
         print(binding)
         raise RuntimeError('state name matching not implemented')
 
-    def compile(self, spec, parent_spec_name=''):
+    def __setup_compile_environment(self, spec, parent_spec_name):
         self.__parent_spec_name = parent_spec_name
         self.__spec_name = spec.get_name()
-        self.__stack.append(self.__spec_name)
-        self.__spec_depth = self.__stack.count(self.__spec_name)
+        self.__spec = IterableSequenceSpec(spec)
 
-        spec = IterableSequenceSpec(spec)
-        self.__spec = spec
-        self.__create_states(spec)
-        self.__create_downgrading_trs(spec)
-        self.__create_upper_level_trs(spec)
-        self.__create_lower_level_trs(spec)
-        self.__eval_local_final(spec)
-        self.__create_upgrading_trs(spec)
-        self.__propagate_container_rules(spec)
+    def __run_compile_stages(self):
+        self.__create_states()
+        self.__create_downgrading_trs()
+        self.__create_upper_level_trs()
+        self.__create_lower_level_trs()
+        self.__eval_local_final()
+        self.__create_upgrading_trs()
+        self.__propagate_container_rules()
         self.__remove_containers()
         self.__merge_transitions()
         self.__incapsulate_rules()
@@ -710,6 +723,19 @@ class SpecCompiler(object):
         self.__review_tags()
         self.__aggregate_virtual_entries_rules()
         self.__aggregate_entrance_rules()
+
+    @contextmanager
+    def __push_stack(self, name):
+        self.__stack.append(name)
+        self.__spec_depth = self.__stack.count(name)
+        yield
+        self.__stack.pop()
+
+    def compile(self, spec, parent_spec_name=''):
+        self.__setup_compile_environment(spec, parent_spec_name)
+
+        with self.__push_stack(self.__spec_name):
+            self.__run_compile_stages()
 
         cs = CompiledSpec(
             spec,
@@ -721,7 +747,7 @@ class SpecCompiler(object):
             self.__name_remap,
             spec.get_validate() if self.__level == 0 else None
         )
-        self.__stack.pop()
+
         return cs
 
     def get_level(self):
