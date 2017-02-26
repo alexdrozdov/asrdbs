@@ -5,6 +5,7 @@
 import uuid
 import copy
 import re
+import common.config
 import parser.spare.rules
 import parser.spare.wordform
 import parser.build.preprocessor
@@ -448,7 +449,26 @@ class SpecCompiler(object):
         state.set_dynamic()
 
     def __handle_include_state(self, state):
-        if self.__spec_depth <= 1 or state.include_is_static_only():
+        cfg = common.config.Config()
+        max_static_include_level = cfg[
+            '/parser/compiler/max-static-include-level']
+
+        force_static_only = cfg['/parser/compiler/force-static-include']
+        force_dynamic_only = cfg['/parser/compiler/force-dynamic-include']
+
+        static_only = (state.static_only_include() or force_static_only
+                       ) and not force_dynamic_only
+
+        dynamic_only = (state.dynamic_only_include() or force_dynamic_only
+                        ) and not force_static_only
+
+        include_overflow = max_static_include_level < self.__spec_depth
+
+        if static_only:
+            self.__handle_static_include(state)
+        elif dynamic_only:
+            self.__handle_dynamic_include(state)
+        elif not include_overflow:
             self.__handle_static_include(state)
         else:
             self.__handle_dynamic_include(state)

@@ -550,8 +550,11 @@ class SpecStateDef(object):
         assert self.__incapsulate_spec_name is not None
         return self.__incapsulate_spec_name
 
-    def include_is_static_only(self):
+    def static_only_include(self):
         return self.__static_only_include
+
+    def dynamic_only_include(self):
+        return self.__dynamic_only_include
 
     def set_incapsulated_spec(self, spec):
         assert self.__incapsulate_spec is None

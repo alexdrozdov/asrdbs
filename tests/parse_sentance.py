@@ -103,6 +103,11 @@ if __name__ == '__main__':
                 ],
             },
             'parser': {
+                'compiler': {
+                    'max-static-include-level': 1,
+                    'force-static-include': False,
+                    'force-dynamic-include': False
+                },
                 'specdefs': ['parser/volume/ru_RU/structure', ],
                 'linkdefs': ['ru_RU/enchanced/linkdefs', ],
                 'selectors': ['parser/volume/ru_RU/selectors', ],
