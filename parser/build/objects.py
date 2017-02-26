@@ -589,6 +589,7 @@ class SpecStateDef(object):
                 (self.__is_local_final, 'local_final'),
                 (self.__closed, 'closed'),
                 (self.__fixed and self.__incapsulate_spec is not None, 'fixed'),
+                (not self.__fixed and self.__incapsulate_spec_name, 'dynamic'),
                 (not self.__add_to_seq, 'hidden'),
             ] if is_true
         ]
@@ -607,6 +608,7 @@ class SpecStateDef(object):
                 }),
                 ('level', self.__level),
                 ('glevel', self.__glevel),
+                ('include', self.__incapsulate_spec_name if not self.__fixed else ""),
             ] if v is not None and (v or isinstance(v, int))
             ]
         )

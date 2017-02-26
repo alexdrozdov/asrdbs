@@ -44,7 +44,7 @@
             "@inherit": ["once"],
             "entries": [
                 {
-                    "@id": "dfdsf",
+                    "@id": "value",
                     "@inherit": ["once"],
                     "@includes": {"name": "symbolic-number", "is_static": true}
                 }

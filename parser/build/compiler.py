@@ -744,7 +744,9 @@ class SpecCompiler(object):
                         unresolved = True
                     if isinstance(subrule,
                                   parser.spare.rules.CombinatorialSelectorRule):
-                        self.__deep_dynamic_rules_resolve(subrule)
+                        self.__deep_dynamic_rules_resolve(
+                            subrule, unresolved_allowed
+                        )
             except ResolveAgain:
                 continue
             break
@@ -798,6 +800,14 @@ class SpecCompiler(object):
                 self.__get_state_stateless_rules(st)
             )
         state.set_stateless_rules([aggregated_rule, ])
+
+    def __set_dynamic_includes_rules(self):
+        for state in self.__states:
+            if state.fixed():
+                continue
+            state.set_stateless_rules(self.__get_stateless_rules_by_spec_name(
+                state.get_include_name()
+            ))
 
     def __get_dynamic_include_rules(self, name, none_on_missing=False):
         if none_on_missing:
@@ -911,6 +921,7 @@ class SpecCompiler(object):
             self.__aggregate_entrance_rules()
             if self.__goal != SpecCompiler.eval_entrance_rules:
                 self.__aggregate_virtual_entries_rules()
+                self.__set_dynamic_includes_rules()
 
     @contextmanager
     def __push_stack(self, name):
