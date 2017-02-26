@@ -201,24 +201,57 @@ class IterableSequenceSpec(parser.spare.rules.SequenceSpec):
         return self.get_hierarchical_iter(base)
 
 
+class CompilerStack(list):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def add_namespace(self, name):
+        self.__namespaces[name] = CompilerStack()
+
+    def get_namespace(self, name):
+        return self.__namespaces[name]
+
+
+class ResolveAgain(Exception):
+    pass
+
+
 class SpecCompiler(object):
-    def __init__(self, owner=None, stack=None, level=0, reliability=1.0):
-        self.__owner = owner
-        self.__stack = stack if stack is not None else []
+
+    compile_all = 1
+    compile_static_include = 2
+    eval_entrance_rules = 3
+
+    def __init__(self, owner=None,
+                 level=0, reliability=1.0,
+                 shared={}):
+        self.__init_from_shared_properties(
+            shared,
+            __owner=owner,
+            __stack=CompilerStack(),
+            __states=[],
+            __name2state={},
+            __containers=[],
+            __anchor_containers=[],
+            __containers_qq=[],
+            __inis=[],
+            __finis=[],
+            __incapsulate_in=[],
+            __rule_bindins={},
+            __local_spec_anchors=[],
+            __local_spec_tags={},
+            __name_remap={},
+            __dynamic_include_rules={}
+        )
         self.__level = level
         self.__reliability = reliability
-        self.__states = []
-        self.__name2state = {}
-        self.__containers = []
-        self.__anchor_containers = []
-        self.__containers_qq = []
-        self.__inis = []
-        self.__finis = []
-        self.__incapsulate_in = []
-        self.__rule_bindins = {}
-        self.__local_spec_anchors = []
-        self.__local_spec_tags = {}
-        self.__name_remap = {}
+
+    def __init_from_shared_properties(self, shared, **kwargs):
+        for k, v in kwargs.items():
+            if k in shared:
+                v = shared[k]
+            k = '_{0}{1}'.format(self.__class__.__name__, k)
+            setattr(self, k, v)
 
     def __create_parent_path(self, st):
         parent = self.__spec.get_parent(st)
@@ -397,26 +430,21 @@ class SpecCompiler(object):
         in_spec_name = state.get_include_name()
         in_spec = self.__owner.get_spec(in_spec_name)
         compiler = SpecCompiler(
-            owner=self.__owner,
-            stack=self.__stack,
             level=state.get_glevel() + 1,
-            reliability=state.get_reliability()
+            reliability=state.get_reliability(),
+            shared={
+                '__owner': self.__owner,
+                '__stack': self.__stack
+            }
         )
         compiled_in_spec = compiler.compile(
             in_spec,
-            parent_spec_name=str(state.get_name())
+            parent_spec_name=str(state.get_name()),
+            goal=SpecCompiler.compile_static_include
         )
         state.set_incapsulated_spec(compiled_in_spec)
 
     def __handle_dynamic_include(self, state):
-        in_spec_name = state.get_include_name()
-        in_spec = self.__owner.get_spec(in_spec_name)
-        compiler = SpecCompiler(owner=self.__owner)
-        compiled = compiler.compile(in_spec, no_recursive_dynamic_includes=True)
-
-        rules = compiled.get_entrance_rules()
-        state.set_stateless_rules(rules)
-
         state.set_dynamic()
 
     def __handle_include_state(self, state):
@@ -645,12 +673,96 @@ class SpecCompiler(object):
             if state not in tagged_states:
                 state.force_tag(None)
 
+    def __get_stateless_rules_by_spec_name(self, name):
+        existing_matcher = self.__owner.get_matcher(name, none_on_missing=True)
+        if existing_matcher is not None:
+            return existing_matcher.get_compiled_spec().get_entrance_rules()
+
+        local_rules = self.__get_dynamic_include_rules(
+            name, none_on_missing=True)
+        if local_rules is not None:
+            return local_rules
+
+        return None
+
+    def __get_state_stateless_rules(self, state):
+        if state.fixed():
+            return state.get_stateless_rules()
+
+        in_spec_name = state.get_include_name()
+        rules_by_name = self.__get_stateless_rules_by_spec_name(in_spec_name)
+        if rules_by_name is not None:
+            return rules_by_name
+
+        # current state is somehow dynamically included. Its default rules
+        # would be resolved in calling subroutine
+        if in_spec_name == self.__spec_name:
+            return []
+
+        return [parser.spare.rules.UnresolvedDynamicInclude(in_spec_name), ]
+
+    def __deep_dynamic_rules_resolve(self, rule, unresolved_allowed):
+        assert isinstance(rule, parser.spare.rules.CombinatorialSelectorRule)
+        unresolved = False
+        while True:
+            try:
+                for subrule in rule:
+                    if isinstance(subrule,
+                                  parser.spare.rules.UnresolvedDynamicInclude):
+                        unresolved_name = subrule.get_spec_name()
+                        if unresolved_name == self.__spec_name:
+                            rule.remove(subrule)
+                            raise ResolveAgain()
+
+                        resolved = self.__get_stateless_rules_by_spec_name(
+                            unresolved_name
+                        )
+                        if resolved is not None:
+                            resolved = parser.spare.rules.RuleAnd(resolved)
+                            rule.replace(rule, resolved)
+                            raise ResolveAgain()
+                        unresolved = True
+                    if isinstance(subrule,
+                                  parser.spare.rules.CombinatorialSelectorRule):
+                        self.__deep_dynamic_rules_resolve(subrule)
+            except ResolveAgain:
+                continue
+            break
+        if unresolved and not unresolved_allowed:
+            raise RuntimeError('Unresolved rules present')
+        return rule, not unresolved
+
     def __aggregate_entrance_rules(self):
         ini = self.__states[0]
 
         aggregated_rule = parser.spare.rules.RuleOr()
-        for st in ini.get_accessable(virtual=True, follow_virtual=False):
-            aggregated_rule += parser.spare.rules.RuleAnd(st.get_stateless_rules())
+
+        has_dynamic_includes = False
+        for st in ini.get_accessable(virtual=False, follow_virtual=True):
+            if not st.fixed():
+                has_dynamic_includes = True
+            rules = self.__get_state_stateless_rules(st)
+            if not rules:
+                continue
+            aggregated_rule += parser.spare.rules.RuleAnd(rules)
+
+        # Some internal rules can be unresolved yet (UnresolvedDynamicInclude)
+        # Recursively lookup in aggregated rule and try to resolve such entries
+        # If this compiler was called for rule resolution, some rules can stay
+        # unresolved. For primary compiler all rules must occure resolved
+        unresolved_allowed = self.__goal == SpecCompiler.eval_entrance_rules
+
+        all_resolved = True
+        if has_dynamic_includes:
+            aggregated_rule, all_resolved = self.__deep_dynamic_rules_resolve(
+                aggregated_rule,
+                unresolved_allowed
+            )
+
+        if all_resolved:
+            self.__store_dynamic_include_rules(self.__spec_name,
+                                               [aggregated_rule, ])
+
         ini.set_stateless_rules([aggregated_rule, ])
 
     def __aggregate_virtual_entries_rules(self):
@@ -662,11 +774,61 @@ class SpecCompiler(object):
     def __aggregate_virtual_entry_rules(self, state):
         aggregated_rule = parser.spare.rules.RuleOr()
         for st in state.get_accessable(virtual=False, follow_virtual=True):
-            aggregated_rule += parser.spare.rules.RuleAnd(st.get_stateless_rules())
+            aggregated_rule += parser.spare.rules.RuleAnd(
+                self.__get_state_stateless_rules(st)
+            )
         state.set_stateless_rules([aggregated_rule, ])
 
-    def register_rule_binding(self, rule, binding):
-        return
+    def __get_dynamic_include_rules(self, name, none_on_missing=False):
+        if none_on_missing:
+            return self.__dynamic_include_rules.get(name, None)
+        return self.__dynamic_include_rules[name]
+
+    def __store_dynamic_include_rules(self, name, rules):
+        self.__dynamic_include_rules[name] = rules
+
+    def __partial_compile_spec(self, name):
+        spec = self.__owner.get_spec(name)
+        compiler = SpecCompiler(
+            shared={
+                '__owner': self.__owner,
+                '__dynamic_include_rules': self.__dynamic_include_rules
+            }
+        )
+        compiled = compiler.compile(
+            spec,
+            goal=SpecCompiler.eval_entrance_rules
+        )
+
+        return compiled
+
+    def __evalute_dynamic_includes_rules(self):
+        for state in self.__states:
+            if not state.has_include():
+                continue
+            if state.fixed():
+                continue
+
+            in_spec_name = state.get_include_name()
+
+            if self.__spec_name == in_spec_name:
+                continue
+
+            if self.__owner.get_matcher(
+                    in_spec_name, none_on_missing=True) is not None:
+                continue
+
+            if self.__get_dynamic_include_rules(
+                    in_spec_name, none_on_missing=True) is not None:
+                continue
+
+            compiled = self.__partial_compile_spec(in_spec_name)
+            # We can store it localy only. Spec is compiled staticaly, it can
+            # miss some rules, stored in this compiler
+            self.__store_dynamic_include_rules(
+                in_spec_name,
+                compiled.get_entrance_rules()
+            )
 
     def binding_needs_resolve(self, binding):
         assert isinstance(binding, RtMatchString)
@@ -701,7 +863,8 @@ class SpecCompiler(object):
         print(binding)
         raise RuntimeError('state name matching not implemented')
 
-    def __setup_compile_environment(self, spec, parent_spec_name):
+    def __setup_compile_environment(self, spec, parent_spec_name, goal):
+        self.__goal = SpecCompiler.compile_all if goal is None else goal
         self.__parent_spec_name = parent_spec_name
         self.__spec_name = spec.get_name()
         self.__spec = IterableSequenceSpec(spec)
@@ -721,8 +884,13 @@ class SpecCompiler(object):
         self.__create_state_rules()
         self.__review_anchors()
         self.__review_tags()
-        self.__aggregate_virtual_entries_rules()
-        self.__aggregate_entrance_rules()
+        if self.__goal != SpecCompiler.compile_static_include:
+            # all of this will be done by primary compiler after properly
+            # including this spec
+            self.__evalute_dynamic_includes_rules()
+            self.__aggregate_entrance_rules()
+            if self.__goal != SpecCompiler.eval_entrance_rules:
+                self.__aggregate_virtual_entries_rules()
 
     @contextmanager
     def __push_stack(self, name):
@@ -731,14 +899,14 @@ class SpecCompiler(object):
         yield
         self.__stack.pop()
 
-    def compile(self, spec, parent_spec_name=''):
-        self.__setup_compile_environment(spec, parent_spec_name)
+    def compile(self, spec, parent_spec_name='', goal=None):
+        self.__setup_compile_environment(spec, parent_spec_name, goal)
 
         with self.__push_stack(self.__spec_name):
             self.__run_compile_stages()
 
         cs = CompiledSpec(
-            spec,
+            self.__spec,
             self.__spec_name,
             self.__states,
             self.__inis,

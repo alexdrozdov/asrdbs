@@ -80,7 +80,9 @@ class Loader(object):
     def get_spec(self, base_spec_name):
         return self.__spec_by_name[base_spec_name].base_spec_class
 
-    def get_matcher(self, name):
+    def get_matcher(self, name, none_on_missing=False):
+        if none_on_missing:
+            return self.__matcher_by_name.get(name)
         return self.__matcher_by_name[name]
 
     def get_primary(self):

@@ -589,6 +589,10 @@ class CompiledSpec(object):
     def get_validate(self):
         return self.__validator
 
+    def get_entrance_rules(self):
+        ini = self.get_inis()[0]
+        return ini.get_stateless_rules()
+
     def format(self, fmt):
         if fmt != 'dict':
             raise RuntimeError('Unsupported format {0}'.format(fmt))

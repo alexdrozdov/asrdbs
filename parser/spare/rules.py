@@ -335,6 +335,9 @@ class CombinatorialSelectorRule(SelectorStaticRule):
     def subrules(self):
         return self.__rules
 
+    def replace(self, rule, new_rule):
+        self.__rules[self.__rules.index(rule)] = new_rule
+
     def format(self, fmt):
         if fmt == 'dict':
             return self.__format_dict()
@@ -362,6 +365,9 @@ class CombinatorialSelectorRule(SelectorStaticRule):
     def __iadd__(self, other):
         self.__rules.append(other)
         return self
+
+    def __iter__(self):
+        return iter(self.subrules())
 
 
 class RuleNot(CombinatorialSelectorRule):
