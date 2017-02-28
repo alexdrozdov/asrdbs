@@ -8,4 +8,5 @@ def includes(body, *args, **kwargs):
     body['include'] = {
         "spec": incl_info['name'],
         "static-only": incl_info.get('is_static', False),
+        "dynamic-only": incl_info.get('is_dynamic', False),
     }

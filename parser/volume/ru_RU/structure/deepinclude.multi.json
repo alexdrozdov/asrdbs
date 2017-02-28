@@ -1,0 +1,23 @@
+{
+    "name": "deepinclude",
+    "entries": [
+        {
+            "@id": "deep",
+            "@inherit": ["once-or-none"],
+            "@includes": {"name": "deepinclude", "is_dynamic": true}
+        },
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+
+            "@id": "two",
+            "@inherit": ["once", "numeral"],
+            "@word-forms": ["два"]
+        }
+    ]
+}
+
+

@@ -292,6 +292,21 @@ class RtMatchSequence(object):
             again.extend(r.again)
         return new_sq
 
+    def __find_transitions(self, head, forms):
+        trs = head.find_transitions(forms)
+        for form, t in trs:
+            to = t.get_to()
+            # if not to.fixed() and self.__dynamic_ctx_overflow(to.get_include_name()):
+            #     print("blocked dynamic include for at {0} {1}".format(
+            #         id(self),
+            #         form.format('dict')
+            #     ))
+
+            if to.fixed():
+                yield (form, t)
+            elif not self.__dynamic_ctx_overflow(to.get_include_name()):
+                yield (form, t)
+
     def __handle_forms(self, forms):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
@@ -310,11 +325,11 @@ class RtMatchSequence(object):
             again=[]
         )
 
-        trs = head.find_transitions(forms)
+        trs = list(self.__find_transitions(head, forms))
         if not trs:
             return hres
 
-        trs_sqs = [self, ] + list(map(lambda x: RtMatchSequence(self), trs[0:-1]))
+        trs_sqs = [self, ] + [RtMatchSequence(self) for t in trs[0:-1]]
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
             for r in res:
@@ -427,9 +442,6 @@ class RtMatchSequence(object):
             return [ns(sq=self, valid=True, fini=False, again=False), ]
 
         to = trs.get_to()
-
-        if self.__dynamic_ctx_overflow(to.get_include_name()):
-            return [ns(sq=self, valid=False, fini=False, again=False), ]
 
         self.__stack.handle_trs(trs)
 
@@ -680,7 +692,6 @@ class SpecMatcher(object):
         if ctx.get_sequences():
             next_sequences = []
             for sq in ctx.get_sequences():
-                # print "handling", sq
                 for res in sq.handle_forms(forms):
                     self.__handle_forms_result(ctx, res, next_sequences)
             ctx.set_sequences(next_sequences)
@@ -728,18 +739,13 @@ class Matcher(object):
         )
 
     def __create_initial_ctxs(self, ctx):
-        ctx.ctxs = list(map(
-            lambda m: (
-                m,
-                parser.engine.rt.MatcherContext(
-                    ctx,
-                    '__root',
-                    sequence_matched_fcn=lambda sq_ctx_sq:
-                        ctx.matched_sqs.add(sq_ctx_sq[1]),
-                )
-            ),
-            self.__compiled.get_primary()
-        ))
+        ctx.ctxs = [
+            (m, parser.engine.rt.MatcherContext(
+                ctx,
+                m.get_name(),
+                sequence_matched_fcn=lambda sq_ctx_sq:
+                ctx.matched_sqs.add(sq_ctx_sq[1]),
+            )) for m in self.__compiled.get_primary()]
 
     def __create_ctx(self):
         return ns(
