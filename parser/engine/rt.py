@@ -64,9 +64,10 @@ class MatcherContext(object):
         ('ctx_complete_fcn', 'ctx_complete_fcn', lambda x: None),
     ]
 
-    def __init__(self, owner, spec_name, **kwargs):
+    def __init__(self, owner, spec_name, offset=0, **kwargs):
         self.owner = owner
         self.spec_name = spec_name
+        self.__offset = offset
         self.__create_fcns(kwargs)
         self.sequences = []
         self.ctxs = []
@@ -105,17 +106,17 @@ class MatcherContext(object):
         self.__new_ctxs = []
 
     def create_ctx(self, spec_name, **kwargs):
-        # if not isinstance(self.owner, ns):
-        #     print list(self.__get_callstack())
         matcher = self.owner.find_matcher(spec_name)
         mc = MatcherContext(self, spec_name, **kwargs)
         self.ctxs.append((matcher, mc))
         self.__new_ctxs.append((matcher, mc))
 
-    def called_more_than(self, ctx_name, max_count):
+    def called_more_than(self, ctx_name, max_count, offset=0):
         cnt = 0
-        for name in self.__get_callstack():
-            if ctx_name != name:
+        for se in self.__get_callstack():
+            if se.offset < offset:
+                return False
+            if ctx_name != se.name:
                 continue
             cnt += 1
             if cnt > max_count:
@@ -125,7 +126,10 @@ class MatcherContext(object):
     def __get_callstack(self):
         o = self.owner
         while not isinstance(o, ns):
-            yield o.get_name()
+            yield ns(
+                name=o.get_name(),
+                offset=o.get_offset()
+            )
             o = o.owner
 
     def find_matcher(self, name):
@@ -157,6 +161,9 @@ class MatcherContext(object):
 
     def get_name(self):
         return self.spec_name
+
+    def get_offset(self):
+        return self.__offset
 
 
 class RtMatchSequence(object):
@@ -296,15 +303,12 @@ class RtMatchSequence(object):
         trs = head.find_transitions(forms)
         for form, t in trs:
             to = t.get_to()
-            # if not to.fixed() and self.__dynamic_ctx_overflow(to.get_include_name()):
-            #     print("blocked dynamic include for at {0} {1}".format(
-            #         id(self),
-            #         form.format('dict')
-            #     ))
-
             if to.fixed():
                 yield (form, t)
-            elif not self.__dynamic_ctx_overflow(to.get_include_name()):
+            elif not self.__dynamic_ctx_overflow(
+                to.get_include_name(),
+                offset=form.get_position(),
+            ):
                 yield (form, t)
 
     def __handle_forms(self, forms):
@@ -458,6 +462,7 @@ class RtMatchSequence(object):
         self.__append_entries(rte)
         self.__ctx.create_ctx(
             to.get_include_name(),
+            offset=form.get_position(),
             ctx_create_fcn=lambda sub_ctx2: self.__subctx_create(sub_ctx2[0], rte),
             sequence_res_fcn=lambda sub_ctx_res: self.__submatcher_res(sub_ctx_res[0], rte, sub_ctx_res[1]),
             sequence_forked_fcn=lambda sub_ctx_sq_new_sq: self.__submatcher_forked(sub_ctx_sq_new_sq[0], sub_ctx_sq_new_sq[1], sub_ctx_sq_new_sq[2], rte),
@@ -465,8 +470,8 @@ class RtMatchSequence(object):
         )
         return [ns(sq=self, valid=True, fini=False, again=False), ]
 
-    def __dynamic_ctx_overflow(self, next_ctx_name):
-        return self.__ctx.called_more_than(next_ctx_name, 0)
+    def __dynamic_ctx_overflow(self, next_ctx_name, offset=0):
+        return self.__ctx.called_more_than(next_ctx_name, 0, offset=offset)
 
     def __subctx_create(self, sub_ctx, rte):
         # print '__submatcher_create', sub_ctx, rte

@@ -21,3 +21,26 @@
 }
 
 
+{
+    "name": "deepinclude2",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "deep",
+            "@inherit": ["once-or-none"],
+            "@includes": {"name": "deepinclude2", "is_dynamic": true}
+        },
+        {
+
+            "@id": "two",
+            "@inherit": ["any", "numeral"],
+            "@word-forms": ["два"]
+        }
+    ]
+}
+
+
