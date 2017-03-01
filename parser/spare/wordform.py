@@ -26,7 +26,7 @@ class Restricted(str):
         return "-restricted"
 
 
-class Missing(object):
+class Missing(str):
     def __cmp__(self, other):
         return 0 if isinstance(other, Missing) else 1
 

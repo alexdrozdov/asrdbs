@@ -114,7 +114,8 @@ class TrsDef(object):
 class SpecStateDef(object):
 
     static_rules = ['pos_type', 'case', 'selector']
-    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links', 'refers-to', 'dependency-of', 'action', 'closed-with']
+    dynamic_rules = ['same-as', 'position', 'master-slave', 'unwanted-links',
+                     'refers-to', 'dependency-of', 'action', 'closed-with']
     all_rules = static_rules + dynamic_rules
 
     def __init__(self, compiler, name, spec_dict, parent=None):
@@ -421,7 +422,6 @@ class SpecStateDef(object):
                 rule_def = self.__spec_dict[r]
                 if isinstance(rule_def, list):
                     for rd in rule_def:
-                        # print(rd, self.__name)
                         if rd.created():
                             continue
                         target_list.extend(rd.create(compiler, self))

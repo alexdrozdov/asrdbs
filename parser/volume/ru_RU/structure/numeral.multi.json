@@ -40,15 +40,9 @@
     "@inherit": ["once-or-none"],
     "entries": [
         {
-            "@id": "number",
+            "@id": "value",
             "@inherit": ["once"],
-            "entries": [
-                {
-                    "@id": "value",
-                    "@inherit": ["once"],
-                    "@includes": {"name": "symbolic-number", "is_static": true}
-                }
-            ],
+            "@includes": {"name": "symbolic-number", "is_static": true},
             "@dependency-of": ["#numeric-samecase", "$PARENT::unit"]
         },
         {

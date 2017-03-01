@@ -349,9 +349,7 @@ class SpecCompiler(object):
         if '$PARENT' in name:
             assert name.find('$PARENT') == 0, '$PARENT must be first'
             parent_path = self.__create_parent_path(ref_state)
-#             original_name = name
             name = name.replace('$PARENT', parent_path)
-#            print(ref_state, original_name, ' -> ', name)
         elif '$SPEC' in name:
             assert name.find('$SPEC') == 0, '$SPEC must be first'
             spec_path = self.__create_spec_path()
@@ -650,7 +648,10 @@ class SpecCompiler(object):
             for in_spec_anchor in in_spec.get_local_spec_anchors():
                 assert in_spec_anchor is not None
                 rules_to_incapsulate = state.get_rules_list()
-                in_spec_anchor.extend_rules(rules_to_incapsulate, state.get_glevel())
+                in_spec_anchor.extend_rules(
+                    rules_to_incapsulate,
+                    state.get_glevel(),
+                    original_state=state)
 
     def __incapsulate_states(self):
         for state in self.__incapsulate_in:
