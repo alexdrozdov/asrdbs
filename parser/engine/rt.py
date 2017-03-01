@@ -54,6 +54,10 @@ class RtStackCounter(object):
 
 
 class MatcherContext(object):
+
+    max_sparse_count = 1
+    max_sequential_count = 0
+
     fcns_map = [
         ('ctx_create_fcn', 'ctx_create_fcn', lambda x: None),
         ('sequence_forked_fcn', 'sequence_forked_fcn', lambda x: None),
@@ -111,16 +115,23 @@ class MatcherContext(object):
         self.ctxs.append((matcher, mc))
         self.__new_ctxs.append((matcher, mc))
 
-    def called_more_than(self, ctx_name, max_count, offset=0):
-        cnt = 0
+    def recursed_at_offset(self, ctx_name, offset):
+        sparse_calls = 0
+        sequential_calls = 0
         for se in self.__get_callstack():
             if se.offset < offset:
                 return False
-            if ctx_name != se.name:
+            if ctx_name == se.name:
+                sparse_calls += 1
+                sequential_calls += 1
+                if sparse_calls > MatcherContext.max_sparse_count:
+                    return True
+                if sequential_calls > MatcherContext.max_sequential_count:
+                    return True
                 continue
-            cnt += 1
-            if cnt > max_count:
-                return True
+
+            sequential_calls = 0
+
         return False
 
     def __get_callstack(self):
@@ -470,8 +481,8 @@ class RtMatchSequence(object):
         )
         return [ns(sq=self, valid=True, fini=False, again=False), ]
 
-    def __dynamic_ctx_overflow(self, next_ctx_name, offset=0):
-        return self.__ctx.called_more_than(next_ctx_name, 0, offset=offset)
+    def __dynamic_ctx_overflow(self, next_ctx_name, offset):
+        return self.__ctx.recursed_at_offset(next_ctx_name, offset)
 
     def __subctx_create(self, sub_ctx, rte):
         # print '__submatcher_create', sub_ctx, rte

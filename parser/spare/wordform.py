@@ -12,7 +12,7 @@ from argparse import Namespace as ns
 from common.singleton import singleton
 
 
-class Restricted(object):
+class Restricted(str):
     def __cmp__(self, other):
         return 0 if isinstance(other, Restricted) else 1
 
