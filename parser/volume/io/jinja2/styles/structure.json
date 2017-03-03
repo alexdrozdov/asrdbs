@@ -2,7 +2,7 @@
     "name": "structure",
     "style": {
         "name": {"bg-color": "mediumseagreen"},
-        "tag": {"bg-color": "khaki"},
+        "tags": {"bg-color": "khaki"},
         "attributes": {"bg-color": "lavender"},
         "rules": {"bg-color": "peachpuff"},
         "anchor": {"bg-color": "dodgerblue"},

@@ -1,0 +1,52 @@
+{
+    "name": "multiref",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"],
+            "@tag": ["tag-one", "other-tag-one"],
+            "@dependency-of": {
+                "master": "$TAG(tag-five)", "selector": "#void"
+            }
+        },
+        {
+            "@id": "two",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["два"],
+            "@dependency-of": "#void",
+            "@tag": ["tag-two", "other-tag-two"]
+        },
+        {
+
+            "@id": "three",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["три"],
+            "@dependency-of": [
+                "#void",
+                {"master": "$PARENT::two", "selector": "#void"}
+            ]
+        },
+        {
+            "@id": "four",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["четыре"],
+            "@dependency-of": {
+                "master": "$TAG(tag-one)", "selector": "#void"
+            },
+            "@tag": "tag-four"
+        },
+        {
+            "@id": "five",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["пять"],
+            "@dependency-of": [
+                {"master": "$TAG(other-tag-two)", "selector": "#void"},
+                "#void",
+                {"master": "$TAG(tag-four)", "selector": "#void"}
+            ],
+            "@tag": "tag-five"
+        }
+    ]
+}
+

@@ -415,15 +415,17 @@ class SpecCompiler(object):
         if state.is_container() or state.is_uniq_container():
             return
 
-        tag_name = state.get_tag()
+        tags = state.get_tags()
         if state.includes_spec():
             in_spec = state.get_included()
             in_spec_anchors = in_spec.get_local_spec_anchors()
             if in_spec_anchors:
-                self.__get_tag_entries_list(tag_name).extend(in_spec_anchors)
+                for tag in tags:
+                    self.__get_tag_entries_list(tag).extend(in_spec_anchors)
             return
 
-        self.__get_tag_entries_list(tag_name).append(state)
+        for tag in tags:
+            self.__get_tag_entries_list(tag).append(state)
 
     def __handle_static_include(self, state):
         in_spec_name = state.get_include_name()
@@ -482,7 +484,7 @@ class SpecCompiler(object):
             if parent_state.is_anchor():
                 state.force_anchor()
             if parent_state.is_tagged():
-                state.force_tag(parent_state.get_tag())
+                state.append_tags(parent_state.get_tags())
             state.inherit_reliability(parent_state.get_reliability())
             self.__add_name_remap(parent_state_name, state_name)
         else:
@@ -690,9 +692,10 @@ class SpecCompiler(object):
         for state in self.__states:
             if not state.is_tagged():
                 continue
-            tagged_states = self.__get_tag_entries_list(state.get_tag())
-            if state not in tagged_states:
-                state.force_tag(None)
+            for tag in list(state.get_tags()):
+                tagged_states = self.__get_tag_entries_list(tag)
+                if state not in tagged_states:
+                    state.del_tag(tag)
 
     def __get_stateless_rules_by_spec_name(self, name):
         existing_matcher = self.__owner.get_matcher(name, none_on_missing=True)

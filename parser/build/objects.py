@@ -153,7 +153,7 @@ class SpecStateDef(object):
         self.__transitions_merged = False
 
         self.__fixed = True
-        self.__tag = None
+        self.__tags = None
 
     def __init_from_spec_dict(self):
         self.__is_container = self.__if_exists("entries")
@@ -210,7 +210,7 @@ class SpecStateDef(object):
             if a[1] in [
                 parser.lang.base.rules.defs.AnchorSpecs.local_spec_tag
             ]:
-                self.__tag = a[2]
+                self.append_tags([a[2], ])
 
     def __from_spec_dict(self, path, default, strict=False):
         sd = self.__spec_dict
@@ -277,13 +277,13 @@ class SpecStateDef(object):
         return self.__is_virtual
 
     def is_tagged(self):
-        return self.__tag is not None
+        return self.__tags is not None
 
     def is_closed(self):
         return self.__closed
 
-    def get_tag(self):
-        return self.__tag
+    def get_tags(self):
+        return self.__tags
 
     def fixed(self):
         return self.__fixed
@@ -291,8 +291,15 @@ class SpecStateDef(object):
     def force_anchor(self, is_anchor=True):
         self.__is_local_anchor = is_anchor
 
-    def force_tag(self, tag_name):
-        self.__tag = tag_name
+    def append_tags(self, tags):
+        if self.__tags is None:
+            self.__tags = []
+        self.__tags = list(set(self.__tags) | set(tags))
+
+    def del_tag(self, tag):
+        self.__tags.remove(tag)
+        if not self.__tags:
+            self.__tags = None
 
     def can_merge(self, other):
         return bool(self.__merges_with & other.__merges_with)
@@ -597,7 +604,7 @@ class SpecStateDef(object):
             [(k, v) for k, v in [
                 ('name', str(self.__name)),
                 ('uuid', self.__uid),
-                ('tag', str(self.__tag) if self.__tag is not None else None),
+                ('tags', str(self.__tags) if self.__tags is not None else None),
                 ('attributes', attributes),
                 ('merges-with', list(self.__merges_with)),
                 ('rules', {
