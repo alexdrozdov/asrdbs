@@ -1,14 +1,12 @@
 import copy
 import parser.spare
-from parser.lang.base.rules.defs import PosSpecs, RepeatableSpecs, AnchorSpecs, LinkSpecs, CaseSpecs
+from parser.lang.base.rules.defs import PosSpecs, RepeatableSpecs, AnchorSpecs, CaseSpecs
 
 
 @parser.spare.at(name='inherit', namespace='specs')
 class TemplateInherit(object):
     def __call__(self, body, *args, **kwargs):
-        inh_list = body.pop('@inherit')
-        if not isinstance(inh_list, list):
-            inh_list = [inh_list, ]
+        inh_list = body.popaslist('@inherit')
         rerun_required = False
         for base in inh_list:
             bb = self.__get_base(base)
@@ -18,45 +16,34 @@ class TemplateInherit(object):
             parser.spare.again()
 
     def __extend_attr(self, body, attr, val):
-        if not isinstance(val, list):
-            body[attr] = val
-            return attr.startswith('@')
-
-        if attr in body:
-            v = body[attr]
-            if not isinstance(v, list):
-                v = [v, ]
-        else:
-            v = []
-        v.extend(val)
-        body[attr] = v
+        body.setkey(attr, val)
         return attr.startswith('@')
 
     def __get_base(self, base):
         bases = {
             'basic-adj': {
-                "pos_type": [PosSpecs().IsAdjective(), ]
+                "pos_type": PosSpecs().IsAdjective()
             },
             'basic-adv': {
-                "pos_type": [PosSpecs().IsAdverb(), ]
+                "pos_type": PosSpecs().IsAdverb()
             },
             'basic-noun': {
-                "pos_type": [PosSpecs().IsNoun(), ]
+                "pos_type": PosSpecs().IsNoun()
             },
             'preposition': {
-                "pos_type": [PosSpecs().IsPreposition(), ]
+                "pos_type": PosSpecs().IsPreposition()
             },
             'union': {
-                "pos_type": [PosSpecs().IsUnion(), ]
+                "pos_type": PosSpecs().IsUnion()
             },
             'pronoun': {
-                "pos_type": [PosSpecs().IsPronoun(), ]
+                "pos_type": PosSpecs().IsPronoun()
             },
             'numeral': {
-                "pos_type": [PosSpecs().IsNumeral(), ]
+                "pos_type": PosSpecs().IsNumeral()
             },
             'comma': {
-                "pos_type": [PosSpecs().IsComma(), ]
+                "pos_type": PosSpecs().IsComma()
             },
             'once': {
                 "repeatable": RepeatableSpecs().Once(),
@@ -73,17 +60,14 @@ class TemplateInherit(object):
             'anchor': {
                 "anchor": AnchorSpecs().LocalSpecAnchor(),
             },
-            'dependency': {
-                "master-slave": [LinkSpecs().IsSlave("$LOCAL_SPEC_ANCHOR"), ]
-            },
             '#object': {
                 "@selector": "#object",
             },
             'genitive': {
-                "case": [CaseSpecs().IsCase(["genitive", ]), ],
+                "case": CaseSpecs().IsCase(["genitive", ]),
             },
             'nominative': {
-                "case": [CaseSpecs().IsCase(["nominative", ]), ],
+                "case": CaseSpecs().IsCase(["nominative", ]),
             },
             'soft-neg': {
                 "@neg": {"strict": False},

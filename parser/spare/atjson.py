@@ -10,6 +10,68 @@ def again():
     raise ErrorRerun()
 
 
+class DictWrap(object):
+
+    expected_key_fmt = {
+        'anchor': list,
+        'case': list,
+        'dependency-of': list,
+        '@dependency-of': list,
+        'neg': object,
+        '@neg': object,
+        'pos_type': list,
+        'repeatable': object,
+        'refers-to': list,
+        'selector': list,
+        '@selector': list,
+    }
+
+    def __init__(self, d):
+        self.__d = d
+
+    def setkey(self, k, val):
+        expected_fmt = DictWrap.expected_key_fmt.get(k)
+        if expected_fmt is None:
+            raise ValueError('Unknown setkey fmt {0}'.format(k))
+
+        if isinstance(val, list) and expected_fmt != list:
+            raise ValueError('Setkey fmt {0} expects non-list value'.format(k))
+
+        if expected_fmt == list:
+            if not isinstance(val, list):
+                val = [val, ]
+
+            if k in self.__d:
+                v = self.__d[k]
+                if not isinstance(v, list):
+                    v = [v, ]
+            else:
+                v = []
+
+            v.extend(val)
+            self.__d[k] = v
+        else:
+            self.__d[k] = val
+
+    def popaslist(self, k):
+        v = self.__d.pop(k)
+        if isinstance(v, list):
+            return v
+        return [v, ]
+
+    def __getattr__(self, name):
+        return self.__d.__getattribute__(name)
+
+    def __getitem__(self, k):
+        return self.__d[k]
+
+    def __setitem__(self, k, v):
+        self.__d[k] = v
+
+    def __contains__(self, k):
+        return k in self.__d
+
+
 class AtJson(object):
     def __init__(self, namespace):
         self.__namespace = namespace
@@ -34,7 +96,7 @@ class AtJson(object):
     def __handle_tmpl(self, d, k, scope):
         k = k.replace('@', '')
         tmpl = parser.spare.index.get(k, namespace=self.__namespace)
-        tmpl(d, scope=scope)
+        tmpl(DictWrap(d), scope=scope)
 
     def __handle_val_tmpl(self, v):
         return v

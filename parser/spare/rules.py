@@ -447,7 +447,9 @@ class RtMatchString(object):
     def __init__(self, string, max_level=None):
         assert isinstance(string, str) or \
             isinstance(string, str) or \
-            isinstance(string, RtMatchString)
+            isinstance(string, RtMatchString), \
+            'Unsupported RtMatchstring type {0} ({1})'.format(
+                type(string), string)
 
         if isinstance(string, RtMatchString):
             self.__init_from_rtmatchstring(string, max_level)

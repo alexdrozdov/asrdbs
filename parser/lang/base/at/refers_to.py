@@ -5,10 +5,9 @@ from parser.lang.base.rules.defs import RefersToSpecs
 @parser.spare.at(name='refers-to', namespace='specs')
 @parser.spare.constructable
 def refers_to(body, *args, **kwargs):
-    refto_info = body.pop('@refers-to')
-    master = refto_info.get('master', None)
-    selectors = refto_info.get('selectors', None)
-    if master is None:
-        master = "$LOCAL_SPEC_ANCHOR"
-    body['refers-to'] = [
-        RefersToSpecs().AttachTo(master, selectors=selectors), ]
+    for refto_info in body.popaslist('@refers-to'):
+        master = refto_info.get('master', "$LOCAL_SPEC_ANCHOR")
+        selectors = refto_info.get('selectors')
+        body.setkey(
+            'refers-to',
+            RefersToSpecs().AttachTo(master, selectors=selectors))

@@ -43,7 +43,10 @@
             "@id": "value",
             "@inherit": ["once"],
             "@includes": {"name": "symbolic-number", "is_static": true},
-            "@dependency-of": ["#numeric-samecase", "$PARENT::unit"]
+            "@dependency-of": {
+                "selector": "#numeric-samecase",
+                "master": "$PARENT::unit"
+            }
         },
         {
             "@id": "unit",
