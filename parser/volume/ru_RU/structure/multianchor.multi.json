@@ -1,0 +1,30 @@
+{
+    "name": "multianchor",
+    "entries": [
+        {
+            "@id": "one-upper",
+            "@inherit": ["once-or-more"],
+            "entries": [
+                {
+                    "@id": "one",
+                    "@tag": "tag-one",
+                    "@inherit": ["once-or-more", "numeral", "nominative", "anchor"],
+                    "@word-forms": ["один"]
+                }
+            ]
+        },
+        {
+            "@id": "two",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["два"],
+            "@dependency-of": "#void"
+        },
+        {
+            "@id": "three",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["три"],
+            "@dependency-of": {"master": "$TAG(tag-one)", "selector": "#void"}
+        }
+    ]
+}
+

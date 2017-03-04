@@ -54,6 +54,9 @@ class TemplateInherit(object):
             'once-or-none': {
                 "repeatable": RepeatableSpecs().LessOrEqualThan(1),
             },
+            'once-or-more': {
+                "repeatable": RepeatableSpecs().EqualOrMoreThan(1),
+            },
             'never': {
                 "repeatable": RepeatableSpecs().Never(),
             },

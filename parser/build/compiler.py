@@ -89,7 +89,8 @@ class IterableSequenceSpec(parser.spare.rules.SequenceSpec):
         return entry
 
     def __unroll_entry(self, entry):
-        if "repeatable" not in entry or not isinstance(entry["repeatable"], tuple):
+        if "repeatable" not in entry or \
+                not isinstance(entry["repeatable"], tuple):
             return [copy.deepcopy(entry), ]
 
         min_count = entry["repeatable"][0]
@@ -99,26 +100,39 @@ class IterableSequenceSpec(parser.spare.rules.SequenceSpec):
             return []
 
         res = []
-        if (min_count == max_count and min_count == 1) or (min_count == 0 and max_count == 1):
+        if (min_count == max_count and min_count == 1) or \
+                (min_count == 0 and max_count == 1):
             set_order = False
         else:
             set_order = True
-        i = 0
+
         if min_count == max_count:
             for i in range(min_count):
-                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=True, set_order=set_order))
+                res.append(
+                    self.__create_entry_copy(
+                        entry, i,
+                        repeatable=False, required=True, set_order=set_order))
             return res
 
         if min_count:
             for i in range(min_count):
-                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=True, set_order=set_order))
+                res.append(
+                    self.__create_entry_copy(
+                        entry, i,
+                        repeatable=False, required=True, set_order=set_order))
 
         if max_count:
             for i in range(min_count, max_count):
-                res.append(self.__create_entry_copy(entry, i, repeatable=False, required=False, set_order=set_order))
+                res.append(
+                    self.__create_entry_copy(
+                        entry, i,
+                        repeatable=False, required=False, set_order=set_order))
         else:
             order = '{$GLEVEL}'
-            res.append(self.__create_entry_copy(entry, order, repeatable=True, required=False, set_order=set_order))
+            res.append(
+                self.__create_entry_copy(
+                    entry, order,
+                    repeatable=True, required=False, set_order=set_order))
 
         return res
 
@@ -278,10 +292,16 @@ class SpecCompiler(object):
             return len(self.__local_spec_anchors)
         if '$TAG' in name:
             m = re.search('\$TAG\((.+?)\)', name)
-            assert m, 'wrong $TAG placeholder for spec {0}'.format(self.__spec_name)
+            assert m, 'wrong $TAG placeholder for spec {0}'.format(
+                self.__spec_name
+            )
+
             tag = m.group(1)
-            assert tag in self.__local_spec_tags, 'tag {0} not defined for spec {1}'.format(tag, self.__spec_name)
+            assert tag in self.__local_spec_tags, \
+                'tag {0} not defined for spec {1}'.format(tag, self.__spec_name)
+
             return len(self.__local_spec_tags[tag])
+
         return 1
 
     def __resolve_name_level(self, ref_state, name):

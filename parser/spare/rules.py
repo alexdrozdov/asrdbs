@@ -443,6 +443,128 @@ class RuleXor(CombinatorialSelectorRule):
         return RuleXor(rules=self.subrules())
 
 
+class CombinatorialDynamicRule(RtDynamicRule):
+    def __init__(self, rules=None, cdr=None):
+        assert rules is not None or cdr is not None
+
+        if rules is not None:
+            self.__init_from_rules(rules)
+        else:
+            self.__init_from_cdr(cdr)
+
+        self.__cached = {}
+
+    def __init_from_rules(self, rules):
+        optional, persistent = self.__opt_pers_from_rules(rules)
+        super().__init__(optional=optional, persistent=persistent)
+
+        self.__name = rules[0].name()
+        self.__friendly = rules[0].friendly()
+        self.__weight = rules[0].weight()
+
+        self.__subrules = rules
+
+    def __init_from_cdr(self, cdr):
+        super().__init__(
+            optional=cdr.is_optional(),
+            persistent=cdr.is_persistent())
+
+        self.__name = cdr.__name
+        self.__friendly = cdr.__friendly
+        self.__weight = cdr.__weight
+
+        self.__subrules = [r.new_copy() for r in cdr.__subrules]
+
+    def __opt_pers_from_rules(self, rules):
+        optional = False
+        persistent = False
+        for r in rules:
+            if r.is_persistent():
+                persistent = True
+                if optional:
+                    break
+            if r.is_optional():
+                optional = True
+                if persistent:
+                    break
+        return optional, persistent
+
+    def name(self):
+        return self.__name
+
+    def friendly(self):
+        return self.__friendly
+
+    def weight(self):
+        return self.__weight
+
+    def is_persistent(self):
+        return True
+
+    def new_copy(self):
+        return CombinatorialDynamicRule(cdr=self)
+
+    def clone(self):
+        return CombinatorialDynamicRule(cdr=self)
+
+    def __cache_subrule_for_pair(self, o1, o2, r=None):
+        index = (o1, o2)
+        old_rr = self.__cached.get(index)
+        if r is not None:
+            self.__cached[index] = r
+        return old_rr
+
+    def get_bindings(self):
+        res = []
+        for r in self.__subrules:
+            res.extend(r.get_bindings())
+        return res
+
+    def is_applicable(self, rtme, other_rtme):
+        for r in self.__subrules:
+            if r.is_applicable(rtme, other_rtme):
+                self.__cache_subrule_for_pair(rtme, other_rtme, r)
+                return True
+
+        return False
+
+    def apply_on(self, rtme, other_rtme, link_creators=None):
+        r = self.__cache_subrule_for_pair(rtme, other_rtme)
+        if r is not None:
+            return r.apply_on(rtme, other_rtme, link_creators=link_creators)
+
+        for r in self.__subrules:
+            if r.is_applicable(rtme, other_rtme):
+                return r.apply_on(rtme, other_rtme, link_creators=link_creators)
+
+        raise RuntimeError("Called unattended rule")
+
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__format_dict()
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
+    def __format_dict(self):
+        return {
+            'rule': self.name(),
+            'friendly': self.friendly(),
+            'reliability': self.weight(),
+            'is_persistent': self.is_persistent(),
+            'is_optional': self.is_optional(),
+            'sub': [subrule.format('dict') for subrule in self.__subrules]
+        }
+
+    def __repr__(self):
+        return "{0}(objid={1})".format(
+            self.friendly(),
+            hex(id(self)))
+
+    def __str__(self):
+        return "{0}(objid={1}, anchor='{2}')".format(
+            self.friendly(),
+            hex(id(self)))
+
+
 class RtMatchString(object):
     def __init__(self, string, max_level=None):
         assert isinstance(string, str) or \
@@ -478,7 +600,10 @@ class RtMatchString(object):
         return self.__max_level
 
     def update(self, string):
-        assert isinstance(string, str) or isinstance(string, str) or isinstance(string, RtMatchString)
+        assert isinstance(string, str) or \
+            isinstance(string, str) or \
+            isinstance(string, RtMatchString)
+
         if isinstance(string, RtMatchString):
             self.__init_from_rtmatchstring(string, self.__max_level)
         else:
@@ -490,13 +615,31 @@ class RtMatchString(object):
     def need_reindex(self):
         return self.__need_reindex
 
+    def __is_plain_string(self):
+        return not self.__need_resolve and not self.__need_reindex and \
+            not self.__is_re
+
     def __cmp__(self, other):
-        assert not self.__need_resolve and not self.__need_reindex and not other.__need_resolve and not other.__need_reindex and not self.__is_re and not other.__is_re
+        assert not self.__need_resolve and \
+            not self.__need_reindex and \
+            not other.__need_resolve and \
+            not other.__need_reindex and \
+            not self.__is_re and \
+            not other.__is_re
         return cmp(self.__string, other.__string)
 
     def __eq__(self, other):
         assert isinstance(other, RtMatchString)
-        assert not self.__need_resolve and not self.__need_reindex and not other.__need_resolve and not other.__need_reindex and not (self.__is_re and other.__is_re), (self.__raw_string, self.__string, other.__raw_string, other.__string)
+        assert not self.__need_resolve and \
+            not self.__need_reindex and \
+            not other.__need_resolve and \
+            not other.__need_reindex and \
+            not (self.__is_re and other.__is_re), \
+            "self.raw={0}, self.str={1}, other.raw={2}, other.str={3}".format(
+                self.__raw_string, self.__string,
+                other.__raw_string, other.__string
+            )
+
         if not self.__is_re and not other.__is_re:
             return self.__string == other.__string
         if self.__is_re:
@@ -508,7 +651,7 @@ class RtMatchString(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return self.__string if not self.__need_resolve and not self.__need_reindex and not self.__is_re else self.__raw_string
+        return self.__string if self.__is_plain_string() else self.__raw_string
 
     def __hash__(self):
         return hash(self.__repr__())
@@ -606,7 +749,9 @@ class RtRuleFactory(object):
             else:
                 ww = [w, ]
             kwargs[k] = ww
+
         rules = []
+
         for kw in kwargs.get_dicts():
             r = self.__classname(*self.__args, **kw)
             if r.has_bindings():
@@ -614,6 +759,9 @@ class RtRuleFactory(object):
                     if compiler.binding_needs_resolve(b):
                         b.update(compiler.resolve_binding(b))
             rules.append(r)
+
+        if 1 < len(rules):
+            rules = [CombinatorialDynamicRule(rules=rules), ]
         return rules
 
     def created(self):

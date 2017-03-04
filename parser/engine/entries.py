@@ -135,8 +135,14 @@ class RtEntry(object):
         try:
             name.update(str(name).format(*stack))
         except IndexError:
+            str_name = str(name).replace(
+                '[', '\\['
+            ).replace(
+                ']', '\\]'
+            ).replace(
+                '+', '\\+'
+            )
             stack = stack + ['\\d+'] * 20
-            str_name = str(name).replace('[', '\\[').replace(']', '\\]').replace('+', '\\+')
             name.update(str_name.format(*stack))
 
     @argres()
@@ -213,10 +219,10 @@ class RtEntry(object):
         ))
 
         for r in self.__pending:
-            applied = False
+            applicable = False
             for e in entries:
                 if self.__check_applicable(r, e.get()):
-                    applied = True
+                    applicable = True
                     if not self.__apply_on(r, e.get()):
                         return ns(later=False, again=False, valid=False, affected_links=[])
 
@@ -227,7 +233,7 @@ class RtEntry(object):
                     self.__add_matched_rule(r, e.get())
                     if not r.is_persistent():
                         break
-            if not applied or r.is_persistent():
+            if not applicable or r.is_persistent():
                 pending.append(r)
             self.__pending = pending
         return ns(later=False, again=False, valid=True, affected_links=affected_links)
