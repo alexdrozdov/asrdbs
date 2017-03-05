@@ -884,38 +884,79 @@ class SpecCompiler(object):
                 compiled.get_entrance_rules()
             )
 
+    def __is_plain_state(self, state):
+        return not state.is_container() and \
+            not state.is_uniq_container() and \
+            not state.includes_spec()
+
     def binding_needs_resolve(self, binding):
         assert isinstance(binding, RtMatchString)
         if str(binding) in self.__name2state:
             state = self.__name2state[str(binding)]
-            if not state.is_container() and not state.is_uniq_container() and not state.includes_spec():
-                return False
-            return True
+            return not self.__is_plain_state(state)
+
         if str(binding) in self.__name_remap:
             return True
-        print(self.__parent_spec_name)
-        print(binding)
-        print(list(self.__name2state.keys()))
-        print(list(self.__name_remap.keys()))
-        raise RuntimeError('state name matching not implemented')
+
+        self.__raise_unresolved_binding(str(binding))
 
     def resolve_binding(self, binding):
         assert isinstance(binding, RtMatchString)
         if str(binding) in self.__name2state:
             state = self.__name2state[str(binding)]
             if state.is_container():
-                raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for containers')
-                return
+                raise RuntimeError(
+                    '$LOCAL_LEVEL_ANCHOR not implemented for containers')
+
             if state.is_uniq_container():
-                raise RuntimeError('$LOCAL_LEVEL_ANCHOR not implemented for uniq containers')
-                return
+                raise RuntimeError(
+                    '$LOCAL_LEVEL_ANCHOR not implemented for uniq containers')
+
             if state.includes_spec():
                 in_spec = state.get_included()
                 in_spec_anchors = in_spec.get_local_spec_anchors()
                 assert in_spec_anchors is not None and len(in_spec_anchors) == 1
                 return in_spec_anchors[0].get_name()
-        print(binding)
-        raise RuntimeError('state name matching not implemented')
+
+        self.__raise_unresolved_binding(str(binding))
+
+    def __raise_unresolved_binding(self, binding):
+        assumptions = self.__find_binding_assumptions(binding)
+        msg = """Couldn't resolve binding
+        Binding: {0}
+        Spec: {1}
+        Parent spec: {2}
+        Most probable entries are listed next to this message.
+        Try to point one or more of them directly by using regular expressions,
+        or move tag to exact node.
+
+{3}
+        """.format(
+            str(binding), self.__spec_name,
+            self.__parent_spec_name, '\r\n'.join(assumptions))
+        raise RuntimeError(msg)
+
+    def __find_binding_assumptions(self, binding):
+        max_matched_len = 0
+        assumptions = []
+        for s in self.__name2state:
+            l = len(self.__find_common_prefix(s, binding))
+            if l < max_matched_len:
+                continue
+            elif l == max_matched_len:
+                assumptions.append(s)
+            else:
+                max_matched_len = l
+                assumptions = [s, ]
+        return assumptions
+
+    def __find_common_prefix(self, s1, s2):
+        res = ""
+        for i, j in zip(s1, s2):
+            if i != j:
+                return res
+            res += i
+        return res
 
     def __setup_compile_environment(self, spec, parent_spec_name, goal):
         self.__goal = SpecCompiler.compile_all if goal is None else goal
