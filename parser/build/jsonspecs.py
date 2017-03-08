@@ -67,8 +67,15 @@ class _Specs(object):
         if not cfg.exists('/parser/specdefs'):
             return
         for d in cfg['/parser/specdefs']:
-            for f in [fname for fname in os.listdir(d) if fname.endswith('.json')]:
-                self.__load_file(os.path.join(d, f))
+            self.__loaddir(d)
+
+    def __loaddir(self, dirname):
+        for f in os.listdir(dirname):
+            fullname = os.path.join(dirname, f)
+            if os.path.isdir(fullname):
+                self.__loaddir(fullname)
+            elif os.path.isfile(fullname) and fullname.endswith('.json'):
+                self.__load_file(fullname)
 
     def __load_file(self, filename):
         scope = PreprocessScope()
