@@ -1,0 +1,38 @@
+{
+    "@declare": "some-entry"
+}
+
+{
+    "@implement": "some-entry",
+    "name": "variant-2",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "three",
+            "@inherit": ["once-or-more", "numeral", "nominative"],
+            "@word-forms": ["три"],
+            "@dependency-of": "#void"
+        }
+    ]
+}
+
+{
+    "name": "declarespec",
+    "entries": [
+        {
+            "@id": "first",
+            "@inherit": ["once-or-more"],
+            "@includes": {"name": "some-entry"},
+            "@dependency-of": "#void"
+        },
+        {
+            "@id": "second",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["четыре"]
+        }
+    ]
+}

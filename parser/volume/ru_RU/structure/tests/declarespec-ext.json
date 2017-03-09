@@ -1,0 +1,18 @@
+{
+    "@implement": "some-entry",
+    "name": "variant-1",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "two",
+            "@inherit": ["once-or-more", "numeral", "nominative"],
+            "@word-forms": ["два"],
+            "@dependency-of": "#void"
+        }
+    ]
+}
+
