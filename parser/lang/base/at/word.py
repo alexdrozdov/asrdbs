@@ -13,4 +13,4 @@ def word(body, *args, **kwargs):
 @parser.spare.constructable
 def wordforms(body, *args, **kwargs):
     word_list = body.popaslist('@word-forms')
-    body.setkey("pos_type", WordSpecs().IsWord(word_list))
+    body.setkey("pos_type", WordSpecs().IsWordform(word_list))

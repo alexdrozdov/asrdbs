@@ -5,7 +5,6 @@
 import uuid
 import copy
 import traceback
-import functools
 import worddb.worddb
 import parser.spare.properties
 from argparse import Namespace as ns
@@ -604,6 +603,9 @@ class TermRoMethods(object):
     def get_word(self):
         return self.term().get_property('word')
 
+    def get_primary(self):
+        return self.term().get_property('primary')
+
 
 class TermWriteOnceMethods(object):
     def get_position(self):
@@ -628,6 +630,7 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
             self.__init_from_params(
                 based_on.word,
                 based_on.original_word,
+                based_on.primary,
                 based_on.info,
                 based_on.pos,
                 based_on.uniq
@@ -635,10 +638,10 @@ class Token(TokenBase, TermRoMethods, TermWriteOnceMethods, TermCtxMethods):
         else:
             self.__init_from_wordform(based_on, reuse_layers=reuse_layers)
 
-    def __init_from_params(self, word, original_word, info, pos, uniq):
+    def __init_from_params(self, word, original_word, primary, info, pos, uniq):
         TokenBase.__init__(
             self,
-            dict(list(info.items()) + [('word', word), ])
+            dict(list(info.items()) + [('word', word), ('primary', primary)])
         )
         self.term().add_property('original_word', 'w_once', original_word)
         self.term().add_property('position', 'w_once', pos)
@@ -738,6 +741,7 @@ class SpecStateIniForm(Token):
             ns(
                 word='ini',
                 original_word='ini',
+                primary='ini',
                 info={'parts_of_speech': 'ini'},
                 pos=None,
                 uniq=0
@@ -754,6 +758,7 @@ class SpecStateFiniForm(Token):
             ns(
                 word='fini',
                 original_word='fini',
+                primary='fini',
                 info={'parts_of_speech': 'fini'},
                 pos=None,
                 uniq=0
@@ -777,6 +782,7 @@ class SpecStateVirtForm(Token):
             ns(
                 word=word,
                 original_word=word,
+                primary=word,
                 info={'parts_of_speech': 'virt'},
                 pos=None,
                 uniq=str(uuid.uuid1())
@@ -789,6 +795,7 @@ class SpecStateVirtForm(Token):
             ns(
                 word=word,
                 original_word=word,
+                primary=word,
                 info={'parts_of_speech': 'virt'},
                 pos=None,
                 uniq=str(uuid.uuid1())
@@ -874,7 +881,8 @@ class SpecStateVirtForm(Token):
             'gender': self.__resolve_same,
             'position': self.__resolve_range,
             'uniq': self.__resolve_uniq,
-            'word': lambda form, k: self.__resolve_cat(form, k, '_')
+            'word': lambda form, k: self.__resolve_cat(form, k, '_'),
+            'primary': lambda form, k: self.__resolve_cat(form, k, '_'),
         }
         for k, v in list(resolvers.items()):
             v(form, k)
@@ -1026,6 +1034,7 @@ class WordFormFabric(object):
             ns(
                 word=symbol,
                 original_word=symbol,
+                primay=symbol,
                 info={'parts_of_speech': 'syntax'},
                 pos=position,
                 uniq=str(uuid.uuid1())
@@ -1039,21 +1048,24 @@ class WordFormFabric(object):
         word = word.lower()
         info = self.__wdb.get_word_info(word)
         assert isinstance(info, list), "No info avaible for {0}".format(word)
-        for form in [form for form in functools.reduce(
-            lambda x, y: x + y,
-            [i['form'] for i in info]
-        ) if self.__validate_info(form)]:
-            res.append(
-                Token(
-                    ns(
-                        word=form['word'],
-                        original_word=word,
-                        info=eval(form['info']),
-                        pos=position,
-                        uniq=self.__form_uniq
+        for i in info:
+            primary = i['primary']
+            forms = i['form']
+            for form in forms:
+                if not self.__validate_info(form):
+                    continue
+                res.append(
+                    Token(
+                        ns(
+                            word=form['word'],
+                            original_word=word,
+                            primary=primary['word'],
+                            info=eval(form['info']),
+                            pos=position,
+                            uniq=self.__form_uniq
+                        )
                     )
                 )
-            )
-            self.__form_uniq = str(uuid.uuid1())
+        self.__form_uniq = str(uuid.uuid1())
         wf = WordForms(word, res)
         return wf

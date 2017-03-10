@@ -244,9 +244,31 @@ class c__word_check(BasicStaticRule):
         return 'word: {0}'.format(self.__words)
 
 
+class c__wordform_check(BasicStaticRule):
+    def __init__(self, words):
+        super(c__wordform_check, self).__init__(
+            name='wordform',
+            friendly='IsWordform',
+            fmt_info={'word': words}
+        )
+        self.__words = words
+
+    def new_copy(self):
+        return c__wordform_check(self.__words)
+
+    def match(self, form):
+        return form.get_primary() in self.__words
+
+    def get_info(self, wrap=False):
+        return 'word: {0}'.format(self.__words)
+
+
 class WordSpecs(object):
     def IsWord(self, words):
         return RtRuleFactory(c__word_check, words)
+
+    def IsWordform(self, words):
+        return RtRuleFactory(c__wordform_check, words)
 
 
 class c__case_check(BasicStaticRule):
