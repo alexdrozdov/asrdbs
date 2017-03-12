@@ -1,0 +1,23 @@
+{
+    "name": "full-name",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "two",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["два"],
+            "@dependency-of": "#void"
+        },
+        {
+            "@id": "three",
+            "@inherit": ["once-or-none", "numeral", "nominative"],
+            "@word-forms": ["три"]
+#             "@dependency-of": {"master": "$TAG(tag-one)", "selector": "#void"}
+        }
+    ]
+}
+

@@ -11,7 +11,8 @@ import parser.spare.wordform
 import parser.build.compiler
 from common.argres import argres
 from argparse import Namespace as ns
-from parser.engine.entries import RtMatchEntry, RtTmpEntry, RtVirtualEntry
+from parser.engine.entries import RtMatchEntry, RtTmpEntry, RtVirtualEntry, \
+    RtSiblingLeaderEntry, RtSiblingFollowerEntry, RtSiblingCloserEntry
 from parser.engine.matched import MatchedSequence, SequenceMatchRes
 
 
@@ -78,6 +79,28 @@ class MatcherContext(object):
         self.__new_ctxs = []
         self.__blank = True
         self.ctx_create()
+
+    def get_head(self):
+        assert len(self.sequences) == 1
+        head = self.sequences[0].get_head()
+        return ns(
+            form=head.get_form()
+        )
+
+    def get_heads(self):
+        return [ns(form=head.get_head().get_form()) for head in self.sequences]
+
+    def split_by_sequences(self):
+        res = []
+        for sq in self.sequences:
+            m = MatcherContext(
+                self.owner,
+                self.spec_name,
+                self.__offset
+            )
+            m.sequences = [sq, ]
+            res.append(m)
+        return res
 
     def __create_fcns(self, fcns):
         self.__fcns = {
@@ -258,9 +281,7 @@ class RtMatchSequence(object):
             lambda idx_entry: indexes is None or idx_entry[0] in indexes,
             enumerate(sq.__all_entries)
         ):
-            self.__append_entries(
-                RtMatchEntry(self, e) if isinstance(e, RtMatchEntry) else RtVirtualEntry(self, e)
-            )
+            self.__append_entries(e.copy_for_owner(self))
         for e in self.__all_entries:
             e.resolve_matched_rtmes()
         if indexes is None:
@@ -425,23 +446,33 @@ class RtMatchSequence(object):
             self.get_entries(hidden=True, exclude=rtme)
         ))
 
+    def __entry_from_spec(self, spec, form):
+        if spec.is_virtual():
+            cls_name = RtVirtualEntry
+        elif spec.is_sibling_leader():
+            cls_name = RtSiblingLeaderEntry
+        elif spec.is_sibling_follower():
+            cls_name = RtSiblingFollowerEntry
+        elif spec.is_sibling_closer():
+            cls_name = RtSiblingCloserEntry
+        else:
+            cls_name = RtMatchEntry
+
+        return cls_name(
+            self,
+            ns(
+                form=form,
+                spec_state_def=spec,
+                rtms_offset=len(self.__all_entries)
+            )
+        )
+
     @argres()
     def __handle_fixed_trs(self, trs, form):
         to = trs.get_to()
         self.__stack.handle_trs(trs)
 
-        if to.is_virtual():
-            rtme = RtVirtualEntry(self, ns(form=form,
-                                           spec_state_def=to,
-                                           rtms_offset=len(self.__all_entries)
-                                           )
-                                  )
-        else:
-            rtme = RtMatchEntry(self, ns(form=form,
-                                         spec_state_def=to,
-                                         rtms_offset=len(self.__all_entries)
-                                         )
-                                )
+        rtme = self.__entry_from_spec(to, form)
 
         if not self.append(rtme):
             return [ns(sq=self, valid=False, fini=False, again=False), ]
@@ -521,6 +552,9 @@ class RtMatchSequence(object):
 
     def __getitem__(self, index):
         return self.__all_entries[index]
+
+    def get_head(self):
+        return self.__all_entries[-1]
 
     def get_rule_name(self):
         return self.__matcher.get_name()
@@ -668,12 +702,18 @@ class SpecMatcher(object):
         self.__compiled_spec = compiled_spec
         self.__name = self.__compiled_spec.get_name()
 
+    def is_applicable(self, form):
+        return self.__compiled_spec.is_applicable(form)
+
     def match(self, ctx, sentence):
         for forms in sentence:
             res = self.__handle_sequences(ctx, forms)
             if res.complete:
                 return res
         return ns(complete=False)
+
+    def once(self, ctx, forms):
+        self.__handle_sequences(ctx, forms)
 
     def __create_new_sequence(self, ctx):
         ini_spec = self.__compiled_spec.get_inis()[0]
@@ -719,6 +759,13 @@ class SpecMatcher(object):
     def __print_sequences(self, ctx):
         for sq in ctx.get_sequences:
             sq.print_sequence()
+
+    def create_ctx(self):
+        return parser.engine.rt.MatcherContext(
+            None,
+            self.get_name(),
+            sequence_matched_fcn=lambda sq_ctx_sq: True
+        )
 
     def get_name(self):
         return self.__name

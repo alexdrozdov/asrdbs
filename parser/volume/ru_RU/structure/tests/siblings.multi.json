@@ -1,0 +1,41 @@
+{
+    "name": "siblings",
+    "entries": [
+        {
+            "@id": "e1",
+            "@inherit": ["once", "anchor", "numeral", "nominative"],
+            "sibling": {
+                "role": "leader",
+                "specs": ["full-name"]
+            },
+            "closed": false
+        },
+        {
+            "@id": "e1-sibling",
+            "@inherit": ["any"],
+            "sibling": {"role": "follower"},
+            "closed": false
+        },
+        {
+            "@id": "e1-closing",
+            "@inherit": ["once"],
+            "sibling": {"role": "closer"},
+            "add-to-seq": false,
+            "virtual": true
+        },
+        {
+            "@id": "four",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["четыре"]
+#             "@dependency-of": {"master": "$TAG(tag-one)", "selector": "#void"}
+        }
+    ]
+}
+
+#
+# @with-siblings: {specs: [], accepted-specs: [], strict-siblings: false}
+#
+#
+#
+#
+#

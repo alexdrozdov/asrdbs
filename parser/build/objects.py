@@ -24,7 +24,6 @@ class TrsDef(object):
         assert self.__levelpath and isinstance(self.__levelpath, tuple)
 
     def __init_from_stto(self, compiler, st_from, st_to):
-        assert isinstance(st_to, SpecStateDef)
         self.__from = st_from
         self.__to = st_to
         if self.__from.get_glevel() == self.__to.get_glevel():
@@ -36,7 +35,6 @@ class TrsDef(object):
         self.__levelpath = tuple(self.__levelpath)
 
     def __init_from_trsto(self, compiler, st_from, trs_to, with_trs):
-        assert isinstance(trs_to, TrsDef)
         self.__from = st_from
         self.__to = trs_to.get_to()
 
@@ -58,6 +56,9 @@ class TrsDef(object):
         self.__levelpath.extend(trs_to.__levelpath)
         to_level = trs_to.get_to().get_glevel()
         self.__levelpath = tuple(sorted(filter(lambda x: x <= to_level, list(set(self.__levelpath)))))
+
+    def copy_with_to(self, to):
+        return TrsDef(None, st_from=self.get_from(), st_to=to)
 
     def get_to(self):
         return self.__to
@@ -111,6 +112,13 @@ class TrsDef(object):
         }
 
 
+class SiblingRole(object):
+    No = 0,
+    Leader = 1
+    Follower = 2
+    Closer = 3
+
+
 class SpecStateDef(object):
 
     static_rules = ['pos_type', 'case', 'selector']
@@ -154,6 +162,8 @@ class SpecStateDef(object):
 
         self.__fixed = True
         self.__tags = None
+        self.__sibling_role = SiblingRole.No
+        self.__sibling_specs = []
 
     def __init_from_spec_dict(self):
         self.__is_container = self.__if_exists("entries")
@@ -179,6 +189,7 @@ class SpecStateDef(object):
 
         self.__handle_include()
         self.__handle_anchor()
+        self.__handle_sibling()
 
     def __handle_include(self):
         if not self.__if_exists('include'):
@@ -211,6 +222,22 @@ class SpecStateDef(object):
                 parser.lang.base.rules.defs.AnchorSpecs.local_spec_tag
             ]:
                 self.append_tags([a[2], ])
+
+    def __handle_sibling(self):
+        if not self.__if_exists('sibling'):
+            return
+
+        role = self.__from_spec_dict('sibling/role', None)
+        if role == 'leader':
+            self.__sibling_role = SiblingRole.Leader
+        elif role == 'follower':
+            self.__sibling_role = SiblingRole.Follower
+        elif role == 'closer':
+            self.__sibling_role = SiblingRole.Closer
+        else:
+            raise ValueError('Unknown sibling role {0}'.format(role))
+
+        self.__sibling_specs = self.__from_spec_dict('sibling/specs', [])
 
     def __from_spec_dict(self, path, default, strict=False):
         sd = self.__spec_dict
@@ -281,6 +308,18 @@ class SpecStateDef(object):
 
     def is_closed(self):
         return self.__closed
+
+    def is_sibling_leader(self):
+        return self.__sibling_role == SiblingRole.Leader
+
+    def is_sibling_follower(self):
+        return self.__sibling_role == SiblingRole.Follower
+
+    def is_sibling_closer(self):
+        return self.__sibling_role == SiblingRole.Closer
+
+    def get_sibling_specs(self):
+        return self.__sibling_specs
 
     def get_tags(self):
         return self.__tags
@@ -664,6 +703,12 @@ class CompiledSpec(object):
     def get_entrance_rules(self):
         ini = self.get_inis()[0]
         return ini.get_stateless_rules()
+
+    def is_applicable(self, form):
+        for r in self.get_entrance_rules():
+            if not r.match(form):
+                return False
+        return True
 
     def format(self, fmt):
         if fmt != 'dict':

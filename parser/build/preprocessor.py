@@ -65,6 +65,7 @@ class Preprocessor(object):
             'exclusive-with': lambda ctx_v19: True,
             'selector': lambda ctx_v20: True,
             'do-not-compile': lambda ctx_v21: True,
+            'sibling': self.__on_sibling,
         }
 
     def __on_id(self, v):
@@ -101,6 +102,29 @@ class Preprocessor(object):
                 )
             )
         ctx.add_dependency(value['spec'])
+        return True
+
+    def __on_sibling(self, attrs):
+        ctx, value = attrs
+        if not isinstance(value, dict):
+            raise PreprocessorError(
+                ctx,
+                'Siblings key expects value to be a dict, but got {0}'.format(
+                    type(value)
+                )
+            )
+        expected_keys = set(['specs', 'role'])
+        unexpected_keys = set(value.keys()) - expected_keys
+        if unexpected_keys:
+            raise PreprocessorError(
+                ctx,
+                'Siblings contains unexpected keys {0}'.format(
+                    list(unexpected_keys)
+                )
+            )
+        if 'specs' in value:
+            for spec in value['specs']:
+                ctx.add_dependency(spec)
         return True
 
     def __on_entries(self, attrs):
