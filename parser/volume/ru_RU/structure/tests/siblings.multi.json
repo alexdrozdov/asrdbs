@@ -4,24 +4,7 @@
         {
             "@id": "e1",
             "@inherit": ["once", "anchor", "numeral", "nominative"],
-            "sibling": {
-                "role": "leader",
-                "specs": ["full-name"]
-            },
-            "closed": false
-        },
-        {
-            "@id": "e1-sibling",
-            "@inherit": ["any"],
-            "sibling": {"role": "follower"},
-            "closed": false
-        },
-        {
-            "@id": "e1-closing",
-            "@inherit": ["once"],
-            "sibling": {"role": "closer"},
-            "add-to-seq": false,
-            "virtual": true
+            "@with-siblings": {"specs": ["full-name"]}
         },
         {
             "@id": "four",
@@ -33,7 +16,6 @@
 }
 
 #
-# @with-siblings: {specs: [], accepted-specs: [], strict-siblings: false}
 #
 #
 #

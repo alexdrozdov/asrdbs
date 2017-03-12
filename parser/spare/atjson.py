@@ -1,5 +1,6 @@
 import copy
 import parser.spare.index
+from contextlib import contextmanager
 
 
 class ErrorRerun(Exception):
@@ -8,6 +9,16 @@ class ErrorRerun(Exception):
 
 def again():
     raise ErrorRerun()
+
+
+@contextmanager
+def until_complete():
+    while True:
+        try:
+            yield
+        except ErrorRerun:
+            continue
+        break
 
 
 class DictWrap(object):
