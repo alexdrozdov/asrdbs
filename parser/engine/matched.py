@@ -245,7 +245,8 @@ class MatchedSequence(object):
 
     def __mk_link(self, master, slave, details):
         accepted_types = (parser.engine.entries.RtMatchEntry,
-                          parser.engine.entries.RtVirtualEntry)
+                          parser.engine.entries.RtVirtualEntry,
+                          parser.engine.entries.RtSiblingLeaderEntry)
         assert all((
             isinstance(master, accepted_types),
             isinstance(slave, accepted_types),

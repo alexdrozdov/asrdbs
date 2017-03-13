@@ -396,7 +396,7 @@ class RtMatchSequence(object):
         if isinstance(rtme, RtTmpEntry):
             return True
 
-        if isinstance(rtme, RtVirtualEntry) and not rtme.closed():
+        if not rtme.closed():
             return True
 
         res = self.__test_rtme_rules(rtme)
@@ -447,14 +447,14 @@ class RtMatchSequence(object):
         ))
 
     def __entry_from_spec(self, spec, form):
-        if spec.is_virtual():
-            cls_name = RtVirtualEntry
-        elif spec.is_sibling_leader():
+        if spec.is_sibling_leader():
             cls_name = RtSiblingLeaderEntry
         elif spec.is_sibling_follower():
             cls_name = RtSiblingFollowerEntry
         elif spec.is_sibling_closer():
             cls_name = RtSiblingCloserEntry
+        elif spec.is_virtual():
+            cls_name = RtVirtualEntry
         else:
             cls_name = RtMatchEntry
 
@@ -692,6 +692,14 @@ class RtMatchSequence(object):
 
     def __hash__(self):
         return hash((self.__forms_csum, self.__confirmed_csum))
+
+    def __iter__(self):
+        return iter(self.__all_entries)
+
+    def reversed(self):
+        l = len(self.__all_entries)
+        for i in range(l - 1, -1, -1):
+            yield self.__all_entries[i]
 
 
 class SpecMatcher(object):

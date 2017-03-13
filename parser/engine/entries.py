@@ -42,6 +42,7 @@ class RtEntry(object):
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
         self.__attributes = attributes
+        self._closed = spec_state_def.is_closed()
 
         self.__create_name(self._spec.get_name())
         self._create_rules()
@@ -57,6 +58,7 @@ class RtEntry(object):
         self._spec = rtme._spec
         self.__rtms_offset = rtme.__rtms_offset
         self.__reliability = rtme.__reliability
+        self._closed = rtme._closed
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
@@ -109,11 +111,8 @@ class RtEntry(object):
     @argres(show_result=False)
     def resolve_matched_rtmes(self):
         for rule_rtme in self.__matched:
-            if isinstance(rule_rtme.rtme, (RtMatchEntry, RtVirtualEntry)):
-                continue
-            # FIXME For or subseq calls except subseq(0. -2) when last entry
-            # is tmp we will get outofrange exception
-            rule_rtme.rtme = self._owner[rule_rtme.rtme]
+            if isinstance(rule_rtme.rtme, int):
+                rule_rtme.rtme = self._owner[rule_rtme.rtme]
         return True
 
     @argres(show_result=False)
@@ -170,7 +169,7 @@ class RtEntry(object):
         return self.__reliability
 
     def closed(self):
-        return True
+        return self._closed
 
     @argres()
     def has_pending(self, required_only=False):
@@ -433,7 +432,7 @@ class RtVirtualEntry(RtEntry):
 
         self.__referers = []
         self.__first_handle = True
-        self.__closed = spec_state_def.is_closed()
+        self._closed = spec_state_def.is_closed()
 
     @argres(show_result=False)
     def _init_from_rtme(self, owner, rtme):
@@ -444,7 +443,7 @@ class RtVirtualEntry(RtEntry):
 
         self.__referers = []
         self.__first_handle = rtme.__first_handle
-        self.__closed = rtme.__closed
+        self._closed = rtme._closed
         self.__copy_referers(rtme)
 
     def copy_for_owner(self, owner):
@@ -463,14 +462,10 @@ class RtVirtualEntry(RtEntry):
         super().resolve_matched_rtmes()
 
         for i, referer in enumerate(self.__referers):
-            if isinstance(referer, (RtMatchEntry, RtVirtualEntry)):
-                continue
-            self.__referers[i] = self._owner[self.__referers[i]]
+            if isinstance(referer, int):
+                self.__referers[i] = self._owner[self.__referers[i]]
 
         return True
-
-    def closed(self):
-        return self.__closed
 
     @argres()
     def handle_rules(self, on_entry=None):
@@ -485,7 +480,7 @@ class RtVirtualEntry(RtEntry):
         return res
 
     def close_aggregator(self):
-        self.__closed = True
+        self._closed = True
 
     def has_attribute(self, name):
         return False
@@ -537,6 +532,16 @@ class RtSiblingLeaderEntry(RtEntry):
     def copy_for_owner(self, owner):
         return RtSiblingLeaderEntry(owner, self)
 
+    def close(self):
+        self._closed = True
+
+    @argres()
+    def handle_rules(self, on_entry=None):
+        if not self.closed():
+            return ns(later=True, again=False, valid=False, affected_links=[])
+
+        return super().handle_rules(on_entry=on_entry)
+
     @argres()
     def find_transitions(self, forms):
         closer_trs = self.__find_closer_transitions(forms)
@@ -573,26 +578,14 @@ class RtSiblingLeaderEntry(RtEntry):
         return res
 
     def __find_closer_transitions(self, forms):
-        non_fini_trs = []
-        fini_trs = []
+        closer_trs = self.__find_closer_trs()
+        closer = closer_trs.get_to()
+        return [(form, closer_trs) for form in forms if closer.is_static_applicable(form)]
 
-        closer = self.__find_closer_spec()
-
-        for trs in closer.get_transitions():
-            dst_spec = trs.get_to()
-            if dst_spec.is_fini():
-                fini_trs.append((parser.spare.wordform.SpecStateFiniForm(), trs))
-                continue
-
-            for form in forms:
-                if dst_spec.is_static_applicable(form):
-                    non_fini_trs.append((form, trs))
-        return non_fini_trs + fini_trs
-
-    def __find_closer_spec(self):
+    def __find_closer_trs(self):
         for trs in self._spec.get_transitions():
             if trs.get_to().is_sibling_closer():
-                return trs.get_to()
+                return trs
         raise RuntimeError("No closer found")
 
     def __find_follower_trs(self):
@@ -662,36 +655,15 @@ class RtSiblingFollowerEntry(RtEntry):
 
         return trs, ctx.was_fini()
 
-    def __deduce_possible_matchers(self):
-        res = []
-        ctx = self.get_owner().get_ctx()
-        for s in self._spec.get_sibling_specs():
-            m = ctx.find_matcher(s)
-            if m.is_applicable(self.get_form()):
-                res.append(m)
-        return res
-
     def __find_closer_transitions(self, forms):
-        non_fini_trs = []
-        fini_trs = []
+        closer_trs = self.__find_closer_trs()
+        closer = closer_trs.get_to()
+        return [(form, closer_trs) for form in forms if closer.is_static_applicable(form)]
 
-        closer = self.__find_closer_spec()
-
-        for trs in closer.get_transitions():
-            dst_spec = trs.get_to()
-            if dst_spec.is_fini():
-                fini_trs.append((parser.spare.wordform.SpecStateFiniForm(), trs))
-                continue
-
-            for form in forms:
-                if dst_spec.is_static_applicable(form):
-                    non_fini_trs.append((form, trs))
-        return non_fini_trs + fini_trs
-
-    def __find_closer_spec(self):
+    def __find_closer_trs(self):
         for trs in self._spec.get_transitions():
             if trs.get_to().is_sibling_closer():
-                return trs.get_to()
+                return trs
         raise RuntimeError("No closer found")
 
     def __find_follower_trs(self):
@@ -702,5 +674,45 @@ class RtSiblingFollowerEntry(RtEntry):
 
 
 class RtSiblingCloserEntry(RtEntry):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @argres(show_result=False)
+    def _init_from_form_spec(self, owner, form, spec_state_def,
+                             rtms_offset, attributes):
+        form = parser.spare.wordform.SpecStateVirtForm()
+        super()._init_from_form_spec(
+            owner, form, spec_state_def, rtms_offset, attributes
+        )
+        self.__leader_closed = False
+
+    @argres(show_result=False)
+    def _init_from_rtme(self, owner, rtme, form=None):
+        form = parser.spare.wordform.SpecStateVirtForm(
+            rtme.get_form()
+        )
+        super()._init_from_rtme(owner, rtme, form)
+        self.__leader_closed = rtme.__leader_closed
+
     def copy_for_owner(self, owner):
         return RtSiblingCloserEntry(owner, self)
+
+    def has_pending(self, required_only=False):
+        return not self.__leader_closed
+
+    def handle_rules(self, on_entry=None):
+        if not self.__leader_closed:
+            leader = self.__find_leader_entry()
+            leader.close()
+            self.__leader_closed = True
+        return ns(later=False, again=False, valid=True, affected_links=[])
+
+    def __find_leader_entry(self):
+        sq = self.get_owner()
+        self_found = True
+        for e in sq.reversed():
+            if id(e) == id(self):
+                self_found = True
+            elif e.get_spec().is_sibling_leader() and self_found:
+                return e
+        raise RuntimeError('Preceeding siblings leader entry not found')

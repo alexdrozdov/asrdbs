@@ -3,14 +3,14 @@
     "entries": [
         {
             "@id": "e1",
-            "@inherit": ["once", "anchor", "numeral", "nominative"],
-            "@with-siblings": {"specs": ["full-name"]}
+            "@inherit": ["once", "numeral", "nominative"],
+            "@with-siblings": {"specs": ["full-name"]},
+            "@dependency-of": {"selector": "#void"}
         },
         {
             "@id": "four",
-            "@inherit": ["once", "numeral", "nominative"],
+            "@inherit": ["once", "anchor", "numeral", "nominative"],
             "@word-forms": ["четыре"]
-#             "@dependency-of": {"master": "$TAG(tag-one)", "selector": "#void"}
         }
     ]
 }

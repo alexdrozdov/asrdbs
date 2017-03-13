@@ -632,7 +632,9 @@ class SpecStateDef(object):
                 (self.__is_fini, 'fini'),
                 (self.__is_virtual, 'virtual'),
                 (self.__is_local_anchor, 'anchor'),
-                (self.__is_local_final, 'local_final'),
+                (self.__sibling_role == SiblingRole.Leader, 'sibling-leader'),
+                (self.__sibling_role == SiblingRole.Follower, 'sibling-follower'),
+                (self.__sibling_role == SiblingRole.Closer, 'sibling-closer'),
                 (self.__closed, 'closed'),
                 (self.__fixed and self.__incapsulate_spec is not None, 'fixed'),
                 (not self.__fixed and self.__incapsulate_spec_name, 'dynamic'),
@@ -652,6 +654,7 @@ class SpecStateDef(object):
                     'dynamic': [
                         r.format('dict') for r in self.__rt_rules],
                 }),
+                ('sibling-specs', self.__sibling_specs),
                 ('level', self.__level),
                 ('glevel', self.__glevel),
                 ('include', self.__incapsulate_spec_name if not self.__fixed else ""),

@@ -71,10 +71,8 @@ def with_siblings(body, *args, **kwargs):
             "@inherit": ["once"],
             "sibling": {"role": "closer"},
             "add-to-seq": False,
-            "virtual": True
+            "virtual": True,
         }
     ]
 
     parser.spare.again()
-
-# @with-siblings: {specs: [], accepted-specs: [], strict-siblings: false}
