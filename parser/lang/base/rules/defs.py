@@ -728,7 +728,7 @@ class c__selector(BasicStaticRule):
         super(c__selector, self).__init__(
             name='selector',
             friendly='Selector',
-            fmt_info={'selector': selector}
+            fmt_info={'selector': str(selector)}
         )
         self.__selector = selector
 

@@ -346,6 +346,9 @@ class CombinatorialSelectorRule(SelectorStaticRule):
     def replace(self, rule, new_rule):
         self.__rules[self.__rules.index(rule)] = new_rule
 
+    def delete(self, rule):
+        self.__rules.remove(rule)
+
     def format(self, fmt):
         if fmt == 'dict':
             return self.__format_dict()

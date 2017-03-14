@@ -1062,7 +1062,7 @@ class WordFormFabric(object):
                             primary=primary['word'],
                             info=eval(form['info']),
                             pos=position,
-                            uniq=self.__form_uniq
+                            uniq=str(uuid.uuid1())
                         )
                     )
                 )

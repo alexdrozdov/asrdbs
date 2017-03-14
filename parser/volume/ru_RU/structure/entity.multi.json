@@ -1,17 +1,17 @@
 {
     "name": "entity",
     "entries": [
-        {
-            "@id": "numeral",
-            "@inherit": ["any"],
-            "@includes": {"name": "numeral"},
-            "@dependency-of": ["#entity-count"]
-        },
+#         {
+#             "@id": "numeral",
+#             "@inherit": ["any"],
+#             "@includes": {"name": "numeral"},
+#             "@dependency-of": {"selector": "#entity-count"}
+#         },
         {
             "@id": "definitive",
             "@inherit": ["any"],
             "@includes": {"name": "adjective"},
-            "@dependency-of": ["#entity-definitive"]
+            "@dependency-of": {"selector": "#entity-definitive"}
         },
         {
             "@id": "core",
@@ -33,7 +33,7 @@
             "@inherit": ["any"],
             "@foreach": {
                 "@inherit": ["once"],
-                "@dependency-of": ["#entity-entity"]
+                "@dependency-of": {"selector": "#entity-entity"}
             },
             "uniq-items": [
                 {
@@ -107,7 +107,7 @@
                         {
                             "@id": "#pre-internal#",
                             "@inherit": ["never"],
-                            "@dependency-of": ["#obj-preposition", "$TAG(object-int)"]
+                            "@dependency-of": {"selector": "#obj-preposition", "master": "$TAG(object-int)"}
                         },
                         {
                             "@id": null,
@@ -137,7 +137,7 @@
                 "@tag": "pre",
                 "@foreach": {
                     "@inherit": ["once", "preposition"],
-                    "@dependency-of": ["#obj-preposition", "$TAG(object)"]
+                    "@dependency-of": {"selector": "#obj-preposition", "master": "$TAG(object)"}
                 },
                 "uniq-items": [
                     {"@word": ["над"]},

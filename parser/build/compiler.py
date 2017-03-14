@@ -751,9 +751,12 @@ class SpecCompiler(object):
         while True:
             try:
                 for subrule in rule:
+                    if id(rule) == id(subrule):
+                        rule.delete(subrule)
+                        raise ResolveAgain()
                     if isinstance(subrule,
                                   parser.spare.rules.UnresolvedDynamicInclude):
-                        unresolved_name = subrule.get_spec_name()
+                        unresolved_name = subrule.get_name()
                         if unresolved_name == self.__spec_name:
                             rule.remove(subrule)
                             raise ResolveAgain()
@@ -763,7 +766,8 @@ class SpecCompiler(object):
                         )
                         if resolved is not None:
                             resolved = parser.spare.rules.RuleAnd(resolved)
-                            rule.replace(rule, resolved)
+                            assert rule != resolved
+                            rule.replace(subrule, resolved)
                             raise ResolveAgain()
                         unresolved = True
                     if isinstance(subrule,
@@ -856,7 +860,21 @@ class SpecCompiler(object):
 
         return compiled
 
+    def __store_self_as_unresolved(self):
+        if self.__owner.get_matcher(
+                self.__spec_name, none_on_missing=True) is not None:
+            return
+
+        if self.__get_dynamic_include_rules(
+                self.__spec_name, none_on_missing=True) is not None:
+            return
+        self.__store_dynamic_include_rules(
+            self.__spec_name,
+            [parser.spare.rules.UnresolvedDynamicInclude(self.__spec_name), ]
+        )
+
     def __evalute_dynamic_includes_rules(self):
+        self.__store_self_as_unresolved()
         for state in self.__states:
             if not state.has_include():
                 continue

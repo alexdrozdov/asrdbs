@@ -335,7 +335,7 @@ class RtMatchSequence(object):
         trs = head.find_transitions(forms)
         for form, t in trs:
             to = t.get_to()
-            if to.fixed():
+            if to.fixed() or form.get_position() is None:
                 yield (form, t)
             elif not self.__dynamic_ctx_overflow(
                 to.get_include_name(),
@@ -815,8 +815,11 @@ class Matcher(object):
                 ctx,
                 m.get_name(),
                 sequence_matched_fcn=lambda sq_ctx_sq:
-                ctx.matched_sqs.add(sq_ctx_sq[1]),
+                self.__sequence_matched_fcn(ctx, sq_ctx_sq),
             )) for m in self.__compiled.get_primary()]
+
+    def __sequence_matched_fcn(self, ctx, sq):
+        ctx.matched_sqs.add(sq[1])
 
     def __create_ctx(self):
         return ns(

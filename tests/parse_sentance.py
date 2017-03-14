@@ -132,7 +132,7 @@ if __name__ == '__main__':
                         'path': 'preprocessor'
                     },
                     'structure': {
-                        'svg': True,
+                        'svg': False,
                         'json': False,
                         'path': 'structure'
                     },
