@@ -1,0 +1,39 @@
+{
+    "@declare": "repeatable-noun"
+}
+
+{
+    "@implement": "repeatable-noun",
+    "name": "repeatable-noun-1",
+    "@brief": {
+        "definitions": {
+            "p": {
+                "@id": "preposition",
+                "@inherit": ["once", "preposition"],
+                "@dependency-of": {"selector": "#void"}
+            },
+            "p1": {
+                "@id": "preposition",
+                "@inherit": ["once", "preposition"],
+                "@dependency-of": {"selector": "#void", "master": "$PARENT::noun"}
+            },
+            "n": {
+                "@id": "noun",
+                "@inherit": ["once", "anchor", "basic-noun"]
+#               "@inv": "optional",
+#                "refers-to": "#void"
+            },
+            "a": {
+                "@id": "aggregate",
+                "@inherit": ["once"]
+            }
+        },
+        "export": ["r1", "r3"],
+        "formats": [
+            "r1: [{p}] {n} [* , {n}] [и {n} [* , и {n}]]",
+            "r2: ({p1} {n}) [* , ({p1} {n})] [и ({p1} {n}) [* , и ({p1} {n})]]",
+            "r3: не только <{r1} | {r2}> [<но | да> и <{r1} | {r2}>]"
+        ]
+    }
+}
+

@@ -131,7 +131,8 @@ class Preprocessor(object):
         ctx, value = attrs
         ctx.push_stack('entries')
         if not isinstance(value, list):
-            raise PreprocessorError(ctx, 'List expected, but got {0}', type(value))
+            raise PreprocessorError(
+                ctx, 'List expected, but got {0}'.format(type(value)))
         self.__validate_list(ctx, value)
         ctx.pop_stack()
         return True
@@ -140,7 +141,8 @@ class Preprocessor(object):
         ctx, value = attrs
         ctx.push_stack('uniq_items')
         if not isinstance(value, list):
-            raise PreprocessorError(ctx, 'List expected, but got {0}', type(value))
+            raise PreprocessorError(
+                ctx, 'List expected, but got {0}'.format(type(value)))
         self.__validate_list(ctx, value)
         ctx.pop_stack()
         return True
@@ -149,7 +151,8 @@ class Preprocessor(object):
         for i, d in enumerate(l):
             ctx.push_stack('[{0}]'.format(i))
             if not isinstance(d, dict):
-                raise PreprocessorError(ctx, 'Dict expected, but got {0}', type(d))
+                raise PreprocessorError(
+                    ctx, 'Dict expected, but got {0}'.format(type(d)))
             self.__validate_dict(ctx, d)
             ctx.pop_stack()
 

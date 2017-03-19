@@ -128,7 +128,7 @@ if __name__ == '__main__':
                 'debug': {
                     'src': {
                         'svg': False,
-                        'json': False,
+                        'json': True,
                         'path': 'preprocessor'
                     },
                     'structure': {

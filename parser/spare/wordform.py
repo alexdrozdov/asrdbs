@@ -1034,7 +1034,7 @@ class WordFormFabric(object):
             ns(
                 word=symbol,
                 original_word=symbol,
-                primay=symbol,
+                primary=symbol,
                 info={'parts_of_speech': 'syntax'},
                 pos=position,
                 uniq=str(uuid.uuid1())
