@@ -70,6 +70,9 @@ class Backlog(object):
     def attach_slave(self, slave):
         self.__slaves.append(slave)
 
+    def forget_slave(self, slave):
+        self.__slaves.remove(slave)
+
     def push_head(self, entry):
         if not self.__slaves:
             self.__entries.append(entry)
@@ -134,7 +137,7 @@ class CheckedoutCtx(object):
     def complete_sequence(self, sq):
         svsq = self.__sequences.pop(id(sq), None)
         assert svsq is not None and svsq.checkedout
-        self.ctx.sequence_matched(MatchedSequence(sq))
+        self.ctx.sequence_matched(sq)
 
 
 class MatcherContext(object):
@@ -162,6 +165,7 @@ class MatcherContext(object):
         self.__new_ctxs = []
         self.__blank = True
         self.__backlog = Backlog()
+        self.__frozen = []
         self.ctx_create()
 
     def empty(self):
@@ -265,8 +269,7 @@ class MatcherContext(object):
     def push_forms(self, forms):
         self.__backlog.push_head(forms)
 
-    def has_backlog(self, frozen=False):
-        assert frozen is False
+    def has_backlog(self):
         for sq in self.sequences:
             if sq.has_backlog():
                 return True
@@ -274,6 +277,9 @@ class MatcherContext(object):
 
     def get_slave_backlog(self):
         return Backlog(self.__backlog)
+
+    def has_frozen(self):
+        return len(self.__frozen) > 0
 
     def is_blank(self):
         return self.__blank
@@ -285,9 +291,12 @@ class MatcherContext(object):
         self.__fcns['sequence_forking_fcn']((self, sq))
 
     def sequence_matched(self, sq):
+        self.__backlog.forget_slave(sq.backlog())
+        sq = MatchedSequence(sq)
         self.__fcns['sequence_matched_fcn']((self, sq))
 
     def sequence_failed(self, sq):
+        self.__backlog.forget_slave(sq.backlog())
         self.__fcns['sequence_failed_fcn']((self, sq))
 
     def sequence_res(self, res):
@@ -430,6 +439,9 @@ class RtMatchSequence(object):
 
     def get_anchors(self):
         return self.__anchors
+
+    def backlog(self):
+        return self.__backlog
 
     def has_backlog(self):
         return not self.__backlog.empty()
@@ -894,6 +906,9 @@ class RtMatchSequence(object):
 
 
 class TrsResult(object):
+
+    __slots__ = ('sq', 'valid', 'fini', 'again')
+
     def __init__(self, sq, valid, fini, again):
         self.sq = sq
         self.valid = valid
@@ -921,12 +936,18 @@ class AggregatedCtxTransitions(list):
 
 
 class TransitionAttempt(object):
+
+    __slots__ = ('sq', 'trs')
+
     def __init__(self, sq, trs):
         self.sq = sq
         self.trs = trs
 
 
 class NextSequenceStep(object):
+
+    __slots__ = ('sq', 'valid', 'awaiting', 'frozen', 'transitions')
+
     def __init__(self, sq, valid, awaiting, frozen, transitions):
         self.sq = sq
         self.valid = valid
@@ -936,6 +957,9 @@ class NextSequenceStep(object):
 
 
 class NextSequenceStepTransition(object):
+
+    __slots__ = ('form', 'trs_def', 'fixed', 'probability')
+
     def __init__(self, form, trs_def, fixed, probability):
         self.form = form
         self.trs_def = trs_def
@@ -991,8 +1015,7 @@ class SpecMatcher(object):
             next_sequences.append(res.sq)
         else:
             if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
-                ms = MatchedSequence(res.sq)
-                ctx.sequence_matched(ms)
+                ctx.sequence_matched(res.sq)
             else:
                 ctx.sequence_failed(res.sq)
 
@@ -1001,16 +1024,15 @@ class SpecMatcher(object):
             self.__create_new_sequence(ctx)
 
         ctx.push_forms(forms)
-        while ctx.has_backlog(frozen=False):
+        while ctx.has_backlog():
             c_out = ctx.checkout()
             to_execute = self.__find_executables(c_out)
             self.__execute_sequences(c_out, to_execute)
 
             c_out.commit()
 
-            # if not ctx.has_backlog(frozen=False) and \
-            #         ctx.has_backlog(frozen=True):
-            #     ctx.unfreeze_one()
+            if not ctx.has_backlog() and ctx.has_frozen():
+                ctx.unfreeze_one()
 
         return ns(complete=ctx.empty())
 
