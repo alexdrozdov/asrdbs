@@ -54,6 +54,89 @@ class RtStackCounter(object):
         return self.__stack
 
 
+class Backlog(object):
+    def __init__(self, master=None):
+        self.__master = master
+        self.__slaves = []
+        if master is not None:
+            master.attach_slave(self)
+        self.__entries = []
+
+    def clone(self):
+        bl = Backlog(self.__master)
+        bl.__entries = [e for e in self.__entries]
+        return bl
+
+    def attach_slave(self, slave):
+        self.__slaves.append(slave)
+
+    def push_head(self, entry):
+        if not self.__slaves:
+            self.__entries.append(entry)
+        else:
+            for s in self.__slaves:
+                s.push_head(entry)
+
+    def push_tail(self, entry):
+        if self.__slaves:
+            raise RuntimeError('Malicious pop push')
+        self.__entries.insert(0, entry)
+
+    def pop_tail(self, for_slave=None):
+        if self.__entries:
+            return self.__entries.pop(0)
+        raise RuntimeError('Backlog is empty')
+
+    def empty(self):
+        if self.__entries:
+            return False
+        return True
+
+
+class SupervisedSequence(object):
+    def __init__(self, sq, checkedout):
+        self.sq = sq
+        self.checkedout = checkedout
+
+
+class CheckedoutCtx(object):
+    def __init__(self, ctx, sequences):
+        self.ctx = ctx
+        self.__sequences = {id(sq): SupervisedSequence(sq=sq, checkedout=False)
+                            for sq in sequences}
+
+    def sequences(self):
+        return [sq.sq for sq in self.__sequences.values()]
+
+    def commit(self):
+        for svsq in self.__sequences.values():
+            assert not svsq.checkedout
+            self.ctx.add_sequence(svsq.sq)
+
+    def checkout_sequence(self, sq):
+        svsq = self.__sequences.get(id(sq), None)
+        if svsq is not None:
+            assert not svsq.checkedout
+            svsq.checkedout = True
+            return
+        self.__sequences[id(sq)] = SupervisedSequence(sq, True)
+
+    def confirm_sequence(self, sq):
+        svsq = self.__sequences.get(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        svsq.checkedout = False
+
+    def fail_sequence(self, sq):
+        svsq = self.__sequences.pop(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        self.ctx.sequence_failed(sq)
+
+    def complete_sequence(self, sq):
+        svsq = self.__sequences.pop(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        self.ctx.sequence_matched(MatchedSequence(sq))
+
+
 class MatcherContext(object):
 
     max_sparse_count = 1
@@ -78,7 +161,11 @@ class MatcherContext(object):
         self.ctxs = []
         self.__new_ctxs = []
         self.__blank = True
+        self.__backlog = Backlog()
         self.ctx_create()
+
+    def empty(self):
+        return len(self.sequences) > 0
 
     def get_head(self):
         assert len(self.sequences) == 1
@@ -104,7 +191,8 @@ class MatcherContext(object):
 
     def __create_fcns(self, fcns):
         self.__fcns = {
-            target: fcns[source] if source in fcns else default_fcn for source, target, default_fcn in MatcherContext.fcns_map
+            target: fcns[source] if source in fcns else default_fcn
+            for source, target, default_fcn in MatcherContext.fcns_map
         }
 
     def get_fcns(self):
@@ -138,6 +226,11 @@ class MatcherContext(object):
         self.ctxs.append((matcher, mc))
         self.__new_ctxs.append((matcher, mc))
 
+    def checkout(self):
+        sequences = self.sequences
+        self.sequences = []
+        return CheckedoutCtx(self, sequences)
+
     def recursed_at_offset(self, ctx_name, offset):
         sparse_calls = 0
         sequential_calls = 0
@@ -168,6 +261,19 @@ class MatcherContext(object):
 
     def find_matcher(self, name):
         return self.owner.find_matcher(name)
+
+    def push_forms(self, forms):
+        self.__backlog.push_head(forms)
+
+    def has_backlog(self, frozen=False):
+        assert frozen is False
+        for sq in self.sequences:
+            if sq.has_backlog():
+                return True
+        return False
+
+    def get_slave_backlog(self):
+        return Backlog(self.__backlog)
 
     def is_blank(self):
         return self.__blank
@@ -201,6 +307,9 @@ class MatcherContext(object):
 
 
 class RtMatchSequence(object):
+
+    dynamic_trs_fine = 0.4
+
     def __new__(cls, *args, **kwargs):
         obj = super(RtMatchSequence, cls).__new__(cls)
         if common.argres.logs_enabled:
@@ -244,6 +353,7 @@ class RtMatchSequence(object):
         self.__forms_csum = set()
         self.__links_csum = set()
 
+        self.__backlog = ctx.get_slave_backlog()
         self.__stack = RtStackCounter()
         self.__append_entries(initial_entry)
 
@@ -259,6 +369,7 @@ class RtMatchSequence(object):
 
         sq.__ctx.sequence_forking(sq)
 
+        self.__backlog = sq.__backlog.clone()
         self.__stack = RtStackCounter(stack=sq.__stack)
 
         if indexes is not None:
@@ -310,12 +421,18 @@ class RtMatchSequence(object):
                 continue
             self.__anchors.append(self[a_offset])
 
+    def clone(self):
+        return RtMatchSequence(self)
+
     @argres()
     def subseq(self, start, stop):
         return RtMatchSequence(self, indexes=(start, stop))
 
     def get_anchors(self):
         return self.__anchors
+
+    def has_backlog(self):
+        return not self.__backlog.empty()
 
     def __add_anchor(self, rtme):
         self.__anchors.append(rtme)
@@ -330,6 +447,80 @@ class RtMatchSequence(object):
             new_sq.extend(r.results)
             again.extend(r.again)
         return new_sq
+
+    def find_transitions(self, forms):
+        head = self.__all_entries[-1]
+        if isinstance(head, RtTmpEntry):
+            valid = True if head.get_subctx() is not None else False
+            return NextSequenceStep(
+                sq=self,
+                valid=valid,
+                awaiting=valid,
+                frozen=False,
+                transitions=[]
+            )
+
+        transitions = list(self.__find_transitions2(head, forms))
+        return NextSequenceStep(
+            sq=self,
+            valid=0 < len(transitions),
+            awaiting=False,
+            frozen=False,
+            transitions=transitions
+        )
+
+    def fetch_transitions(self):
+        head = self.__all_entries[-1]
+        if isinstance(head, RtTmpEntry):
+            valid = True if head.get_subctx() is not None else False
+            return NextSequenceStep(
+                sq=self,
+                valid=valid,
+                awaiting=valid,
+                frozen=False,
+                transitions=[]
+            )
+
+        if self.__backlog.empty():
+            return NextSequenceStep(
+                sq=self,
+                valid=True,
+                awaiting=False,
+                frozen=False,
+                transitions=[]
+            )
+
+        forms = self.__backlog.pop_tail()
+        transitions = list(self.__find_transitions2(head, forms))
+        return NextSequenceStep(
+            sq=self,
+            valid=len(transitions) > 0,
+            awaiting=False,
+            frozen=False,
+            transitions=transitions
+        )
+
+    def __find_transitions2(self, head, forms):
+        trs = head.find_transitions(forms)
+        for form, t in trs:
+            to = t.get_to()
+            if to.fixed() or form.get_position() is None:
+                yield NextSequenceStepTransition(
+                    form=form,
+                    trs_def=t,
+                    fixed=True,
+                    probability=1.0
+                )
+            elif not self.__dynamic_ctx_overflow(
+                to.get_include_name(),
+                offset=form.get_position(),
+            ):
+                yield NextSequenceStepTransition(
+                    form=form,
+                    trs_def=t,
+                    fixed=False,
+                    probability=RtMatchSequence.dynamic_trs_fine
+                )
 
     def __find_transitions(self, head, forms):
         trs = head.find_transitions(forms)
@@ -368,18 +559,23 @@ class RtMatchSequence(object):
         trs_sqs = [self, ] + [RtMatchSequence(self) for t in trs[0:-1]]
         for sq, (form, t) in zip(trs_sqs, trs):
             res = sq.__handle_trs(t, form)
-            for r in res:
-                if r.valid:
-                    if not r.again:
-                        hres.results.append(r)
-                    else:
-                        hres.again.append((r.sq, [form, ]))
+            if res.valid:
+                if not res.again:
+                    hres.results.append(res)
                 else:
-                    self.__ctx.sequence_failed(r.sq)
-                if r.fini:
-                    self.__ctx.sequence_res(r)
+                    hres.again.append((res.sq, [form, ]))
+            else:
+                self.__ctx.sequence_failed(res.sq)
+            if res.fini:
+                self.__ctx.sequence_res(res)
 
         return hres
+
+    def follow(self, trs):
+        res = self.__handle_trs(trs.trs_def, trs.form)
+        if res.again:
+            self.__backlog.push_tail([trs.form, ])
+        return res
 
     @argres()
     def __handle_trs(self, trs, form):
@@ -475,17 +671,17 @@ class RtMatchSequence(object):
         rtme = self.__entry_from_spec(to, form)
 
         if not self.append(rtme):
-            return [ns(sq=self, valid=False, fini=False, again=False), ]
+            return TrsResult(sq=self, valid=False, fini=False, again=False)
 
         if to.is_fini():
-            return [ns(sq=self, valid=self.__on_fini(), fini=True, again=False), ]
-        return [ns(sq=self, valid=True, fini=False, again=to.is_virtual()), ]
+            return TrsResult(sq=self, valid=self.__on_fini(), fini=True, again=False)
+        return TrsResult(sq=self, valid=True, fini=False, again=to.is_virtual())
 
     @argres()
     def __handle_dynamic_trs(self, trs, form):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
-            return [ns(sq=self, valid=True, fini=False, again=False), ]
+            return TrsResult(sq=self, valid=True, fini=False, again=False)
 
         to = trs.get_to()
 
@@ -510,29 +706,24 @@ class RtMatchSequence(object):
             sequence_forked_fcn=lambda sub_ctx_sq_new_sq: self.__submatcher_forked(sub_ctx_sq_new_sq[0], sub_ctx_sq_new_sq[1], sub_ctx_sq_new_sq[2], rte),
             ctx_complete_fcn=lambda sub_ctx3: self.__subctx_complete(sub_ctx3[0], rte)
         )
-        return [ns(sq=self, valid=True, fini=False, again=False), ]
+        return TrsResult(sq=self, valid=True, fini=False, again=False)
 
     def __dynamic_ctx_overflow(self, next_ctx_name, offset):
         return self.__ctx.recursed_at_offset(next_ctx_name, offset)
 
     def __subctx_create(self, sub_ctx, rte):
-        # print '__submatcher_create', sub_ctx, rte
         rte.set_subctx(sub_ctx)
 
     def __submatcher_res(self, sub_ctx, rte, res):
-        # print '__submatcher_res', res
         rte.add_sequence_res(sub_ctx, res)
 
     def __submatcher_forked(self, sub_ctx, sq, new_sq, rte):
-        # print '__submatcher_forked'
         rte.add_forked_sequence(sub_ctx, new_sq)
 
     def __subctx_complete(self, sub_ctx, rte):
-        # print '__submatcher_complete', sub_ctx, rte
         rte.unset_subctx(sub_ctx)
 
     def __subctx_failed(self, sub_ctx, rte):
-        # print '__submatcher_failed', sub_ctx, rte
         rte.unset_subctx(sub_ctx)
 
     @argres()
@@ -702,6 +893,62 @@ class RtMatchSequence(object):
             yield self.__all_entries[i]
 
 
+class TrsResult(object):
+    def __init__(self, sq, valid, fini, again):
+        self.sq = sq
+        self.valid = valid
+        self.fini = fini
+        self.again = again
+
+
+class SequenceCloner(object):
+    def __init__(self, c_out_ctx, obj):
+        self.__c_out = c_out_ctx
+        self.__obj = obj
+        self.__obj_used = False
+
+    def get(self):
+        obj = self.__obj
+        if self.__obj_used:
+            obj = obj.clone()
+        self.__obj_used = True
+        self.__c_out.checkout_sequence(obj)
+        return obj
+
+
+class AggregatedCtxTransitions(list):
+    pass
+
+
+class TransitionAttempt(object):
+    def __init__(self, sq, trs):
+        self.sq = sq
+        self.trs = trs
+
+
+class NextSequenceStep(object):
+    def __init__(self, sq, valid, awaiting, frozen, transitions):
+        self.sq = sq
+        self.valid = valid
+        self.awaiting = awaiting
+        self.frozen = frozen
+        self.transitions = transitions
+
+
+class NextSequenceStepTransition(object):
+    def __init__(self, form, trs_def, fixed, probability):
+        self.form = form
+        self.trs_def = trs_def
+        self.fixed = fixed
+        self.probability = probability
+
+
+class FrozenSequence(list):
+    def __init__(self, sq):
+        super().__init__()
+        self.sq = sq
+
+
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec):
         assert owner is not None
@@ -750,6 +997,67 @@ class SpecMatcher(object):
                 ctx.sequence_failed(res.sq)
 
     def __handle_sequences(self, ctx, forms):
+        if ctx.is_blank():
+            self.__create_new_sequence(ctx)
+
+        ctx.push_forms(forms)
+        while ctx.has_backlog(frozen=False):
+            c_out = ctx.checkout()
+            to_execute = self.__find_executables(c_out)
+            self.__execute_sequences(c_out, to_execute)
+
+            c_out.commit()
+
+            # if not ctx.has_backlog(frozen=False) and \
+            #         ctx.has_backlog(frozen=True):
+            #     ctx.unfreeze_one()
+
+        return ns(complete=ctx.empty())
+
+    def __execute_sequences(self, c_out, to_execute):
+        for ta in to_execute:
+            res = ta.sq.follow(ta.trs)
+
+            if not res.valid:
+                c_out.fail_sequence(ta.sq)
+                continue
+
+            if res.fini:
+                c_out.complete_sequence(ta.sq)
+                continue
+
+            c_out.confirm_sequence(ta.sq)
+
+    def __deduce_min_probability(self, transitions):
+        return 0.0
+
+    def __find_executables(self, c_out):
+        sequences = c_out.sequences()
+
+        agg_transitions = AggregatedCtxTransitions()
+        for sq in sequences:
+            agg_transitions.append(sq.fetch_transitions())
+        min_probability = self.__deduce_min_probability(agg_transitions)
+
+        to_execute = []
+        for tps in agg_transitions:
+            sq_cloner = SequenceCloner(c_out, tps.sq)
+            frozen = None
+            for trs in tps.transitions:
+                if min_probability <= trs.probability:
+                    ta = TransitionAttempt(
+                        sq=sq_cloner.get(),
+                        trs=trs
+                    )
+                    to_execute.append(ta)
+                else:
+                    if frozen is None:
+                        frozen = FrozenSequence(sq_cloner.get())
+                        c_out.ctx.add_frozen(frozen)
+                    frozen.append(trs)
+        return to_execute
+
+    def __handle_sequences2(self, ctx, forms):
         if ctx.is_blank():
             self.__create_new_sequence(ctx)
 

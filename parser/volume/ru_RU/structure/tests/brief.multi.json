@@ -20,15 +20,14 @@
             "n": {
                 "@id": "noun",
                 "@inherit": ["once", "anchor", "basic-noun"]
-#               "@inv": "optional",
-#                "refers-to": "#void"
             },
             "a": {
                 "@id": "aggregate",
                 "@inherit": ["once"]
             }
         },
-        "export": ["r1", "r3"],
+        "export": ["r1", "r2", "r3"],
+        "optimize-for": ["n"],
         "formats": [
             "r1: [{p}] {n} [* , {n}] [и {n} [* , и {n}]]",
             "r2: ({p1} {n}) [* , ({p1} {n})] [и ({p1} {n}) [* , и ({p1} {n})]]",
