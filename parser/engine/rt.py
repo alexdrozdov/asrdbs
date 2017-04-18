@@ -74,11 +74,12 @@ class Backlog(object):
         self.__slaves.remove(slave)
 
     def push_head(self, entry):
-        if not self.__slaves:
-            self.__entries.append(entry)
-        else:
-            for s in self.__slaves:
-                s.push_head(entry)
+        if entry:
+            if not self.__slaves:
+                self.__entries.append(entry)
+            else:
+                for s in self.__slaves:
+                    s.push_head(entry)
 
     def push_tail(self, entry):
         if self.__slaves:
@@ -114,6 +115,9 @@ class CheckedoutCtx(object):
     def commit(self):
         for svsq in self.__sequences.values():
             assert not svsq.checkedout
+            if isinstance(svsq.sq, UnfrozenSequence):
+                print('skipping unfrozen')
+                continue
             self.ctx.add_sequence(svsq.sq)
 
     def checkout_sequence(self, sq):
@@ -138,6 +142,17 @@ class CheckedoutCtx(object):
         svsq = self.__sequences.pop(id(sq), None)
         assert svsq is not None and svsq.checkedout
         self.ctx.sequence_matched(sq)
+
+    def freeze(self, frozen_sq):
+        sq = frozen_sq.sq
+        svsq = self.__sequences.pop(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        self.ctx.add_frozen(frozen_sq)
+
+    def wait_sequence(self, sq):
+        svsq = self.__sequences.pop(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        self.ctx.add_wait(sq)
 
 
 class MatcherContext(object):
@@ -166,10 +181,12 @@ class MatcherContext(object):
         self.__blank = True
         self.__backlog = Backlog()
         self.__frozen = []
+        self.__awaiting = []
         self.ctx_create()
 
     def empty(self):
-        return len(self.sequences) > 0
+        print(self.__awaiting)
+        return len(self.sequences) > 0 or len(self.__awaiting) > 0
 
     def get_head(self):
         assert len(self.sequences) == 1
@@ -266,6 +283,21 @@ class MatcherContext(object):
     def find_matcher(self, name):
         return self.owner.find_matcher(name)
 
+    def add_wait(self, awaiting_sq):
+        self.__awaiting.append(awaiting_sq)
+
+    def add_frozen(self, frozen_sq):
+        print('freezing')
+        self.__frozen.append(frozen_sq)
+
+    def unfreeze_one(self):
+        print('unfreezing')
+        frozen = self.__frozen.pop()
+        sq = frozen.pop_sequence()
+        self.add_sequence(sq)
+        if frozen:
+            self.__frozen.append(frozen)
+
     def push_forms(self, forms):
         self.__backlog.push_head(forms)
 
@@ -313,6 +345,25 @@ class MatcherContext(object):
 
     def get_offset(self):
         return self.__offset
+
+
+class UnfrozenSequence(object):
+    def __init__(self, sq, trs):
+        self.__sq = sq
+        self.__trs = trs
+
+    def has_backlog(self):
+        print('hasbacklog')
+        return True
+
+    def fetch_transitions(self):
+        return NextSequenceStep(
+            sq=self.__sq,
+            valid=True,
+            awaiting=False,
+            frozen=False,
+            transitions=[self.__trs, ]
+        )
 
 
 class RtMatchSequence(object):
@@ -482,6 +533,15 @@ class RtMatchSequence(object):
         )
 
     def fetch_transitions(self):
+        if self.__backlog.empty():
+            return NextSequenceStep(
+                sq=self,
+                valid=True,
+                awaiting=False,
+                frozen=False,
+                transitions=[]
+            )
+
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
             valid = True if head.get_subctx() is not None else False
@@ -489,15 +549,6 @@ class RtMatchSequence(object):
                 sq=self,
                 valid=valid,
                 awaiting=valid,
-                frozen=False,
-                transitions=[]
-            )
-
-        if self.__backlog.empty():
-            return NextSequenceStep(
-                sq=self,
-                valid=True,
-                awaiting=False,
                 frozen=False,
                 transitions=[]
             )
@@ -683,17 +734,17 @@ class RtMatchSequence(object):
         rtme = self.__entry_from_spec(to, form)
 
         if not self.append(rtme):
-            return TrsResult(sq=self, valid=False, fini=False, again=False)
+            return TrsResult(sq=self, valid=False, fini=False, again=False, wait=False)
 
         if to.is_fini():
-            return TrsResult(sq=self, valid=self.__on_fini(), fini=True, again=False)
-        return TrsResult(sq=self, valid=True, fini=False, again=to.is_virtual())
+            return TrsResult(sq=self, valid=self.__on_fini(), fini=True, again=False, wait=False)
+        return TrsResult(sq=self, valid=True, fini=False, again=to.is_virtual(), wait=False)
 
     @argres()
     def __handle_dynamic_trs(self, trs, form):
         head = self.__all_entries[-1]
         if isinstance(head, RtTmpEntry):
-            return TrsResult(sq=self, valid=True, fini=False, again=False)
+            return TrsResult(sq=self, valid=True, fini=False, again=False, wait=True)
 
         to = trs.get_to()
 
@@ -718,7 +769,7 @@ class RtMatchSequence(object):
             sequence_forked_fcn=lambda sub_ctx_sq_new_sq: self.__submatcher_forked(sub_ctx_sq_new_sq[0], sub_ctx_sq_new_sq[1], sub_ctx_sq_new_sq[2], rte),
             ctx_complete_fcn=lambda sub_ctx3: self.__subctx_complete(sub_ctx3[0], rte)
         )
-        return TrsResult(sq=self, valid=True, fini=False, again=False)
+        return TrsResult(sq=self, valid=True, fini=False, again=True, wait=True)
 
     def __dynamic_ctx_overflow(self, next_ctx_name, offset):
         return self.__ctx.recursed_at_offset(next_ctx_name, offset)
@@ -727,15 +778,20 @@ class RtMatchSequence(object):
         rte.set_subctx(sub_ctx)
 
     def __submatcher_res(self, sub_ctx, rte, res):
+        sq = self.clone()
+        sq.replay(res.sq)
+        self.__ctx.add_sequence(sq)
         rte.add_sequence_res(sub_ctx, res)
 
     def __submatcher_forked(self, sub_ctx, sq, new_sq, rte):
         rte.add_forked_sequence(sub_ctx, new_sq)
 
     def __subctx_complete(self, sub_ctx, rte):
+        print('complete')
         rte.unset_subctx(sub_ctx)
 
     def __subctx_failed(self, sub_ctx, rte):
+        print('failed')
         rte.unset_subctx(sub_ctx)
 
     @argres()
@@ -907,13 +963,14 @@ class RtMatchSequence(object):
 
 class TrsResult(object):
 
-    __slots__ = ('sq', 'valid', 'fini', 'again')
+    __slots__ = ('sq', 'valid', 'fini', 'again', 'wait')
 
-    def __init__(self, sq, valid, fini, again):
+    def __init__(self, sq, valid, fini, again, wait):
         self.sq = sq
         self.valid = valid
         self.fini = fini
         self.again = again
+        self.wait = wait
 
 
 class SequenceCloner(object):
@@ -932,7 +989,16 @@ class SequenceCloner(object):
 
 
 class AggregatedCtxTransitions(list):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.__probabilities = []
+
+    def append(self, v):
+        super().append(v)
+        self.__probabilities.extend([t.probability for t in v.transitions])
+
+    def probabilities(self):
+        return sorted(self.__probabilities)
 
 
 class TransitionAttempt(object):
@@ -971,6 +1037,13 @@ class FrozenSequence(list):
     def __init__(self, sq):
         super().__init__()
         self.sq = sq
+
+    def pop_sequence(self):
+        trs = self.pop()
+        sq = self.sq
+        if self:
+            sq = sq.clone()
+        return UnfrozenSequence(sq, trs)
 
 
 class SpecMatcher(object):
@@ -1048,10 +1121,20 @@ class SpecMatcher(object):
                 c_out.complete_sequence(ta.sq)
                 continue
 
+            if res.wait:
+                c_out.wait_sequence(ta.sq)
+                continue
+
             c_out.confirm_sequence(ta.sq)
 
-    def __deduce_min_probability(self, transitions):
-        return 0.0
+    def __deduce_min_probability(self, probabilities):
+        best = probabilities[-1]
+        for i in range(len(probabilities) - 1, -1, -1):
+            p = probabilities[i]
+            if p <= RtMatchSequence.dynamic_trs_fine:
+                break
+            best = p
+        return best
 
     def __find_executables(self, c_out):
         sequences = c_out.sequences()
@@ -1059,7 +1142,12 @@ class SpecMatcher(object):
         agg_transitions = AggregatedCtxTransitions()
         for sq in sequences:
             agg_transitions.append(sq.fetch_transitions())
-        min_probability = self.__deduce_min_probability(agg_transitions)
+        # print('dfdf', agg_transitions)
+
+        probabilities = agg_transitions.probabilities()
+        if not probabilities:
+            return []
+        min_probability = self.__deduce_min_probability(probabilities)
 
         to_execute = []
         for tps in agg_transitions:
@@ -1075,7 +1163,7 @@ class SpecMatcher(object):
                 else:
                     if frozen is None:
                         frozen = FrozenSequence(sq_cloner.get())
-                        c_out.ctx.add_frozen(frozen)
+                        c_out.freeze(frozen)
                     frozen.append(trs)
         return to_execute
 

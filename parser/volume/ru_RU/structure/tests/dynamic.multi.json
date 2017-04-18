@@ -1,0 +1,63 @@
+{
+    "name": "second-third",
+    "entries": [
+        {
+            "@id": "two",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["два"]
+        },
+        {
+            "@id": "three",
+            "@inherit": ["once-or-more", "numeral", "nominative"],
+            "@word-forms": ["три"]
+        }
+    ]
+}
+
+{
+    "name": "second-fourth",
+    "entries": [
+        {
+            "@id": "two",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["два"]
+        },
+        {
+            "@id": "four",
+            "@inherit": ["once-or-more", "numeral", "nominative"],
+            "@word-forms": ["четыре"]
+        }
+    ]
+}
+
+{
+    "name": "dynamic",
+    "entries": [
+        {
+            "@id": "first",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "second_third_fourth",
+            "@inherit": ["once"],
+            "uniq-items": [
+                {
+                    "@id": "second-third",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "second-third", "is_static": true}
+                },
+                {
+                    "@id": "second-fourth",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "second-fourth", "is_dynamic": true}
+                }
+            ]
+        },
+        {
+            "@id": "fivth",
+            "@inherit": ["once", "numeral", "nominative"],
+            "@word-forms": ["пять"]
+        }
+    ]
+}
