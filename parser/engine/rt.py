@@ -58,14 +58,21 @@ class Backlog(object):
     def __init__(self, master=None):
         self.__master = master
         self.__slaves = []
+        self.__entries = []
         if master is not None:
             master.attach_slave(self)
-        self.__entries = []
 
     def clone(self):
         bl = Backlog(self.__master)
         bl.__entries = [e for e in self.__entries]
         return bl
+
+    def fetch_master(self):
+        assert self.__master is not None
+        assert not self.__entries
+        assert len(self.__master.__slaves) == 1
+        self.__entries = self.__master.__entries
+        self.__master.__entries = []
 
     def attach_slave(self, slave):
         self.__slaves.append(slave)
@@ -100,6 +107,13 @@ class Backlog(object):
 class SupervisedSequence(object):
     def __init__(self, sq, checkedout):
         self.sq = sq
+        self.checkedout = checkedout
+
+
+class SupervisedContext(object):
+    def __init__(self, ctx, matcher, checkedout):
+        self.ctx = ctx
+        self.matcher = matcher
         self.checkedout = checkedout
 
 
@@ -153,6 +167,39 @@ class CheckedoutCtx(object):
         svsq = self.__sequences.pop(id(sq), None)
         assert svsq is not None and svsq.checkedout
         self.ctx.add_wait(sq)
+
+
+class CheckedoutCtxs(object):
+    def __init__(self, ctx, ctxs):
+        self.ctx = ctx
+        self.__ctxs = {id(c): SupervisedContext(ctx=c, matcher=m, checkedout=False)
+                       for m, c in ctxs}
+
+    def ctxs(self):
+        return self.__ctxs.values()
+
+    def commit(self):
+        for svctx in self.__ctxs.values():
+            assert not svctx.checkedout
+            self.ctx.add_ctx(svctx.matcher, svctx.ctx)
+
+    def checkout(self, ctx):
+        print('checkout')
+        svctx = self.__ctxs.get(id(ctx), None)
+        assert svctx is not None
+        assert not svctx.checkedout
+        svctx.checkedout = True
+
+    def confirm(self, ctx):
+        print('confirmed')
+        svsq = self.__ctxs.get(id(ctx), None)
+        assert svsq is not None and svsq.checkedout
+        svsq.checkedout = False
+
+    def complete(self, ctx):
+        print('complete')
+        svsq = self.__ctxs.pop(id(ctx), None)
+        assert svsq is not None and svsq.checkedout
 
 
 class MatcherContext(object):
@@ -235,6 +282,9 @@ class MatcherContext(object):
     def set_ctxs(self, ctxs):
         self.ctxs = ctxs
 
+    def add_ctx(self, matcher, ctx):
+        self.ctxs.append((matcher, ctx))
+
     def get_new_ctxs(self):
         return self.__new_ctxs
 
@@ -247,10 +297,15 @@ class MatcherContext(object):
         self.ctxs.append((matcher, mc))
         self.__new_ctxs.append((matcher, mc))
 
-    def checkout(self):
+    def checkout_sequences(self):
         sequences = self.sequences
         self.sequences = []
         return CheckedoutCtx(self, sequences)
+
+    def checkout_contexts(self):
+        ctxs = self.ctxs
+        self.ctxs = []
+        return CheckedoutCtxs(self, ctxs)
 
     def recursed_at_offset(self, ctx_name, offset):
         sparse_calls = 0
@@ -300,8 +355,17 @@ class MatcherContext(object):
 
     def push_forms(self, forms):
         self.__backlog.push_head(forms)
+        for _, ctx in self.ctxs:
+            ctx.push_forms(forms)
+
+    def push_sentence(self, sentence):
+        print('push_sentence', self, self.ctxs)
+        for forms in sentence:
+            self.push_forms(forms)
 
     def has_backlog(self):
+        if self.__blank:
+            return not self.__backlog.empty()
         for sq in self.sequences:
             if sq.has_backlog():
                 return True
@@ -323,21 +387,26 @@ class MatcherContext(object):
         self.__fcns['sequence_forking_fcn']((self, sq))
 
     def sequence_matched(self, sq):
+        print('sequence_matched')
         self.__backlog.forget_slave(sq.backlog())
         sq = MatchedSequence(sq)
         self.__fcns['sequence_matched_fcn']((self, sq))
 
     def sequence_failed(self, sq):
+        print('sequence_failed')
         self.__backlog.forget_slave(sq.backlog())
         self.__fcns['sequence_failed_fcn']((self, sq))
 
     def sequence_res(self, res):
+        print('sequence_res')
         self.__fcns['sequence_res_fcn']((self, res))
 
     def ctx_create(self):
+        print('ctx_create')
         self.__fcns['ctx_create_fcn']((self, ))
 
     def ctx_complete(self):
+        print('ctx_complete')
         self.__fcns['ctx_complete_fcn']((self, ))
 
     def get_name(self):
@@ -1057,31 +1126,33 @@ class SpecMatcher(object):
     def is_applicable(self, form):
         return self.__compiled_spec.is_applicable(form)
 
-    def match(self, ctx, sentence):
-        for forms in sentence:
-            res = self.__handle_sequences(ctx, forms)
-            if res.complete:
-                return res
+    def match(self, ctx):
+        print('match called for', ctx)
+        res = self.__handle_sequences(ctx)
+        if res.complete:
+            print('ctx complete')
+            return res
+        print('ctx not complete')
         return ns(complete=False)
 
-    def once(self, ctx, forms):
-        self.__handle_sequences(ctx, forms)
+    def once(self, ctx):
+        self.__handle_sequences(ctx)
 
     def __create_new_sequence(self, ctx):
         ini_spec = self.__compiled_spec.get_inis()[0]
-        ctx.add_sequence(
-            RtMatchSequence(
-                ns(
-                    matcher=self,
-                    initial_entry=RtMatchEntry(None, ns(
-                        form=parser.spare.wordform.SpecStateIniForm(),
-                        spec_state_def=ini_spec,
-                        rtms_offset=0)
-                    ),
-                    ctx=ctx,
-                )
+        sq = RtMatchSequence(
+            ns(
+                matcher=self,
+                initial_entry=RtMatchEntry(None, ns(
+                    form=parser.spare.wordform.SpecStateIniForm(),
+                    spec_state_def=ini_spec,
+                    rtms_offset=0)
+                ),
+                ctx=ctx,
             )
         )
+        sq.backlog().fetch_master()
+        ctx.add_sequence(sq)
 
     def __handle_forms_result(self, ctx, res, next_sequences):
         if not res.fini:
@@ -1092,13 +1163,13 @@ class SpecMatcher(object):
             else:
                 ctx.sequence_failed(res.sq)
 
-    def __handle_sequences(self, ctx, forms):
+    def __handle_sequences(self, ctx):
         if ctx.is_blank():
             self.__create_new_sequence(ctx)
 
-        ctx.push_forms(forms)
+        print('ctx backlog', ctx.has_backlog())
         while ctx.has_backlog():
-            c_out = ctx.checkout()
+            c_out = ctx.checkout_sequences()
             to_execute = self.__find_executables(c_out)
             self.__execute_sequences(c_out, to_execute)
 
@@ -1227,56 +1298,54 @@ class Matcher(object):
             )
         )
 
-    def __create_initial_ctxs(self, ctx):
-        ctx.ctxs = [
-            (m, parser.engine.rt.MatcherContext(
-                ctx,
+    def __sequence_matched_fcn(self, ctx, sq):
+        ctx.matched_sqs.add(sq[1])
+
+    def __find_executables(self, c_out):
+        return [c for c in c_out.ctxs() if c.ctx.has_backlog()]
+
+    def __handle_ctx(self, matcher, ctx):
+        while True:
+            c_out = ctx.checkout_contexts()
+            exe = self.__find_executables(c_out)
+            for e in exe:
+                c_out.checkout(e.ctx)
+                res = self.__handle_ctx(e.matcher, e.ctx)
+                if res.complete:
+                    c_out.complete(e.ctx)
+                else:
+                    c_out.confirm(e.ctx)
+            c_out.commit()
+            res = matcher.match(ctx)
+            if ctx.empty():
+                break
+        return res
+
+    def new_context(self):
+        ctx = ns(
+            ctx=None,
+            matched_sqs=set(),
+            find_matcher=self.__compiled.get_matcher,
+            push_sentence=lambda s: intctx.push_sentence(s)
+        )
+        intctx = MatcherContext(
+            ctx,
+            'root-ctx',
+        )
+        intctx.ctxs = [
+            (m, MatcherContext(
+                intctx,
                 m.get_name(),
                 sequence_matched_fcn=lambda sq_ctx_sq:
                 self.__sequence_matched_fcn(ctx, sq_ctx_sq),
             )) for m in self.__compiled.get_primary()]
+        ctx.ctx = intctx
+        return ctx
 
-    def __sequence_matched_fcn(self, ctx, sq):
-        ctx.matched_sqs.add(sq[1])
+    def process(self, ctx):
+        intctx = ctx.ctx
+        for matcher, _ctx in intctx.ctxs:
+            self.__handle_ctx(matcher, _ctx)
 
-    def __create_ctx(self):
-        return ns(
-            matched_sqs=set(),
-            find_matcher=self.__compiled.get_matcher
-        )
-
-    def __handle_ctx(self, matcher, ctx, s):
-        ctx.clear_new_ctxs()
-
-        next_subctxs = []
-        for mtchr, m_ctx in ctx.get_ctxs():
-            res = self.__handle_ctx(mtchr, m_ctx, s)
-            if not res.complete:
-                next_subctxs.append((mtchr, m_ctx))
-        ctx.set_ctxs(next_subctxs)
-
-        res = matcher.match(ctx, s)
-        if res.complete:
-            return res
-
-        for mtchr, m_ctx in ctx.get_new_ctxs():
-            self.__handle_ctx(mtchr, m_ctx, s)
-
-        return ns(complete=False)
-
-    def match_sentence(self, sentence, ctx=None, most_complete=False):
-        if ctx is None:
-            ctx = self.__create_ctx()
-            self.__create_initial_ctxs(ctx)
-
-        sentence += [parser.spare.wordform.SentenceFini(), ]
-
-        for s in sentence:
-            s = [s, ]
-            for matcher, m_ctx in ctx.ctxs:
-                self.__handle_ctx(matcher, m_ctx, s)
-
-        if most_complete:
-            self.__select_most_complete(ctx)
         smr = SequenceMatchRes(ctx.matched_sqs)
         return smr

@@ -62,7 +62,7 @@ def execute(opts):
     with timeit_ctx('total'):
         if not opts.no_database:
             with timeit_ctx('loading database'):
-                tm = parser.TokenMapper('./dbs/worddb.db')
+                parser.TokenMapper('./dbs/worddb.db')
         with timeit_ctx('building parser'):
             prs = parser.Loader(
                 primary=opts.primary,
@@ -73,17 +73,14 @@ def execute(opts):
             srm = parser.Matcher(prs)
 
         if not opts.build_only:
-            with timeit_ctx('tokenizing'):
-                tokens = parser.Tokenizer().tokenize(sentence)
+            with timeit_ctx('constructing sentence'):
+                tokenized_sentence = parser.api.Sentence.from_sentence(sentence)
 
-            with timeit_ctx('mapping word forms'):
-                parsed_sentence = tm.map(tokens)
+            ctx = srm.new_context()
+            ctx.push_sentence(tokenized_sentence)
 
             with timeit_ctx('matching sentences'):
-                matched_sentences = srm.match_sentence(
-                    parsed_sentence,
-                    most_complete=True
-                )
+                matched_sentences = srm.process(ctx)
 
             with timeit_ctx('exporting results'):
                 parser.io.export.generate(
