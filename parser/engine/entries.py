@@ -716,3 +716,28 @@ class RtSiblingCloserEntry(RtEntry):
             elif e.get_spec().is_sibling_leader() and self_found:
                 return e
         raise RuntimeError('Preceeding siblings leader entry not found')
+
+
+class StandaloneEntry(object):
+    def __init__(self, spec):
+        self._spec = spec
+
+    def find_transitions(self, forms):
+        return functools.reduce(
+            lambda x, y: x + list(y),
+            map(
+                lambda form:
+                    filter(
+                        lambda frm_trs: frm_trs[1].get_to().is_static_applicable(frm_trs[0]),
+                        map(
+                            lambda trs: (form, trs),
+                            self._spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
+                        )
+                    ),
+                forms
+            ),
+            []
+        ) + list(map(
+            lambda trs: (parser.spare.wordform.SpecStateFiniForm(), trs),
+            self._spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
+        ))

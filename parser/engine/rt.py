@@ -78,7 +78,10 @@ class Backlog(object):
         self.__slaves.append(slave)
 
     def forget_slave(self, slave):
-        self.__slaves.remove(slave)
+        try:
+            self.__slaves.remove(slave)
+        except ValueError:
+            pass
 
     def push_head(self, entry):
         if entry:
@@ -98,16 +101,25 @@ class Backlog(object):
             return self.__entries.pop(0)
         raise RuntimeError('Backlog is empty')
 
+    def get_tail(self):
+        if self.__entries:
+            return self.__entries[0]
+        raise RuntimeError('Backlog is empty')
+
     def empty(self):
         if self.__entries:
             return False
         return True
 
+    def __iter__(self):
+        return iter(self.__entries)
+
 
 class SupervisedSequence(object):
-    def __init__(self, sq, checkedout):
+    def __init__(self, sq, checkedout, confirmed):
         self.sq = sq
         self.checkedout = checkedout
+        self.confirmed = confirmed
 
 
 class SupervisedContext(object):
@@ -120,8 +132,9 @@ class SupervisedContext(object):
 class CheckedoutCtx(object):
     def __init__(self, ctx, sequences):
         self.ctx = ctx
-        self.__sequences = {id(sq): SupervisedSequence(sq=sq, checkedout=False)
-                            for sq in sequences}
+        self.__sequences = {id(sq): SupervisedSequence(
+            sq=sq, checkedout=False, confirmed=False)
+            for sq in sequences}
 
     def sequences(self):
         return [sq.sq for sq in self.__sequences.values()]
@@ -132,7 +145,10 @@ class CheckedoutCtx(object):
             if isinstance(svsq.sq, UnfrozenSequence):
                 print('skipping unfrozen')
                 continue
-            self.ctx.add_sequence(svsq.sq)
+            if svsq.confirmed:
+                self.ctx.add_sequence(svsq.sq)
+            else:
+                self.ctx.sequence_failed(svsq.sq)
 
     def checkout_sequence(self, sq):
         svsq = self.__sequences.get(id(sq), None)
@@ -140,17 +156,24 @@ class CheckedoutCtx(object):
             assert not svsq.checkedout
             svsq.checkedout = True
             return
-        self.__sequences[id(sq)] = SupervisedSequence(sq, True)
+        self.__sequences[id(sq)] = SupervisedSequence(sq, True, False)
 
     def confirm_sequence(self, sq):
         svsq = self.__sequences.get(id(sq), None)
         assert svsq is not None and svsq.checkedout
         svsq.checkedout = False
+        svsq.confirmed = True
 
     def fail_sequence(self, sq):
         svsq = self.__sequences.pop(id(sq), None)
         assert svsq is not None and svsq.checkedout
         self.ctx.sequence_failed(sq)
+
+    def ignore_sequence(self, sq):
+        svsq = self.__sequences.get(id(sq), None)
+        assert svsq is not None and svsq.checkedout
+        svsq.checkedout = False
+        svsq.confirmed = False
 
     def complete_sequence(self, sq):
         svsq = self.__sequences.pop(id(sq), None)
@@ -164,8 +187,6 @@ class CheckedoutCtx(object):
         self.ctx.add_frozen(frozen_sq)
 
     def wait_sequence(self, sq):
-        svsq = self.__sequences.pop(id(sq), None)
-        assert svsq is not None and svsq.checkedout
         self.ctx.add_wait(sq)
 
 
@@ -200,6 +221,7 @@ class CheckedoutCtxs(object):
         print('complete')
         svsq = self.__ctxs.pop(id(ctx), None)
         assert svsq is not None and svsq.checkedout
+        svsq.ctx.ctx_complete()
 
 
 class MatcherContext(object):
@@ -224,16 +246,15 @@ class MatcherContext(object):
         self.__create_fcns(kwargs)
         self.sequences = []
         self.ctxs = []
-        self.__new_ctxs = []
         self.__blank = True
         self.__backlog = Backlog()
         self.__frozen = []
         self.__awaiting = []
         self.ctx_create()
 
-    def empty(self):
-        print(self.__awaiting)
-        return len(self.sequences) > 0 or len(self.__awaiting) > 0
+    def empty(self, deep=False):
+        print(self, ' empty: awaiting', self.__awaiting, 'sequences', self.sequences)
+        return len(self.sequences) == 0 and len(self.__awaiting) == 0
 
     def get_head(self):
         assert len(self.sequences) == 1
@@ -285,17 +306,11 @@ class MatcherContext(object):
     def add_ctx(self, matcher, ctx):
         self.ctxs.append((matcher, ctx))
 
-    def get_new_ctxs(self):
-        return self.__new_ctxs
-
-    def clear_new_ctxs(self):
-        self.__new_ctxs = []
-
     def create_ctx(self, spec_name, **kwargs):
         matcher = self.owner.find_matcher(spec_name)
         mc = MatcherContext(self, spec_name, **kwargs)
         self.ctxs.append((matcher, mc))
-        self.__new_ctxs.append((matcher, mc))
+        return mc
 
     def checkout_sequences(self):
         sequences = self.sequences
@@ -341,6 +356,9 @@ class MatcherContext(object):
     def add_wait(self, awaiting_sq):
         self.__awaiting.append(awaiting_sq)
 
+    def del_wait(self, awaiting_sq):
+        self.__awaiting.remove(awaiting_sq)
+
     def add_frozen(self, frozen_sq):
         print('freezing')
         self.__frozen.append(frozen_sq)
@@ -371,6 +389,9 @@ class MatcherContext(object):
                 return True
         return False
 
+    def backlog(self):
+        return self.__backlog
+
     def get_slave_backlog(self):
         return Backlog(self.__backlog)
 
@@ -389,7 +410,6 @@ class MatcherContext(object):
     def sequence_matched(self, sq):
         print('sequence_matched')
         self.__backlog.forget_slave(sq.backlog())
-        sq = MatchedSequence(sq)
         self.__fcns['sequence_matched_fcn']((self, sq))
 
     def sequence_failed(self, sq):
@@ -569,38 +589,6 @@ class RtMatchSequence(object):
     def __add_anchor(self, rtme):
         self.__anchors.append(rtme)
 
-    @argres()
-    def handle_forms(self, forms):
-        new_sq = []
-        again = [(self, forms), ]
-        while again:
-            sq, frms = again.pop(0)
-            r = sq.__handle_forms(frms)
-            new_sq.extend(r.results)
-            again.extend(r.again)
-        return new_sq
-
-    def find_transitions(self, forms):
-        head = self.__all_entries[-1]
-        if isinstance(head, RtTmpEntry):
-            valid = True if head.get_subctx() is not None else False
-            return NextSequenceStep(
-                sq=self,
-                valid=valid,
-                awaiting=valid,
-                frozen=False,
-                transitions=[]
-            )
-
-        transitions = list(self.__find_transitions2(head, forms))
-        return NextSequenceStep(
-            sq=self,
-            valid=0 < len(transitions),
-            awaiting=False,
-            frozen=False,
-            transitions=transitions
-        )
-
     def fetch_transitions(self):
         if self.__backlog.empty():
             return NextSequenceStep(
@@ -612,18 +600,8 @@ class RtMatchSequence(object):
             )
 
         head = self.__all_entries[-1]
-        if isinstance(head, RtTmpEntry):
-            valid = True if head.get_subctx() is not None else False
-            return NextSequenceStep(
-                sq=self,
-                valid=valid,
-                awaiting=valid,
-                frozen=False,
-                transitions=[]
-            )
-
         forms = self.__backlog.pop_tail()
-        transitions = list(self.__find_transitions2(head, forms))
+        transitions = list(self.find_transitions(head, forms))
         return NextSequenceStep(
             sq=self,
             valid=len(transitions) > 0,
@@ -632,7 +610,7 @@ class RtMatchSequence(object):
             transitions=transitions
         )
 
-    def __find_transitions2(self, head, forms):
+    def find_transitions(self, head, forms):
         trs = head.find_transitions(forms)
         for form, t in trs:
             to = t.get_to()
@@ -654,55 +632,6 @@ class RtMatchSequence(object):
                     probability=RtMatchSequence.dynamic_trs_fine
                 )
 
-    def __find_transitions(self, head, forms):
-        trs = head.find_transitions(forms)
-        for form, t in trs:
-            to = t.get_to()
-            if to.fixed() or form.get_position() is None:
-                yield (form, t)
-            elif not self.__dynamic_ctx_overflow(
-                to.get_include_name(),
-                offset=form.get_position(),
-            ):
-                yield (form, t)
-
-    def __handle_forms(self, forms):
-        head = self.__all_entries[-1]
-        if isinstance(head, RtTmpEntry):
-            return ns(
-                results=[
-                    ns(
-                        sq=self,
-                        valid=True if head.get_subctx() is not None else False,
-                        fini=False
-                    ), ],
-                again=[]
-            )
-
-        hres = ns(
-            results=[],
-            again=[]
-        )
-
-        trs = list(self.__find_transitions(head, forms))
-        if not trs:
-            return hres
-
-        trs_sqs = [self, ] + [RtMatchSequence(self) for t in trs[0:-1]]
-        for sq, (form, t) in zip(trs_sqs, trs):
-            res = sq.__handle_trs(t, form)
-            if res.valid:
-                if not res.again:
-                    hres.results.append(res)
-                else:
-                    hres.again.append((res.sq, [form, ]))
-            else:
-                self.__ctx.sequence_failed(res.sq)
-            if res.fini:
-                self.__ctx.sequence_res(res)
-
-        return hres
-
     def follow(self, trs):
         res = self.__handle_trs(trs.trs_def, trs.form)
         if res.again:
@@ -716,6 +645,19 @@ class RtMatchSequence(object):
             return self.__handle_fixed_trs(trs, form)
         else:
             return self.__handle_dynamic_trs(trs, form)
+
+    def replay(self, sq):
+        print(type(sq), len(sq), type(sq[0]), type(sq[1]))
+        sq = sq[1]
+        print(sq.print_sequence())
+        for rtme in sq.__entries:
+            self.__pop_backlog_form(rtme.get_form())
+            self.__append_entries(rtme)
+
+    def __pop_backlog_form(self, form):
+        f = set((i.get_uniq() for i in self.__backlog.get_tail()))
+        if form.get_uniq() in f:
+            self.__backlog.pop_tail()
 
     @argres()
     def append(self, rtme):
@@ -811,57 +753,23 @@ class RtMatchSequence(object):
 
     @argres()
     def __handle_dynamic_trs(self, trs, form):
-        head = self.__all_entries[-1]
-        if isinstance(head, RtTmpEntry):
-            return TrsResult(sq=self, valid=True, fini=False, again=False, wait=True)
-
         to = trs.get_to()
+        sq = AwaitingSequence(self, to)
 
-        self.__stack.handle_trs(trs)
-
-        # Create virtual entry, awaiting for subsequence
-        rte = RtTmpEntry(
-            self,
-            ns(
-                form=form,
-                spec_state_def=to,
-                rtms_offset=len(self.__all_entries)
-            )
-        )
-
-        self.__append_entries(rte)
-        self.__ctx.create_ctx(
+        dependent_ctx = self.__ctx.create_ctx(
             to.get_include_name(),
             offset=form.get_position(),
-            ctx_create_fcn=lambda sub_ctx2: self.__subctx_create(sub_ctx2[0], rte),
-            sequence_res_fcn=lambda sub_ctx_res: self.__submatcher_res(sub_ctx_res[0], rte, sub_ctx_res[1]),
-            sequence_forked_fcn=lambda sub_ctx_sq_new_sq: self.__submatcher_forked(sub_ctx_sq_new_sq[0], sub_ctx_sq_new_sq[1], sub_ctx_sq_new_sq[2], rte),
-            ctx_complete_fcn=lambda sub_ctx3: self.__subctx_complete(sub_ctx3[0], rte)
+            sequence_matched_fcn=lambda _: sq.submatcher_matched(_),
+            ctx_complete_fcn=lambda sub_ctx3: sq.subctx_complete(sub_ctx3[0])
         )
-        return TrsResult(sq=self, valid=True, fini=False, again=True, wait=True)
+        dependent_ctx.push_forms([form, ])
+        for f in self.__backlog:
+            dependent_ctx.push_forms(f)
+
+        return TrsResult(sq=sq, valid=True, fini=False, again=False, wait=True)
 
     def __dynamic_ctx_overflow(self, next_ctx_name, offset):
         return self.__ctx.recursed_at_offset(next_ctx_name, offset)
-
-    def __subctx_create(self, sub_ctx, rte):
-        rte.set_subctx(sub_ctx)
-
-    def __submatcher_res(self, sub_ctx, rte, res):
-        sq = self.clone()
-        sq.replay(res.sq)
-        self.__ctx.add_sequence(sq)
-        rte.add_sequence_res(sub_ctx, res)
-
-    def __submatcher_forked(self, sub_ctx, sq, new_sq, rte):
-        rte.add_forked_sequence(sub_ctx, new_sq)
-
-    def __subctx_complete(self, sub_ctx, rte):
-        print('complete')
-        rte.unset_subctx(sub_ctx)
-
-    def __subctx_failed(self, sub_ctx, rte):
-        print('failed')
-        rte.unset_subctx(sub_ctx)
 
     @argres()
     def __on_fini(self):
@@ -1115,6 +1023,67 @@ class FrozenSequence(list):
         return UnfrozenSequence(sq, trs)
 
 
+class AwaitingSequence(object):
+    def __init__(self, sq, spec):
+        super().__init__()
+        self.__sq = sq
+        self.__to_spec = spec
+
+    def __pop_sequence(self):
+        return AwaitedSequence(self.__sq.clone(), self.__to_spec)
+
+    def submatcher_matched(self, subsq):
+        print('submatcher_matched')
+        sq = self.__pop_sequence()
+        sq.replay(subsq)
+
+        ctx = self.__sq.get_ctx()
+        ctx.add_sequence(sq)
+
+    def subctx_complete(self, sub_ctx):
+        print('subctx complete')
+        ctx = self.__sq.get_ctx()
+        ctx.del_wait(self)
+
+
+class AwaitedSequence(object):
+    def __init__(self, sq, spec):
+        super().__init__()
+        self.__sq = sq
+        self.__to_spec = spec
+
+    def has_backlog(self):
+        return self.__sq.has_backlog()
+
+    def backlog(self):
+        return self.__sq.backlog()
+
+    def fetch_transitions(self):
+        if not self.has_backlog():
+            return NextSequenceStep(
+                sq=self,
+                valid=True,
+                awaiting=False,
+                frozen=False,
+                transitions=[]
+            )
+
+        sq = self.__sq
+        head = parser.engine.entries.StandaloneEntry(self.__to_spec)
+        forms = sq.backlog().pop_tail()
+        transitions = list(sq.find_transitions(head, forms))
+        return NextSequenceStep(
+            sq=self.__sq,
+            valid=len(transitions) > 0,
+            awaiting=False,
+            frozen=False,
+            transitions=transitions
+        )
+
+    def replay(self, subseq):
+        self.__sq.replay(subseq)
+
+
 class SpecMatcher(object):
     def __init__(self, owner, compiled_spec):
         assert owner is not None
@@ -1128,12 +1097,8 @@ class SpecMatcher(object):
 
     def match(self, ctx):
         print('match called for', ctx)
-        res = self.__handle_sequences(ctx)
-        if res.complete:
-            print('ctx complete')
-            return res
-        print('ctx not complete')
-        return ns(complete=False)
+        self.__handle_sequences(ctx)
+        return ns(complete=ctx.empty())
 
     def once(self, ctx):
         self.__handle_sequences(ctx)
@@ -1164,11 +1129,15 @@ class SpecMatcher(object):
                 ctx.sequence_failed(res.sq)
 
     def __handle_sequences(self, ctx):
+        print(ctx, '__handle_sequences: start')
         if ctx.is_blank():
+            print(ctx, 'backlog')
+            for f in ctx.backlog():
+                print(f)
             self.__create_new_sequence(ctx)
 
-        print('ctx backlog', ctx.has_backlog())
         while ctx.has_backlog():
+            print(ctx, 'ctx backlog', ctx.has_backlog())
             c_out = ctx.checkout_sequences()
             to_execute = self.__find_executables(c_out)
             self.__execute_sequences(c_out, to_execute)
@@ -1178,11 +1147,13 @@ class SpecMatcher(object):
             if not ctx.has_backlog() and ctx.has_frozen():
                 ctx.unfreeze_one()
 
+        print(ctx, '__handle_sequences: done')
         return ns(complete=ctx.empty())
 
     def __execute_sequences(self, c_out, to_execute):
         for ta in to_execute:
             res = ta.sq.follow(ta.trs)
+            print(res.valid, res.fini, res.wait)
 
             if not res.valid:
                 c_out.fail_sequence(ta.sq)
@@ -1193,7 +1164,8 @@ class SpecMatcher(object):
                 continue
 
             if res.wait:
-                c_out.wait_sequence(ta.sq)
+                c_out.ignore_sequence(ta.sq)
+                c_out.wait_sequence(res.sq)
                 continue
 
             c_out.confirm_sequence(ta.sq)
@@ -1237,21 +1209,6 @@ class SpecMatcher(object):
                         c_out.freeze(frozen)
                     frozen.append(trs)
         return to_execute
-
-    def __handle_sequences2(self, ctx, forms):
-        if ctx.is_blank():
-            self.__create_new_sequence(ctx)
-
-        if ctx.get_sequences():
-            next_sequences = []
-            for sq in ctx.get_sequences():
-                for res in sq.handle_forms(forms):
-                    self.__handle_forms_result(ctx, res, next_sequences)
-            ctx.set_sequences(next_sequences)
-            if not next_sequences:
-                ctx.ctx_complete()
-                return ns(complete=True)
-        return ns(complete=False)
 
     def __print_sequences(self, ctx):
         for sq in ctx.get_sequences:
@@ -1299,26 +1256,34 @@ class Matcher(object):
         )
 
     def __sequence_matched_fcn(self, ctx, sq):
-        ctx.matched_sqs.add(sq[1])
+        msq = MatchedSequence(sq[1])
+        ctx.matched_sqs.add(msq)
 
     def __find_executables(self, c_out):
+        print('find_executables ', c_out.ctxs())
         return [c for c in c_out.ctxs() if c.ctx.has_backlog()]
 
     def __handle_ctx(self, matcher, ctx):
+        print(ctx, '__handle_ctx: start')
         while True:
+            print(ctx, '__handle_ctx: loop start')
             c_out = ctx.checkout_contexts()
             exe = self.__find_executables(c_out)
             for e in exe:
                 c_out.checkout(e.ctx)
                 res = self.__handle_ctx(e.matcher, e.ctx)
+                print('sub ctx res', res)
                 if res.complete:
                     c_out.complete(e.ctx)
                 else:
                     c_out.confirm(e.ctx)
             c_out.commit()
             res = matcher.match(ctx)
+            print(ctx, '__handle_ctx: res', res)
             if ctx.empty():
                 break
+            print(ctx, '__handle_ctx: loop done')
+        print(ctx, '__handle_ctx: done')
         return res
 
     def new_context(self):
