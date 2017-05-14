@@ -25,7 +25,8 @@
         {
             "@id": "four",
             "@inherit": ["once-or-more", "numeral", "nominative"],
-            "@word-forms": ["четыре"]
+            "@word-forms": ["четыре"],
+            "@dependency-of": "#void"
         }
     ]
 }
@@ -41,6 +42,7 @@
         {
             "@id": "second_third_fourth",
             "@inherit": ["once"],
+            "@dependency-of": "#void",
             "uniq-items": [
                 {
                     "@id": "second-third",

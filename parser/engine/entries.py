@@ -2,6 +2,7 @@
 # -*- #coding: utf8 -*-
 
 
+import abc
 import functools
 import common.ifmodified
 import parser.engine.rt
@@ -15,7 +16,69 @@ from parser.spare.rules import RtRule, RtMatchString
 logs_enabled = False
 
 
-class RtEntry(object):
+class RtEntryBase(abc.ABC):
+    @abc.abstractmethod
+    def get_matched_rules(self):
+        """Return list of matched rules"""
+
+    @abc.abstractmethod
+    def resolve_matched_rtmes(self):
+        pass
+
+    @abc.abstractmethod
+    def get_name(self):
+        pass
+
+    @abc.abstractmethod
+    def get_owner(self):
+        pass
+
+    @abc.abstractmethod
+    def get_form(self):
+        pass
+
+    @abc.abstractmethod
+    def get_spec(self):
+        pass
+
+    @abc.abstractmethod
+    def get_offset(self, base=None):
+        pass
+
+    @abc.abstractmethod
+    def get_reliability(self):
+        pass
+
+    @abc.abstractmethod
+    def closed(self):
+        pass
+
+    @abc.abstractmethod
+    def has_pending(self, required_only=False):
+        pass
+
+    @abc.abstractmethod
+    def add_link(self, link):
+        pass
+
+    @abc.abstractmethod
+    def find_transitions(self, forms):
+        pass
+
+    @abc.abstractmethod
+    def handle_rules(self, on_entry=None):
+        pass
+
+    @abc.abstractmethod
+    def modified(self):
+        pass
+
+    @abc.abstractmethod
+    def get_trackable_links(self):
+        pass
+
+
+class RtEntry(RtEntryBase):
     def get_logger(self):
         return None
         return self.logger
@@ -99,14 +162,6 @@ class RtEntry(object):
 
     def get_matched_rules(self):
         return self.__matched
-
-    @argres(show_result=True)
-    def matched_list_valid(self):
-        for rule_rtme in self.__matched:
-            if isinstance(rule_rtme.rtme, RtMatchEntry):
-                continue
-            return False
-        return True
 
     @argres(show_result=False)
     def resolve_matched_rtmes(self):
@@ -496,7 +551,7 @@ class RtVirtualEntry(RtEntry):
         return True
 
 
-class SiblingSpec(object):
+class SiblingSpec(RtEntryBase):
     def __init__(self, spec, ctx, matcher, form):
         self.__spec = spec
         self.__ctx = ctx
@@ -718,7 +773,7 @@ class RtSiblingCloserEntry(RtEntry):
         raise RuntimeError('Preceeding siblings leader entry not found')
 
 
-class StandaloneEntry(object):
+class StandaloneEntry(RtEntryBase):
     def __init__(self, spec):
         self._spec = spec
 
@@ -741,3 +796,264 @@ class StandaloneEntry(object):
             lambda trs: (parser.spare.wordform.SpecStateFiniForm(), trs),
             self._spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
         ))
+
+    def get_matched_rules(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def resolve_matched_rtmes(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_name(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_owner(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_form(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_spec(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_offset(self, base=None):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_reliability(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def closed(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def has_pending(self, required_only=False):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def add_link(self, link):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def handle_rules(self, on_entry=None):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def modified(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+    def get_trackable_links(self):
+        raise RuntimeError('Not applicable for StandaloneEntry')
+
+
+class ForeignEntry(RtEntryBase):
+    def __init__(self, owner, based_on):
+        if isinstance(based_on, RtEntryBase):
+            self._init_from_rtme(owner, based_on)
+        elif isinstance(based_on, ns):
+            self._init_from_spec(
+                owner,
+                based_on.rtme,
+                based_on.rtms_offset
+            )
+
+    def _init_from_spec(self, owner, entry, offset):
+        self.__owner = owner
+        self.__entry = entry
+        self.__offset = offset
+
+    def get_matched_rules(self):
+        return self.__entry.get_matched_rules()
+
+    def resolve_matched_rtmes(self):
+        pass
+
+    def get_name(self):
+        return self.__entry.get_name()
+
+    def get_owner(self):
+        return self.__owner
+
+    def get_form(self):
+        return self.__entry.get_form()
+
+    def get_spec(self):
+        return self.__entry.get_spec()
+
+    def get_offset(self, base=None):
+        return self.__offset
+
+    def get_reliability(self):
+        return 1.0
+
+    def closed(self):
+        return self.__entry.closed()
+
+    def has_pending(self, required_only=False):
+        return self.__entry.has_pending(required_only=required_only)
+
+    def add_link(self, link):
+        raise RuntimeError('inapplicable')
+        self.__entry.add_link(link)
+
+    def find_transitions(self, forms):
+        raise RuntimeError('Not applicable for ForeignEntry')
+
+    def handle_rules(self, on_entry=None):
+        return ns(later=False, again=False, valid=True, affected_links=[])
+
+    def modified(self):
+        return False
+
+    def get_trackable_links(self):
+        return self.__entry.get_trackable_links()
+
+
+class ForeignAnchorEntry(RtEntryBase):
+    def __init__(self, owner, based_on):
+        if isinstance(based_on, RtEntryBase):
+            self._init_from_rtme(owner, based_on)
+        elif isinstance(based_on, ns):
+            self._init_from_spec(
+                owner,
+                based_on.rtme,
+                based_on.spec_state_def,
+                based_on.rtms_offset
+            )
+
+    def _init_from_spec(self, owner, entry, spec, offset):
+        self._owner = owner
+        self.__entry = entry
+        self._spec = spec
+        self.__offset = offset
+
+        self.__create_name(self._spec.get_name())
+        self._create_rules()
+        self._index_rules()
+        self._create_static_rules()
+
+    def __create_name(self, name):
+        self.__name = RtMatchString(name)
+        if self.__name.need_reindex():
+            self.__reindex_name(self.__name)
+
+    def __reindex_name(self, name):
+        stack = self._owner.get_stack()
+        if name.get_max_level() is not None:
+            stack = stack[0:max(name.get_max_level() - 1, 0)]
+        try:
+            name.update(str(name).format(*stack))
+        except IndexError:
+            str_name = str(name).replace(
+                '[', '\\['
+            ).replace(
+                ']', '\\]'
+            ).replace(
+                '+', '\\+'
+            )
+            stack = stack + ['\\d+'] * 20
+            name.update(str_name.format(*stack))
+
+    def _create_rules(self):
+        self.__pending = []
+        for r in self._spec.get_rt_rules():
+            assert r is not None
+            for b in r.get_bindings():
+                if b.need_reindex():
+                    self.__reindex_name(b)
+            self.__pending.append(r)
+
+    def _create_static_rules(self):
+        self.__matched = []
+        for r in self._spec.get_stateless_rules():
+            self.__matched.append(ns(rule=r, rtme=self))
+
+    def _index_rules(self):
+        self.__required_count = 0
+        for r in self.__pending:
+            if not r.is_optional():
+                self.__required_count += 1
+
+    def get_matched_rules(self):
+        return self.__entry.get_matched_rules() + self.__matched
+
+    def resolve_matched_rtmes(self):
+        pass
+
+    def get_name(self):
+        return self.__name
+
+    def get_owner(self):
+        return self.__owner
+
+    def get_form(self):
+        return self.__entry.get_form()
+
+    def get_spec(self):
+        return self._spec
+
+    def get_offset(self, base=None):
+        return self.__offset
+
+    def get_reliability(self):
+        return 1.0
+
+    def closed(self):
+        return True
+
+    def has_pending(self, required_only=False):
+        pass
+
+    def add_link(self, link):
+        self._owner.add_link(link)
+
+    def find_transitions(self, forms):
+        raise RuntimeError('Not applicable for ForeignEntry')
+
+    def handle_rules(self, on_entry=None):
+        pending = []
+        affected_links = []
+
+        entries = list(map(
+            lambda e: common.ifmodified.IfModified(
+                e,
+                lambda v: v.get_form().revision()
+            ),
+            [on_entry, ] if on_entry is not None
+            else
+            self._owner.get_entries(hidden=True, exclude=self)
+        ))
+
+        for r in self.__pending:
+            applicable = False
+            for e in entries:
+                if self.__check_applicable(r, e.get()):
+                    applicable = True
+                    if not self.__apply_on(r, e.get()):
+                        return ns(later=False, again=False, valid=False, affected_links=[])
+
+                    if e.modified():
+                        affected_links.extend(e.get_trackable_links())
+
+                    self.__decrease_rule_counters(r)
+                    self.__add_matched_rule(r, e.get())
+                    if not r.is_persistent():
+                        break
+            if not applicable or r.is_persistent():
+                pending.append(r)
+            self.__pending = pending
+        return ns(later=False, again=False, valid=True, affected_links=affected_links)
+
+    def __check_applicable(self, rule, other_rtme):
+        return rule.is_applicable(self, other_rtme)
+
+    def __apply_on(self, rule, other_rtme):
+        return rule.apply_on(self, other_rtme) != RtRule.res_failed
+
+    def __decrease_rule_counters(self, rule):
+        if not rule.is_persistent():
+            self.__required_count -= 1
+        return self.__required_count
+
+    def __add_matched_rule(self, rule, rtme):
+        self.__matched.append(ns(rule=rule, rtme=rtme))
+
+    def modified(self):
+        pass
+
+    def get_trackable_links(self):
+        pass

@@ -201,9 +201,6 @@ class MatchedSequence(object):
         self.__reliability = 1.0
 
         for e in sq.get_entries(hidden=True):
-            if e.has_attribute('subseq'):
-                self.__copy_subseq(e)
-                continue
             me = MatchedEntry(e)
             self.__append_entries(me)
             self.__reliability *= me.get_reliability()
@@ -246,7 +243,9 @@ class MatchedSequence(object):
     def __mk_link(self, master, slave, details):
         accepted_types = (parser.engine.entries.RtMatchEntry,
                           parser.engine.entries.RtVirtualEntry,
-                          parser.engine.entries.RtSiblingLeaderEntry)
+                          parser.engine.entries.RtSiblingLeaderEntry,
+                          parser.engine.entries.ForeignAnchorEntry,
+                          parser.engine.entries.ForeignEntry)
         assert all((
             isinstance(master, accepted_types),
             isinstance(slave, accepted_types),
