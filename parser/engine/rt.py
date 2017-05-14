@@ -757,6 +757,7 @@ class RtMatchSequence(object):
         else:
             cls_name = RtMatchEntry
 
+        form = form.copy({'ro', 'w_once', 'morf'})
         return cls_name(
             self,
             ns(
