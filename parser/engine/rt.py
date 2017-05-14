@@ -1274,7 +1274,7 @@ class Matcher(object):
 
     def __sequence_matched_fcn(self, ctx, sq):
         msq = MatchedSequence(sq[1])
-        ctx.matched_sqs.add(msq)
+        ctx.matched_sqs.append(msq)
 
     def __find_executables(self, c_out):
         return [c for c in c_out.ctxs() if c.ctx.has_backlog()]
@@ -1299,7 +1299,7 @@ class Matcher(object):
     def new_context(self):
         ctx = ns(
             ctx=None,
-            matched_sqs=set(),
+            matched_sqs=list(),
             find_matcher=self.__compiled.get_matcher,
             push_sentence=lambda s: intctx.push_sentence(s)
         )

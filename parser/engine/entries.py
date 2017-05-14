@@ -856,6 +856,14 @@ class ForeignEntry(RtEntryBase):
         self.__entry = entry
         self.__offset = offset
 
+    def _init_from_rtme(self, owner, rtme):
+        self.__owner = owner
+        self.__entry = rtme.__entry.copy_for_owner(owner)
+        self.__offset = rtme.__offset
+
+    def copy_for_owner(self, owner):
+        return ForeignEntry(owner, self)
+
     def get_matched_rules(self):
         return self.__entry.get_matched_rules()
 
@@ -926,6 +934,20 @@ class ForeignAnchorEntry(RtEntryBase):
         self._index_rules()
         self._create_static_rules()
 
+    def _init_from_rtme(self, owner, rtme):
+        self._owner = owner
+        self.__entry = rtme.__entry.copy_for_owner(owner)
+        self._spec = rtme._spec
+        self.__offset = rtme.__offset
+
+        self.__name = RtMatchString(rtme.__name)
+        self.__pending = rtme.__pending[:]
+        self._index_rules()
+        self.__copy_matched_rules(rtme)
+
+    def copy_for_owner(self, owner):
+        return ForeignAnchorEntry(owner, self)
+
     def __create_name(self, name):
         self.__name = RtMatchString(name)
         if self.__name.need_reindex():
@@ -967,6 +989,16 @@ class ForeignAnchorEntry(RtEntryBase):
         for r in self.__pending:
             if not r.is_optional():
                 self.__required_count += 1
+
+    def __copy_matched_rules(self, rtme):
+        self.__matched = []
+        for rule_rtme in rtme.__matched:
+            self.__matched.append(
+                ns(
+                    rule=rule_rtme.rule.new_copy(),
+                    rtme=self if id(rule_rtme) == id(rtme) else self._owner[rule_rtme.rtme.get_offset()] if rule_rtme.rtme.get_offset() < self.get_offset() else rule_rtme.rtme.get_offset()
+                )
+            )
 
     def get_matched_rules(self):
         return self.__entry.get_matched_rules() + self.__matched

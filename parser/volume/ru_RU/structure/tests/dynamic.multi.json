@@ -63,3 +63,25 @@
         }
     ]
 }
+
+{
+    "name": "dynamic-with-copy",
+    "entries": [
+        {
+            "@id": "original",
+            "@inherit": ["once", "anchor"],
+            "@includes": {"name": "dynamic", "is_static": true}
+        },
+        {
+            "@id": "six-first",
+            "@inherit": ["any", "numeral", "nominative"],
+            "@word-forms": ["шесть"],
+            "@dependency-of": "#void"
+        },
+        {
+            "@id": "six-second",
+            "@inherit": ["any", "numeral", "nominative"],
+            "@word-forms": ["шесть"]
+        }
+    ]
+}
