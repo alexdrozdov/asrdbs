@@ -1096,7 +1096,8 @@ class AwaitedSequence(object):
             )
 
         sq = self.__sq
-        head = parser.engine.entries.StandaloneEntry(self.__to_spec)
+        last_form = sq[-1]
+        head = parser.engine.entries.StandaloneEntry(self.__to_spec, last_form)
         forms = sq.backlog().pop_tail()
         transitions = list(sq.find_transitions(head, forms))
         return NextSequenceStep(

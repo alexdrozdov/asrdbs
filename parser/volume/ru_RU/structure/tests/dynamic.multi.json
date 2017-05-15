@@ -85,3 +85,40 @@
         }
     ]
 }
+
+{
+    "name": "one-comma",
+    "entries": [
+        {
+            "@id": "one",
+            "@inherit": ["once", "numeral", "nominative", "anchor"],
+            "@word-forms": ["один"]
+        },
+        {
+            "@id": "comma",
+            "@inherit": ["comma", "once"],
+            "merges-with": ["comma"]
+        }
+    ]
+}
+
+{
+    "name": "dynamic-with-merge",
+    "entries": [
+        {
+            "@id": "one-comma",
+            "@inherit": ["once", "anchor"],
+            "@includes": {"name": "one-comma", "is_dynamic": true}
+        },
+        {
+            "@id": "comma",
+            "@inherit": ["comma", "once"],
+            "merges-with": ["comma"]
+        },
+        {
+            "@id": "two",
+            "@inherit": ["any", "numeral", "nominative"],
+            "@word-forms": ["два"]
+        }
+    ]
+}

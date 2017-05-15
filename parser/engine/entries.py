@@ -774,28 +774,44 @@ class RtSiblingCloserEntry(RtEntry):
 
 
 class StandaloneEntry(RtEntryBase):
-    def __init__(self, spec):
+    def __init__(self, spec, last_entry):
         self._spec = spec
+        self._last_entry = last_entry
 
     def find_transitions(self, forms):
-        return functools.reduce(
-            lambda x, y: x + list(y),
-            map(
-                lambda form:
-                    filter(
-                        lambda frm_trs: frm_trs[1].get_to().is_static_applicable(frm_trs[0]),
-                        map(
-                            lambda trs: (form, trs),
-                            self._spec.get_transitions(filt_fcn=lambda t: not t.get_to().is_fini())
-                        )
-                    ),
-                forms
+        r = self.__find_transitions_for_spec(self._spec, forms, True)
+        return r.pairs
+
+    def __find_transitions_for_spec(self, spec, forms, en_fini):
+        pairs = []
+        last_spec = self._last_entry.get_spec()
+        for trs in spec.get_transitions():
+            to = trs.get_to()
+            if last_spec.can_merge(to):
+                r = self.__find_transitions_for_spec(to, forms, en_fini=en_fini)
+            else:
+                r = self.__find_pairs_for_trs(trs, forms, en_fini=en_fini)
+            if r.fini:
+                en_fini = False
+            pairs.extend(r.pairs)
+
+        return ns(pairs=pairs, fini=not en_fini)
+
+    def __find_pairs_for_trs(self, trs, forms, en_fini):
+        to_spec = trs.get_to()
+        if to_spec.is_fini():
+            if en_fini:
+                return ns(
+                    pairs=[(parser.spare.wordform.SpecStateFiniForm(), trs)],
+                    fini=True
+                )
+            return ns(pairs=[], fini=False)
+        return ns(
+            pairs=(
+                (f, trs) for f in forms if to_spec.is_static_applicable(f)
             ),
-            []
-        ) + list(map(
-            lambda trs: (parser.spare.wordform.SpecStateFiniForm(), trs),
-            self._spec.get_transitions(filt_fcn=lambda t: t.get_to().is_fini())
-        ))
+            fini=False
+        )
 
     def get_matched_rules(self):
         raise RuntimeError('Not applicable for StandaloneEntry')
