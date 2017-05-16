@@ -11,7 +11,7 @@ import parser.spare.wordform
 import parser.build.compiler
 from common.argres import argres
 from argparse import Namespace as ns
-from parser.engine.entries import RtMatchEntry, RtTmpEntry, RtVirtualEntry, \
+from parser.engine.entries import RtMatchEntry, RtVirtualEntry, \
     RtSiblingLeaderEntry, RtSiblingFollowerEntry, RtSiblingCloserEntry
 from parser.engine.matched import MatchedSequence, SequenceMatchRes
 
@@ -691,9 +691,6 @@ class RtMatchSequence(object):
     @argres()
     def append(self, rtme):
         self.__append_entries(rtme)
-
-        if isinstance(rtme, RtTmpEntry):
-            return True
 
         if not rtme.closed():
             return True
