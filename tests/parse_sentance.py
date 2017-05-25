@@ -16,6 +16,16 @@ import parser
 import parser.io.export
 
 
+def test_res(ctx):
+    return parser.io.output_chain(
+        ctx,
+        parser.io.context.ToMatchedSequence,
+        parser.io.context.MostComplete,
+        parser.io.context.IgnoreDuplicate,
+        parser.io.context.Store
+    )
+
+
 @contextmanager
 def timeit_ctx(name):
     startTime = time.time()
@@ -73,20 +83,20 @@ def execute(opts):
             srm = parser.Matcher(prs)
 
         if not opts.build_only:
-            with timeit_ctx('constructing sentence'):
-                tokenized_sentence = parser.api.Sentence.from_sentence(sentence)
-
             ctx = srm.new_context()
-            ctx.push_sentence(tokenized_sentence)
+            ctx_input = parser.io.input_sentence(ctx)
+            ctx_output = test_res(ctx)
+
+            ctx_input.push(sentence)
 
             with timeit_ctx('matching sentences'):
-                matched_sentences = srm.process(ctx)
+                ctx.run_until_complete()
 
             with timeit_ctx('exporting results'):
                 parser.io.export.generate(
                     cfg_path='/parser/debug',
                     sequences=(common.fake.named(sq, i)
-                               for i, sq in enumerate(matched_sentences))
+                               for i, sq in enumerate(ctx_output))
                 )
 
 

@@ -2,7 +2,6 @@
 # -*- #coding: utf8 -*-
 
 
-import functools
 import logging
 import common.argres
 import common.config
@@ -13,7 +12,6 @@ from common.argres import argres
 from argparse import Namespace as ns
 from parser.engine.entries import RtMatchEntry, RtVirtualEntry, \
     RtSiblingLeaderEntry, RtSiblingFollowerEntry, RtSiblingCloserEntry
-from parser.engine.matched import MatchedSequence, SequenceMatchRes
 
 
 class RtStackCounter(object):
@@ -225,21 +223,11 @@ class MatcherContext(object):
     max_sparse_count = 1
     max_sequential_count = 0
 
-    fcns_map = [
-        ('ctx_create_fcn', 'ctx_create_fcn', lambda x: None),
-        ('sequence_forked_fcn', 'sequence_forked_fcn', lambda x: None),
-        ('sequence_forking_fcn', 'sequence_forking_fcn', lambda x: None),
-        ('sequence_matched_fcn', 'sequence_matched_fcn', lambda x: None),
-        ('sequence_failed_fcn', 'sequence_failed_fcn', lambda x: None),
-        ('sequence_res_fcn', 'sequence_res_fcn', lambda x: None),
-        ('ctx_complete_fcn', 'ctx_complete_fcn', lambda x: None),
-    ]
-
-    def __init__(self, owner, spec_name, offset=0, **kwargs):
+    def __init__(self, event_listener, owner, spec_name, offset=0):
+        self._event_listener = event_listener
         self.owner = owner
         self.spec_name = spec_name
         self.__offset = offset
-        self.__create_fcns(kwargs)
         self.sequences = []
         self.ctxs = []
         self.__blank = True
@@ -273,12 +261,6 @@ class MatcherContext(object):
             res.append(m)
         return res
 
-    def __create_fcns(self, fcns):
-        self.__fcns = {
-            target: fcns[source] if source in fcns else default_fcn
-            for source, target, default_fcn in MatcherContext.fcns_map
-        }
-
     def get_fcns(self):
         return self.__fcns
 
@@ -301,9 +283,9 @@ class MatcherContext(object):
     def add_ctx(self, matcher, ctx):
         self.ctxs.append((matcher, ctx))
 
-    def create_ctx(self, spec_name, **kwargs):
+    def create_ctx(self, spec_name, event_listener=None, offset=0):
         matcher = self.owner.find_matcher(spec_name)
-        mc = MatcherContext(self, spec_name, **kwargs)
+        mc = MatcherContext(event_listener, self, spec_name)
         self.ctxs.append((matcher, mc))
         return mc
 
@@ -338,7 +320,7 @@ class MatcherContext(object):
 
     def __get_callstack(self):
         o = self.owner
-        while not isinstance(o, ns):
+        while not isinstance(o, MatcherCallbacks):
             yield ns(
                 name=o.get_name(),
                 offset=o.get_offset()
@@ -393,39 +375,34 @@ class MatcherContext(object):
     def is_blank(self):
         return self.__blank
 
-    def sequence_forked(self, sq, new_sq):
-        self.__fcns['sequence_forked_fcn']((self, sq, new_sq))
-
-    def sequence_forking(self, sq):
-        self.__fcns['sequence_forking_fcn']((self, sq))
-
-    def sequence_matched(self, sq):
-        # print('sequence_matched')
-        self.__backlog.forget_slave(sq.backlog())
-        self.__fcns['sequence_matched_fcn']((self, sq))
-
-    def sequence_failed(self, sq):
-        # print('sequence_failed')
-        self.__backlog.forget_slave(sq.backlog())
-        self.__fcns['sequence_failed_fcn']((self, sq))
-
-    def sequence_res(self, res):
-        # print('sequence_res')
-        self.__fcns['sequence_res_fcn']((self, res))
-
-    def ctx_create(self):
-        # print('ctx_create')
-        self.__fcns['ctx_create_fcn']((self, ))
-
-    def ctx_complete(self):
-        # print('ctx_complete')
-        self.__fcns['ctx_complete_fcn']((self, ))
-
     def get_name(self):
         return self.spec_name
 
     def get_offset(self):
         return self.__offset
+
+    def sequence_forked(self, sq, new_sq):
+        self._event_listener.sequence_forked(self, sq, new_sq)
+
+    def sequence_forking(self, sq):
+        self._event_listener.sequence_forking(self, sq)
+
+    def sequence_matched(self, sq):
+        self.__backlog.forget_slave(sq.backlog())
+        self._event_listener.sequence_matched(self, sq)
+
+    def sequence_failed(self, sq):
+        self.__backlog.forget_slave(sq.backlog())
+        self._event_listener.sequence_failed(self, sq)
+
+    def sequence_res(self, res):
+        self._event_listener.sequence_res(self, res)
+
+    def ctx_create(self):
+        self._event_listener.ctx_create(self)
+
+    def ctx_complete(self):
+        self._event_listener.ctx_complete(self)
 
 
 class UnfrozenSequence(object):
@@ -638,7 +615,6 @@ class RtMatchSequence(object):
             return self.__handle_dynamic_trs(trs, form)
 
     def reapplay(self, sq, spec):
-        sq = sq[1]
         res = self.__reapply_entries(sq, spec)
         if not res.valid:
             return False
@@ -782,12 +758,12 @@ class RtMatchSequence(object):
     def __handle_dynamic_trs(self, trs, form):
         to = trs.get_to()
         sq = AwaitingSequence(self, to)
+        el = AwaitingEventListener(sq)
 
         dependent_ctx = self.__ctx.create_ctx(
             to.get_include_name(),
+            event_listener=el,
             offset=form.get_position(),
-            sequence_matched_fcn=lambda _: sq.submatcher_matched(_),
-            ctx_complete_fcn=lambda sub_ctx3: sq.subctx_complete(sub_ctx3[0])
         )
         dependent_ctx.push_forms([form, ])
         for f in self.__backlog:
@@ -1143,15 +1119,6 @@ class SpecMatcher(object):
         sq.backlog().fetch_master()
         ctx.add_sequence(sq)
 
-    def __handle_forms_result(self, ctx, res, next_sequences):
-        if not res.fini:
-            next_sequences.append(res.sq)
-        else:
-            if self.__compiled_spec.get_validate() is None or self.__compiled_spec.get_validate().validate(res.sq):
-                ctx.sequence_matched(res.sq)
-            else:
-                ctx.sequence_failed(res.sq)
-
     def __handle_sequences(self, ctx):
         if ctx.is_blank():
             self.__create_new_sequence(ctx)
@@ -1244,36 +1211,65 @@ class SpecMatcher(object):
         return self.__compiled_spec
 
 
+class ContextEventHandler(object):
+    def sequence_forked(self, ctx, sq, new_sq):
+        pass
+
+    def sequence_forking(self, ctx, sq):
+        pass
+
+    def sequence_matched(self, ctx, sq):
+        pass
+
+    def sequence_failed(self, ctx, sq):
+        pass
+
+    def sequence_res(self, ctx, res):
+        pass
+
+    def ctx_create(self, ctx):
+        pass
+
+    def ctx_complete(self, ctx):
+        pass
+
+
+class AwaitingEventListener(ContextEventHandler):
+    def __init__(self, sq):
+        self.__sq = sq
+
+    def sequence_matched(self, ctx, sq):
+        self.__sq.submatcher_matched(sq)
+
+    def ctx_complete(self, ctx):
+        self.__sq.subctx_complete(ctx)
+
+
+class Context(object):
+    def __init__(self, matcher, int_ctx, event_listener):
+        self.__matcher = matcher
+        self.__int_ctx = int_ctx
+        self.__event_listener = event_listener
+
+    def intctx(self):
+        return self.__int_ctx
+
+    def push_sentence(self, s):
+        self.__int_ctx.push_sentence(s)
+
+    def attach(self, ctx):
+        self.__event_listener.attach(ctx)
+
+    def run_until_complete(self):
+        self.__matcher.process(self)
+
+
 class Matcher(object):
     def __init__(self, compiled):
         self.__compiled = compiled
 
-    def __select_most_complete(self, ctx):
-        max_entries = functools.reduce(
-            lambda prev_max, msq:
-                msq.get_entry_count(
-                    hidden=False,
-                    virtual=False
-                ) if prev_max < msq.get_entry_count(
-                    hidden=False,
-                    virtual=False
-                ) else prev_max,
-            ctx.matched_sqs,
-            0
-        )
-        ctx.matched_sqs = list(
-            filter(
-                lambda msq:
-                    max_entries <= msq.get_entry_count(
-                        hidden=False, virtual=False
-                    ),
-                ctx.matched_sqs
-            )
-        )
-
-    def __sequence_matched_fcn(self, ctx, sq):
-        msq = MatchedSequence(sq[1])
-        ctx.matched_sqs.append(msq)
+    def get_matcher(self, name, none_on_missing=False):
+        return self.__compiled.get_matcher(name, none_on_missing=none_on_missing)
 
     def __find_executables(self, c_out):
         return [c for c in c_out.ctxs() if c.ctx.has_backlog()]
@@ -1296,30 +1292,95 @@ class Matcher(object):
         return res
 
     def new_context(self):
-        ctx = ns(
-            ctx=None,
-            matched_sqs=list(),
-            find_matcher=self.__compiled.get_matcher,
-            push_sentence=lambda s: intctx.push_sentence(s)
-        )
-        intctx = MatcherContext(
-            ctx,
-            'root-ctx',
-        )
-        intctx.ctxs = [
-            (m, MatcherContext(
-                intctx,
-                m.get_name(),
-                sequence_matched_fcn=lambda sq_ctx_sq:
-                self.__sequence_matched_fcn(ctx, sq_ctx_sq),
-            )) for m in self.__compiled.get_primary()]
-        ctx.ctx = intctx
-        return ctx
+        event_listener = ContextOutputDispatcher()
+        event_forwarder = ContextEventsForwarder(event_listener)
+        ctx_callbacks = MatcherCallbacks(self)
+
+        intctx = MatcherContext(event_listener, ctx_callbacks, 'root-ctx')
+        for m in self.__compiled.get_primary():
+            intctx.create_ctx(m.get_name(), event_listener=event_forwarder)
+
+        return Context(self, intctx, event_listener)
 
     def process(self, ctx):
-        intctx = ctx.ctx
-        for matcher, _ctx in intctx.ctxs:
-            self.__handle_ctx(matcher, _ctx)
+        intctx = ctx.intctx()
+        c_out = intctx.checkout_contexts()
+        exe = self.__find_executables(c_out)
+        for e in exe:
+            c_out.checkout(e.ctx)
+            res = self.__handle_ctx(e.matcher, e.ctx)
+            if res.complete:
+                c_out.complete(e.ctx)
+            else:
+                c_out.confirm(e.ctx)
+        c_out.commit()
 
-        smr = SequenceMatchRes(ctx.matched_sqs)
-        return smr
+
+class ContextOutputDispatcher(ContextEventHandler):
+    def __init__(self):
+        self.__attached = []
+
+    def attach(self, ctx):
+        self.__attached.append(ctx)
+
+    def sequence_forked(self, ctx, sq, new_sq):
+        for a in self.__attached:
+            a.sequence_forked(ctx, sq, new_sq)
+
+    def sequence_forking(self, ctx, sq):
+        for a in self.__attached:
+            a.sequence_forking(ctx, sq)
+
+    def sequence_matched(self, ctx, sq):
+        for a in self.__attached:
+            a.sequence_matched(ctx, sq)
+
+    def sequence_failed(self, ctx, sq):
+        for a in self.__attached:
+            a.sequence_failed(ctx, sq)
+
+    def sequence_res(self, ctx, res):
+        for a in self.__attached:
+            a.sequence_res(ctx, res)
+
+    def ctx_create(self, ctx):
+        for a in self.__attached:
+            a.ctx_create(ctx)
+
+    def ctx_complete(self, ctx):
+        for a in self.__attached:
+            a.ctx_complete(ctx)
+
+
+class ContextEventsForwarder(ContextEventHandler):
+    def __init__(self, dst_listener):
+        self.__dst = dst_listener
+
+    def sequence_forked(self, ctx, sq, new_sq):
+        self.__dst.sequence_forked(ctx, sq, new_sq)
+
+    def sequence_forking(self, ctx, sq):
+        self.__dst.sequence_forking(ctx, sq)
+
+    def sequence_matched(self, ctx, sq):
+        self.__dst.sequence_matched(ctx, sq)
+
+    def sequence_failed(self, ctx, sq):
+        self.__dst.sequence_failed(ctx, sq)
+
+    def sequence_res(self, ctx, res):
+        self.__dst.sequence_res(ctx, res)
+
+    def ctx_create(self, ctx):
+        self.__dst.ctx_create(ctx)
+
+    def ctx_complete(self, ctx):
+        self.__dst.ctx_complete(ctx)
+
+
+class MatcherCallbacks(object):
+    def __init__(self, matcher):
+        self.__matcher = matcher
+
+    def find_matcher(self, name, none_on_missing=False):
+        return self.__matcher.get_matcher(name, none_on_missing=none_on_missing)
