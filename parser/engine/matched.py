@@ -35,9 +35,6 @@ class Link(object):
     def get_csum(self):
         return '{0}{1}'.format(self.__master, self.__slave)
 
-    def get_details(self):
-        return self.__details
-
     def get_master(self):
         return self.__master
 
@@ -129,12 +126,6 @@ class MatchedEntry(object):
             self.__masters.append(link)
             self.__masters_csum.add(link.get_uniq())
 
-    def get_master_links(self):
-        return self.__masters
-
-    def get_slave_links(self):
-        return self.__slaves
-
     def get_masters(self):
         return [l.get_from() for l in self.__masters]
 
@@ -208,37 +199,6 @@ class MatchedSequence(object):
         for master, slaves in list(sq.get_links().items()):
             for slave, details in list(slaves.items()):
                 self.__mk_link(master, slave, details)
-
-    def __copy_subseq(self, rtme):
-        for me in rtme.get_attribute('subseq').get_entries(hidden=True):
-            if isinstance(
-                me.get_form(),
-                (
-                    parser.spare.wordform.SpecStateIniForm,
-                    parser.spare.wordform.SpecStateFiniForm
-                )
-            ):
-                continue
-            me = MatchedEntry(me, rtme)
-            self.__append_entries(me)
-        for me in rtme.get_attribute('subseq').get_entries(hidden=True):
-            if isinstance(
-                me.get_form(),
-                (
-                    parser.spare.wordform.SpecStateIniForm,
-                    parser.spare.wordform.SpecStateFiniForm
-                )
-            ):
-                continue
-            for link in me.get_master_links():
-                master = link.get_master()
-                slave = link.get_slave()
-                me_from = self.__uid2me[master]
-                me_to = self.__uid2me[slave]
-                l = Link(me_from, me_to, link.get_details())
-                me_from.add_link(l)
-                me_to.add_link(l)
-                self.__append_links(me_from, me_to, l)
 
     def __mk_link(self, master, slave, details):
         accepted_types = (parser.engine.entries.RtMatchEntry,
@@ -383,14 +343,3 @@ class MatchedSequence(object):
                 tuple(sorted(self.__links_csum))
             )
         )
-
-
-class SequenceMatchRes(object):
-    def __init__(self, sqs):
-        self.__sqs = sqs
-
-    def get_sequences(self):
-        return self.__sqs
-
-    def __iter__(self):
-        return iter(self.__sqs)

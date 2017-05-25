@@ -104,7 +104,6 @@ class RtEntry(RtEntryBase):
         self._spec = spec_state_def
         self.__rtms_offset = rtms_offset
         self.__reliability = spec_state_def.get_reliability() * form.get_reliability()
-        self.__attributes = attributes
         self._closed = spec_state_def.is_closed()
 
         self.__create_name(self._spec.get_name())
@@ -125,13 +124,8 @@ class RtEntry(RtEntryBase):
 
         self.__name = RtMatchString(rtme.__name)
         self.__pending = rtme.__pending[:]
-        self.__copy_attributes(rtme)
         self._index_rules()
         self.__copy_matched_rules(rtme)
-
-    @argres(show_result=False)
-    def __copy_attributes(self, rtme):
-        self.__attributes = {k: v for k, v in list(rtme.__attributes.items())}
 
     @argres(show_result=False)
     def _create_rules(self):
@@ -310,12 +304,6 @@ class RtEntry(RtEntryBase):
     def __apply_on(self, rule, other_rtme):
         return rule.apply_on(self, other_rtme) != RtRule.res_failed
 
-    def has_attribute(self, name):
-        return name in self.__attributes
-
-    def get_attribute(self, name):
-        return self.__attributes[name]
-
     def __repr__(self):
         try:
             return "{0}(objid={1}, name='{2}')".format(
@@ -415,12 +403,6 @@ class RtVirtualEntry(RtEntry):
 
     def close_aggregator(self):
         self._closed = True
-
-    def has_attribute(self, name):
-        return False
-
-    def get_attribute(self, name):
-        return None
 
     @argres()
     def attach_referer(self, rtme):
@@ -532,7 +514,6 @@ class RtSiblingLeaderEntry(RtEntry):
 class RunOnceContext(object):
     def __init__(self, ctx):
         self.__ctx = ctx
-        self.__complete = False
         self.__fini = False
 
     def was_fini(self):
@@ -542,7 +523,7 @@ class RunOnceContext(object):
         self.__fini = True
 
     def ctx_complete(self):
-        self.__complete = True
+        pass
 
     def __getattr__(self, name):
         return self.__ctx.__getattribute__(name)

@@ -94,7 +94,7 @@ class Backlog(object):
             raise RuntimeError('Malicious pop push')
         self.__entries.insert(0, entry)
 
-    def pop_tail(self, for_slave=None):
+    def pop_tail(self):
         if self.__entries:
             return self.__entries.pop(0)
         raise RuntimeError('Backlog is empty')
@@ -236,7 +236,7 @@ class MatcherContext(object):
         self.__awaiting = []
         self.ctx_create()
 
-    def empty(self, deep=False):
+    def empty(self):
         return len(self.sequences) == 0 and len(self.__awaiting) == 0
 
     def get_head(self):
@@ -261,24 +261,12 @@ class MatcherContext(object):
             res.append(m)
         return res
 
-    def get_fcns(self):
-        return self.__fcns
-
-    def set_sequences(self, sequences):
-        self.sequences = sequences
-
     def get_sequences(self):
         return self.sequences
 
     def add_sequence(self, sq):
         self.sequences.append(sq)
         self.__blank = False
-
-    def get_ctxs(self):
-        return self.ctxs
-
-    def set_ctxs(self, ctxs):
-        self.ctxs = ctxs
 
     def add_ctx(self, matcher, ctx):
         self.ctxs.append((matcher, ctx))
@@ -530,23 +518,12 @@ class RtMatchSequence(object):
                 my_slave = self[slave_offset]
                 self.__links[my_master][my_slave] = details[:]
 
-    def __copy_anchors(self, sq, indexes):
-        self.__anchors = []
-        for anchor in sq.__anchors:
-            a_offset = anchor.get_offset()
-            if indexes is not None and a_offset not in indexes:
-                continue
-            self.__anchors.append(self[a_offset])
-
     def clone(self):
         return RtMatchSequence(self)
 
     @argres()
     def subseq(self, start, stop):
         return RtMatchSequence(self, indexes=(start, stop))
-
-    def get_anchors(self):
-        return self.__anchors
 
     def backlog(self):
         return self.__backlog
@@ -1192,10 +1169,6 @@ class SpecMatcher(object):
                         c_out.freeze(frozen)
                     frozen.append(trs)
         return to_execute
-
-    def __print_sequences(self, ctx):
-        for sq in ctx.get_sequences:
-            sq.print_sequence()
 
     def create_ctx(self):
         return parser.engine.rt.MatcherContext(
