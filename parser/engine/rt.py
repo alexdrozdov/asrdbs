@@ -121,9 +121,8 @@ class SupervisedSequence(object):
 
 
 class SupervisedContext(object):
-    def __init__(self, ctx, matcher, checkedout):
+    def __init__(self, ctx, checkedout):
         self.ctx = ctx
-        self.matcher = matcher
         self.checkedout = checkedout
 
 
@@ -190,16 +189,16 @@ class CheckedoutCtx(object):
 class CheckedoutCtxs(object):
     def __init__(self, ctx, ctxs):
         self.ctx = ctx
-        self.__ctxs = {id(c): SupervisedContext(ctx=c, matcher=m, checkedout=False)
-                       for m, c in ctxs}
+        self.__ctxs = {id(c): SupervisedContext(ctx=c, checkedout=False)
+                       for c in ctxs}
 
     def ctxs(self):
-        return self.__ctxs.values()
+        return (c.ctx for c in self.__ctxs.values())
 
     def commit(self):
         for svctx in self.__ctxs.values():
             assert not svctx.checkedout
-            self.ctx.add_ctx(svctx.matcher, svctx.ctx)
+            self.ctx.add_ctx(svctx.ctx)
 
     def checkout(self, ctx):
         svctx = self.__ctxs.get(id(ctx), None)
@@ -223,10 +222,10 @@ class MatcherContext(object):
     max_sparse_count = 1
     max_sequential_count = 0
 
-    def __init__(self, event_listener, owner, spec_name, offset=0):
+    def __init__(self, matcher, event_listener, owner, offset=0):
+        self._matcher = matcher
         self._event_listener = event_listener
         self.owner = owner
-        self.spec_name = spec_name
         self.__offset = offset
         self.sequences = []
         self.ctxs = []
@@ -254,9 +253,9 @@ class MatcherContext(object):
         print('split sequences sequences', self.sequences)
         for sq in self.sequences:
             m = MatcherContext(
+                self._matcher,
                 ContextEventsForwarder(self._event_listener),
                 self.owner,
-                self.spec_name,
                 self.__offset
             )
             m.sequences = [sq, ]
@@ -270,13 +269,13 @@ class MatcherContext(object):
         self.sequences.append(sq)
         self.__blank = False
 
-    def add_ctx(self, matcher, ctx):
-        self.ctxs.append((matcher, ctx))
+    def add_ctx(self, ctx):
+        self.ctxs.append(ctx)
 
     def create_ctx(self, spec_name, event_listener=None, offset=0):
         matcher = self.owner.find_matcher(spec_name)
-        mc = MatcherContext(event_listener, self, spec_name)
-        self.ctxs.append((matcher, mc))
+        mc = MatcherContext(matcher, event_listener, self, spec_name)
+        self.ctxs.append(mc)
         return mc
 
     def checkout_sequences(self):
@@ -338,7 +337,7 @@ class MatcherContext(object):
 
     def push_forms(self, forms):
         self.__backlog.push_head(forms)
-        for _, ctx in self.ctxs:
+        for ctx in self.ctxs:
             ctx.push_forms(forms)
 
     def push_sentence(self, sentence):
@@ -359,6 +358,9 @@ class MatcherContext(object):
     def get_slave_backlog(self):
         return Backlog(self.__backlog)
 
+    def run_until_complete(self):
+        return self._matcher.match(self)
+
     def has_frozen(self):
         return len(self.__frozen) > 0
 
@@ -366,7 +368,7 @@ class MatcherContext(object):
         return self.__blank
 
     def get_name(self):
-        return self.spec_name
+        return self._matcher.get_name()
 
     def get_offset(self):
         return self.__offset
@@ -1173,7 +1175,7 @@ class SpecMatcher(object):
         return to_execute
 
     def create_ctx(self, event_listener, owner=None):
-        return MatcherContext(event_listener, owner, self.get_name())
+        return MatcherContext(self, event_listener, owner)
 
     def get_name(self):
         return self.__name
@@ -1217,8 +1219,7 @@ class AwaitingEventListener(ContextEventHandler):
 
 
 class Context(object):
-    def __init__(self, matcher, int_ctx, event_listener):
-        self.__matcher = matcher
+    def __init__(self, int_ctx, event_listener):
         self.__int_ctx = int_ctx
         self.__event_listener = event_listener
 
@@ -1232,59 +1233,44 @@ class Context(object):
         self.__event_listener.attach(ctx)
 
     def run_until_complete(self):
-        self.__matcher.process(self)
+        self.__int_ctx.run_until_complete()
 
 
-class Matcher(object):
-    def __init__(self, compiled):
-        self.__compiled = compiled
+class TopSpecMatcher(object):
+    def match(self, ctx):
+        c_out = ctx.checkout_contexts()
+        exe = self.__find_executables(c_out)
+        for c in exe:
+            c_out.checkout(c)
+            res = self.__handle_ctx(c)
+            if res.complete:
+                c_out.complete(c)
+            else:
+                c_out.confirm(c)
+        c_out.commit()
 
-    def get_matcher(self, name, none_on_missing=False):
-        return self.__compiled.get_matcher(name, none_on_missing=none_on_missing)
+    def get_name(self):
+        return 'root-ctx'
 
     def __find_executables(self, c_out):
-        return [c for c in c_out.ctxs() if c.ctx.has_backlog()]
+        return [c for c in c_out.ctxs() if c.has_backlog()]
 
-    def __handle_ctx(self, matcher, ctx):
+    def __handle_ctx(self, ctx):
         while True:
             c_out = ctx.checkout_contexts()
             exe = self.__find_executables(c_out)
-            for e in exe:
-                c_out.checkout(e.ctx)
-                res = self.__handle_ctx(e.matcher, e.ctx)
+            for c in exe:
+                c_out.checkout(c)
+                res = self.__handle_ctx(c)
                 if res.complete:
-                    c_out.complete(e.ctx)
+                    c_out.complete(c)
                 else:
-                    c_out.confirm(e.ctx)
+                    c_out.confirm(c)
             c_out.commit()
-            res = matcher.match(ctx)
+            res = ctx.run_until_complete()
             if ctx.empty():
                 break
         return res
-
-    def new_context(self):
-        event_listener = ContextOutputDispatcher()
-        event_forwarder = ContextEventsForwarder(event_listener)
-        ctx_callbacks = MatcherCallbacks(self)
-
-        intctx = MatcherContext(event_listener, ctx_callbacks, 'root-ctx')
-        for m in self.__compiled.get_primary():
-            intctx.create_ctx(m.get_name(), event_listener=event_forwarder)
-
-        return Context(self, intctx, event_listener)
-
-    def process(self, ctx):
-        intctx = ctx.intctx()
-        c_out = intctx.checkout_contexts()
-        exe = self.__find_executables(c_out)
-        for e in exe:
-            c_out.checkout(e.ctx)
-            res = self.__handle_ctx(e.matcher, e.ctx)
-            if res.complete:
-                c_out.complete(e.ctx)
-            else:
-                c_out.confirm(e.ctx)
-        c_out.commit()
 
 
 class ContextOutputDispatcher(ContextEventHandler):
@@ -1350,8 +1336,22 @@ class ContextEventsForwarder(ContextEventHandler):
 
 
 class MatcherCallbacks(object):
-    def __init__(self, matcher):
-        self.__matcher = matcher
+    def __init__(self, compiled):
+        self.__compiled = compiled
 
     def find_matcher(self, name, none_on_missing=False):
-        return self.__matcher.get_matcher(name, none_on_missing=none_on_missing)
+        return self.__compiled.get_matcher(
+            name, none_on_missing=none_on_missing)
+
+
+def new_context(compiled):
+    event_listener = ContextOutputDispatcher()
+    event_forwarder = ContextEventsForwarder(event_listener)
+    ctx_callbacks = MatcherCallbacks(compiled)
+    top_spec_matcher = TopSpecMatcher()
+
+    intctx = MatcherContext(top_spec_matcher, event_listener, ctx_callbacks)
+    for m in compiled.get_primary():
+        intctx.create_ctx(m.get_name(), event_listener=event_forwarder)
+
+    return Context(intctx, event_listener)

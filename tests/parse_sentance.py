@@ -79,11 +79,8 @@ def execute(opts):
                 structure=not opts.no_structure,
                 selectors=not opts.no_selectors
             )
-        with timeit_ctx('constructing matcher'):
-            srm = parser.Matcher(prs)
-
         if not opts.build_only:
-            ctx = srm.new_context()
+            ctx = parser.new_context(prs)
             ctx_input = parser.io.input_sentence(ctx)
             ctx_output = test_res(ctx)
 
