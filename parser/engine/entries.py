@@ -412,11 +412,12 @@ class RtVirtualEntry(RtEntry):
         return True
 
 
-class SiblingSpec(RtEntryBase):
-    def __init__(self, spec, ctx, matcher, form):
+class SiblingSpec(object):
+    def __init__(self, spec, ctx, matcher, event_listener, form):
         self.__spec = spec
         self.__ctx = ctx
         self.__matcher = matcher
+        self.__event_listener = event_listener
         self.__form = form
 
     def get_ctx(self):
@@ -425,8 +426,41 @@ class SiblingSpec(RtEntryBase):
     def get_matcher(self):
         return self.__matcher
 
+    def get_event_listener(self):
+        return self.__event_listener
+
     def __getattr__(self, name):
         return self.__spec.__getattribute__(name)
+
+
+class DummyEventHandler(object):
+    def __init__(self):
+        self.__was_fini = False
+
+    def sequence_forked(self, ctx, sq, new_sq):
+        pass
+
+    def sequence_forking(self, ctx, sq):
+        pass
+
+    def sequence_matched(self, ctx, sq):
+        print('matched')
+        self.__was_fini = True
+
+    def sequence_failed(self, ctx, sq):
+        print('failed')
+
+    def sequence_res(self, ctx, res):
+        print('res')
+
+    def ctx_create(self, ctx):
+        pass
+
+    def ctx_complete(self, ctx):
+        pass
+
+    def was_fini(self):
+        return self.__was_fini
 
 
 class RtSiblingLeaderEntry(RtEntry):
@@ -462,6 +496,7 @@ class RtSiblingLeaderEntry(RtEntry):
     def find_transitions(self, forms):
         closer_trs = self.__find_closer_transitions(forms)
         sibling_trs = self.__find_sibling_transitions(forms)
+        print(closer_trs)
 
         return closer_trs + sibling_trs
 
@@ -470,16 +505,33 @@ class RtSiblingLeaderEntry(RtEntry):
         follower_spec = follower_trs.get_to()
 
         matchers = self.__deduce_possible_matchers()
+        print('possible matchers', matchers)
         trs = []
         for m in matchers:
-            ctx = m.create_ctx()
-            m.once(ctx, [self.get_form(), ])
-            m.once(ctx, forms)
-            ctxs = ctx.split_by_sequences()
-            for i_ctx in ctxs:
-                head = i_ctx.get_head()
+            eh = DummyEventHandler()
+            ctx = m.create_ctx(eh)
+            print('ctx name', ctx.get_name())
+            ctx.push_forms([self.get_form(), ])
+            ctx.push_forms(forms)
+            print('pushing forms', self.get_form(), forms.get_word())
+            m.once(ctx)
+            if len(ctx.sequences) > 1:
+                ctxs = ctx.split_by_sequences()
+                print('new ctxs', ctxs)
+                for i_ctx in ctxs:
+                    head = i_ctx.get_head()
+                    print('new sibbilng spec')
+                    sbln_spec = SiblingSpec(follower_spec,
+                                            ctx=i_ctx, matcher=m,
+                                            event_listener=eh, form=head.form)
+                    sbln_trs = follower_trs.copy_with_to(sbln_spec)
+                    trs.append((head.form, sbln_trs))
+            else:
+                head = ctx.get_head()
+                print('new sibbilng spec')
                 sbln_spec = SiblingSpec(follower_spec,
-                                        ctx=i_ctx, matcher=m, form=head.form)
+                                        ctx=ctx, matcher=m,
+                                        event_listener=eh, form=head.form)
                 sbln_trs = follower_trs.copy_with_to(sbln_spec)
                 trs.append((head.form, sbln_trs))
         return trs
@@ -511,36 +563,22 @@ class RtSiblingLeaderEntry(RtEntry):
         raise RuntimeError("No closer found")
 
 
-class RunOnceContext(object):
-    def __init__(self, ctx):
-        self.__ctx = ctx
-        self.__fini = False
-
-    def was_fini(self):
-        return self.__fini
-
-    def sequence_matched(self, sq):
-        self.__fini = True
-
-    def ctx_complete(self):
-        pass
-
-    def __getattr__(self, name):
-        return self.__ctx.__getattribute__(name)
-
-
 class RtSiblingFollowerEntry(RtEntry):
     def __init__(self, *args, **kwargs):
+        print('follower')
         super().__init__(*args, **kwargs)
         self.__ctx = self.get_spec().get_ctx()
         self.__matcher = self.get_spec().get_matcher()
+        self.__event_listener = self.get_spec().get_event_listener()
 
     def copy_for_owner(self, owner):
         return RtSiblingFollowerEntry(owner, self)
 
     @argres()
     def find_transitions(self, forms):
+        print('find transitions')
         sibling_trs, fini = self.__find_sibling_transitions(forms)
+        print(sibling_trs, fini)
 
         if fini:
             return sibling_trs + self.__find_closer_transitions(forms)
@@ -550,17 +588,22 @@ class RtSiblingFollowerEntry(RtEntry):
     def __find_sibling_transitions(self, forms):
         follower_trs = self.__find_follower_trs()
 
+        print('__find_sibling_transitions')
+        for sq in self.__ctx.sequences:
+            print(sq.print_sequence())
         trs = []
-        ctx = RunOnceContext(self.__ctx)
-        self.__matcher.once(ctx, forms)
-        heads = ctx.get_heads()
+        print('pushing words', forms.get_word())
+        self.__ctx.push_forms(forms)
+        self.__matcher.once(self.__ctx)
+        heads = self.__ctx.get_heads()
+        print('heads', heads)
 
         if len(heads) == 1:
-            head = ctx.get_head()
+            head = heads[0]
             sbln_trs = follower_trs.copy_with_to(self.get_spec())
             trs.append((head.form, sbln_trs))
         elif 1 < len(heads):
-            ctxs = ctx.split_by_sequences()
+            ctxs = self.__ctx.split_by_sequences()
             for i_ctx in ctxs:
                 head = i_ctx.get_head()
                 sbln_spec = SiblingSpec(self.get_spec().original_spec(),
@@ -568,12 +611,15 @@ class RtSiblingFollowerEntry(RtEntry):
                 sbln_trs = follower_trs.copy_with_to(sbln_spec)
                 trs.append((head.form, sbln_trs))
 
-        return trs, ctx.was_fini()
+        return trs, self.__event_listener.was_fini()
 
     def __find_closer_transitions(self, forms):
         closer_trs = self.__find_closer_trs()
         closer = closer_trs.get_to()
-        return [(form, closer_trs) for form in forms if closer.is_static_applicable(form)]
+        return [
+            (form, closer_trs)
+            for form in forms if closer.is_static_applicable(form)
+        ]
 
     def __find_closer_trs(self):
         for trs in self._spec.get_transitions():

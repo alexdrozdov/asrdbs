@@ -247,12 +247,14 @@ class MatcherContext(object):
         )
 
     def get_heads(self):
-        return [ns(form=head.get_head().get_form()) for head in self.sequences]
+        return [ns(form=sq.get_head().get_form()) for sq in self.sequences]
 
     def split_by_sequences(self):
         res = []
+        print('split sequences sequences', self.sequences)
         for sq in self.sequences:
             m = MatcherContext(
+                ContextEventsForwarder(self._event_listener),
                 self.owner,
                 self.spec_name,
                 self.__offset
@@ -1170,12 +1172,8 @@ class SpecMatcher(object):
                     frozen.append(trs)
         return to_execute
 
-    def create_ctx(self):
-        return parser.engine.rt.MatcherContext(
-            None,
-            self.get_name(),
-            sequence_matched_fcn=lambda sq_ctx_sq: True
-        )
+    def create_ctx(self, event_listener, owner=None):
+        return MatcherContext(event_listener, owner, self.get_name())
 
     def get_name(self):
         return self.__name
