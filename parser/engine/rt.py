@@ -1333,25 +1333,3 @@ class ContextEventsForwarder(ContextEventHandler):
 
     def ctx_complete(self, ctx):
         self.__dst.ctx_complete(ctx)
-
-
-class MatcherCallbacks(object):
-    def __init__(self, compiled):
-        self.__compiled = compiled
-
-    def find_matcher(self, name, none_on_missing=False):
-        return self.__compiled.get_matcher(
-            name, none_on_missing=none_on_missing)
-
-
-def new_context(compiled):
-    event_listener = ContextOutputDispatcher()
-    event_forwarder = ContextEventsForwarder(event_listener)
-    ctx_callbacks = MatcherCallbacks(compiled)
-    top_spec_matcher = TopSpecMatcher()
-
-    intctx = MatcherContext(top_spec_matcher, event_listener, ctx_callbacks)
-    for m in compiled.get_primary():
-        intctx.create_ctx(m.get_name(), event_listener=event_forwarder)
-
-    return Context(intctx, event_listener)

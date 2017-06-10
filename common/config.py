@@ -46,8 +46,31 @@ class AppConfig(object):
             return None
         return elem
 
+    def __xpath_set(self, path, value):
+        elem = self.__obj
+        path = path.strip("/").split("/")
+        base_path = path[0:-1]
+        last_name = path[-1]
+        try:
+            for x in base_path:
+                try:
+                    x = int(x)
+                    elem = elem[x]
+                except ValueError:
+                    elem = elem.get(x)
+            try:
+                x = int(last_name)
+                elem[x] = value
+            except ValueError:
+                elem[last_name] = value
+        except:
+            pass
+
     def __getitem__(self, i):
         return self.__xpath_get(i)
+
+    def __setitem__(self, k, v):
+        self.__xpath_set(k, v)
 
 
 @singleton

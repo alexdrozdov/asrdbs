@@ -73,14 +73,11 @@ def execute(opts):
         if not opts.no_database:
             with timeit_ctx('loading database'):
                 parser.TokenMapper('./dbs/worddb.db')
-        with timeit_ctx('building parser'):
-            prs = parser.Loader(
-                primary=opts.primary,
-                structure=not opts.no_structure,
-                selectors=not opts.no_selectors
-            )
+        with timeit_ctx('building engine'):
+            engine = parser.new_engine()
+
         if not opts.build_only:
-            ctx = parser.new_context(prs)
+            ctx = engine.new_context()
             ctx_input = parser.io.input_sentence(ctx)
             ctx_output = test_res(ctx)
 
@@ -157,4 +154,5 @@ if __name__ == '__main__':
     )
 
     opts = parse_opts()
+    cfg['/parser/primary'] = opts.primary
     execute(opts)
