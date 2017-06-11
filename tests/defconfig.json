@@ -1,0 +1,57 @@
+{
+    "app": {
+        "modules": [
+            "parser",
+            "worddb"
+        ]
+    },
+    "parser": {
+        "compiler": {
+            "max-static-include-level": 1,
+            "force-static-include": false,
+            "force-dynamic-include": false
+        },
+        "specdefs": ["parser/volume/ru_RU/structure"],
+        "linkdefs": ["ru_RU/enchanced/linkdefs"],
+        "selectors": ["parser/volume/ru_RU/selectors"],
+        "templates": [
+            "parser/templates",
+            "parser/lang/ru_RU/enchanced/templates/selectors"
+        ],
+        "props": ["parser/volume/ru_RU/properties"],
+        "io": {
+            "jinja2": {
+                "templates": ["parser/volume/io/jinja2/templates"],
+                "styles": "parser/volume/io/jinja2/styles",
+                "fmtmap": {
+                    "graph": "graph.dot.tmpl"
+                }
+            }
+        },
+        "primary": "",
+        "debug": {
+            "src": {
+                "svg": false,
+                "json": true,
+                "path": "preprocessor"
+            },
+            "structure": {
+                "svg": false,
+                "json": false,
+                "path": "structure"
+            },
+            "selectors": {
+                "svg": false,
+                "json": false,
+                "path": "selectors"
+            },
+            "sequences": {
+                "svg": true,
+                "json": true,
+                "str": true,
+                "path": "sequences"
+            }
+        }
+    }
+}
+
