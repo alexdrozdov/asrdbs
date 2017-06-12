@@ -173,3 +173,7 @@ class AppConfig(object):
 @singleton
 class Config(AppConfig):
     pass
+
+
+def configure(filenames=None, objs=None, override_args=None):
+    Config(filenames=filenames, objs=objs, override_args=override_args)

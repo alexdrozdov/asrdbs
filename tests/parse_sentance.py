@@ -43,13 +43,6 @@ def parse_opts():
     parser.add_argument('-t', '--test')
     parser.add_argument('-m', '--make-test', action='store_true', default=False)
 
-    parser.add_argument(
-        '-b', '--build-only',
-        action='store_true', default=False
-    )
-    parser.add_argument('--no-structure', action='store_true', default=False)
-    parser.add_argument('--no-selectors', action='store_true', default=False)
-    parser.add_argument('--no-database', action='store_true', default=False)
     res = parser.parse_args(sys.argv[1:])
 
     if not res.config:
@@ -81,32 +74,31 @@ def execute(opts):
     sentence = get_sentence(opts)
 
     with timeit_ctx('total'):
-        if not opts.no_database:
-            with timeit_ctx('loading database'):
-                parser.TokenMapper('./dbs/worddb.db')
+        with timeit_ctx('loading database'):
+            parser.TokenMapper('./dbs/worddb.db')
+
         with timeit_ctx('building engine'):
             engine = parser.new_engine()
 
-        if not opts.build_only:
-            ctx = engine.new_context()
-            ctx_input = parser.io.input_sentence(ctx)
-            ctx_output = test_res(ctx)
+        ctx = engine.new_context()
+        ctx_input = parser.io.input_sentence(ctx)
+        ctx_output = test_res(ctx)
 
-            ctx_input.push(sentence)
+        ctx_input.push(sentence)
 
-            with timeit_ctx('matching sentences'):
-                ctx.run_until_complete()
+        with timeit_ctx('matching sentences'):
+            ctx.run_until_complete()
 
-            with timeit_ctx('exporting results'):
-                parser.io.export.generate(
-                    cfg_path='/parser/debug',
-                    sequences=(common.fake.named(sq, i)
-                               for i, sq in enumerate(ctx_output))
-                )
+        with timeit_ctx('exporting results'):
+            parser.io.export.generate(
+                cfg_path='/parser/debug',
+                sequences=(common.fake.named(sq, i)
+                           for i, sq in enumerate(ctx_output))
+            )
 
 
 if __name__ == '__main__':
     opts = parse_opts()
-    cfg = common.config.Config(filenames=opts.config, override_args=opts.option)
+    parser.configure(filenames=opts.config, override_args=opts.option)
 
     execute(opts)
