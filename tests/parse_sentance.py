@@ -19,10 +19,10 @@ import parser.io.export
 def test_res(ctx):
     return parser.io.output_chain(
         ctx,
-        parser.io.context.ToMatchedSequence,
-        parser.io.context.MostComplete,
-        parser.io.context.IgnoreDuplicate,
-        parser.io.context.Store
+        parser.io.output.ToMatchedSequence,
+        parser.io.output.MostComplete,
+        parser.io.output.IgnoreDuplicate,
+        parser.io.output.Store
     )
 
 

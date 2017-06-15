@@ -1,8 +1,9 @@
-import parser.io.context
+import parser.io.output
+import parser.io.input
 
 
 def input_sentence(ctx):
-    return parser.io.context.SentenceInput(ctx)
+    return parser.io.input.SentenceInput(ctx)
 
 
 def output_chain(ctx, *args):
@@ -11,4 +12,4 @@ def output_chain(ctx, *args):
         other = args[1:]
         for o in other:
             chain.append(o(chain[-1]))
-    return parser.io.context.OutputChainWrapper(chain[0], chain[-1])
+    return parser.io.output.OutputChainWrapper(chain[0], chain[-1])

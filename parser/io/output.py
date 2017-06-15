@@ -1,22 +1,4 @@
-import parser.io.sentence
 import parser.engine.matched
-
-
-class InputContext(object):
-    def __init__(self, ctx):
-        self.__ctx = ctx
-
-    def ctx(self):
-        return self.__ctx
-
-
-class SentenceInput(InputContext):
-    def __init__(self, ctx):
-        super().__init__(ctx)
-
-    def push(self, sentence):
-        tokenized_sentence = parser.io.sentence.Sentence.from_sentence(sentence)
-        self.ctx().push_sentence(tokenized_sentence)
 
 
 class OutputContext(object):
