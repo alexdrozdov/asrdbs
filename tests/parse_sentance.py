@@ -74,9 +74,6 @@ def execute(opts):
     sentence = get_sentence(opts)
 
     with timeit_ctx('total'):
-        with timeit_ctx('loading database'):
-            parser.TokenMapper('./dbs/worddb.db')
-
         with timeit_ctx('building engine'):
             engine = parser.new_engine()
 

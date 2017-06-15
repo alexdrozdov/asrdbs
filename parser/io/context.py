@@ -1,4 +1,4 @@
-import parser.api
+import parser.io.sentence
 import parser.engine.matched
 
 
@@ -15,7 +15,7 @@ class SentenceInput(InputContext):
         super().__init__(ctx)
 
     def push(self, sentence):
-        tokenized_sentence = parser.api.Sentence.from_sentence(sentence)
+        tokenized_sentence = parser.io.sentence.Sentence.from_sentence(sentence)
         self.ctx().push_sentence(tokenized_sentence)
 
 

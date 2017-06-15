@@ -64,9 +64,25 @@ def at(**kwargs):
     return make_autoreg(Autoreg, **kwargs)
 
 
-def constructable(func):
+def tokenmapper(**kwargs):
+    return make_autoreg(
+        constructable(Autoreg),
+        namespace='tokenmapper',
+        **kwargs
+    )
+
+
+def tokenizer(**kwargs):
+    return make_autoreg(
+        constructable(Autoreg),
+        namespace='tokenizer',
+        **kwargs
+    )
+
+
+def constructable(obj):
     def wrapper(*args, **kwargs):
-        return func
+        return obj
     return wrapper
 
 
