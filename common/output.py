@@ -6,11 +6,20 @@ import os
 import time
 
 
-class OutputPath(object):
+from common.singleton import singleton
+
+
+class OutputPathImpl(object):
     def __init__(self, def_path=None):
         self.__pathes = {}
         self.__defpath = def_path if def_path is not None else './output'
-        self.__defpath = os.path.join(self.__defpath, time.asctime().replace(' ', '_').replace(':', '-'))
+        self.__defpath = os.path.join(
+            self.__defpath,
+            time.asctime().replace(' ', '_').replace(':', '-')
+        )
+
+    def get_defpath(self):
+        return self.__defpath
 
     def get_output_dir(self, subpath):
         if subpath in self.__pathes:
@@ -31,7 +40,18 @@ class OutputPath(object):
         return os.path.join(path, filename)
 
 
-try:
-    type(output)
-except:
-    output = OutputPath()
+@singleton
+class OutputPath(OutputPathImpl):
+    pass
+
+
+def defpath():
+    return OutputPath().get_defpath()
+
+
+def get_output_dir(subpath):
+    return OutputPath().get_output_dir(subpath)
+
+
+def get_output_file(subpath, filename):
+    return OutputPath().get_output_file(subpath, filename)

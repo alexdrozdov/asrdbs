@@ -5,13 +5,13 @@
 import os
 import sys
 import time
-import json
 import argparse
 from contextlib import contextmanager
 
 
 import common.fake
 import common.config
+import common.output
 import parser
 import parser.io.export
 
@@ -41,39 +41,41 @@ def parse_opts():
 
     parser.add_argument('-s', '--sentence')
     parser.add_argument('-t', '--test')
-    parser.add_argument('-m', '--make-test', action='store_true', default=False)
 
     res = parser.parse_args(sys.argv[1:])
 
-    if not res.config:
-        raise ValueError('no config file provided')
-
-    if res.sentence is None and res.test is None:
-        raise ValueError('neither sentence nor test file specified')
+    if res.test is None:
+        if res.sentence is not None:
+            res.option.append('/tests/parser/sentence={0}'.format(res.sentence))
+        else:
+            raise ValueError('neither sentence nor test file specified')
 
     if res.sentence is not None and res.test is not None:
         raise ValueError('only one option sentence or test is allowed')
 
-    if res.test is not None and not os.path.exists(res.test):
-        raise ValueError('test file <{0}> not found'.format(res.test))
+    if res.test is not None:
+        if not os.path.exists(res.test):
+            raise ValueError('test file <{0}> not found'.format(res.test))
+        res.config.append(res.test)
+
+    if not res.config:
+        raise ValueError('no config file provided')
 
     return res
 
 
 def get_sentence(opts):
-    if opts.sentence is not None:
-        sentence = opts.sentence
-    elif opts.test is not None:
-        with open(opts.test) as f:
-            data = json.load(f)
-            sentence = data['input']
-    return sentence
+    cfg = parser.config()
+    return cfg['/tests/parser/sentence']
 
 
 def execute(opts):
     sentence = get_sentence(opts)
 
     with timeit_ctx('total'):
+        print('Sentence: {0}'.format(sentence))
+        print('Output: {0}'.format(common.output.defpath()))
+        print()
 
         parser.io.export.generate(
             cfg_path='/parser/debug',

@@ -43,7 +43,7 @@ class Export(object):
                     'dict', fmt_info['fmt']
                 )
             if fmt_info['save-to-file']:
-                file_name = common.output.output.get_output_file(
+                file_name = common.output.get_output_file(
                     tgt_dir,
                     '{0}{1}'.format(name, fmt_info['extension'])
                 )
