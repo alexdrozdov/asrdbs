@@ -55,6 +55,10 @@
                 "json": true,
                 "str": true,
                 "path": "sequences"
+            },
+            "config": {
+                "json": true,
+                "path": "config"
             }
         }
     }

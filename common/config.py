@@ -113,6 +113,11 @@ class AppConfig(object):
     def exists(self, path):
         return self.__xpath_get(path) is not None
 
+    def format(self, fmt):
+        if fmt == 'dict':
+            return self.__obj
+        raise ValueError('Unsupported format {0}'.format(fmt))
+
     def __xpath_get(self, path, obj=None):
         if obj is not None:
             elem = obj

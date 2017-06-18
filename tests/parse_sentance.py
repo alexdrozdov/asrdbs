@@ -74,6 +74,12 @@ def execute(opts):
     sentence = get_sentence(opts)
 
     with timeit_ctx('total'):
+
+        parser.io.export.generate(
+            cfg_path='/parser/debug',
+            config=[common.fake.named(parser.config(), 'config'), ]
+        )
+
         with timeit_ctx('building engine'):
             engine = parser.new_engine()
 
