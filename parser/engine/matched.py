@@ -48,6 +48,7 @@ class Link(object):
 
     def __format_dict(self):
         return {
+            '__type': str(type(self)),
             'uuid': self.get_uniq(),
             'data': todict(self.__details),
         }
@@ -173,6 +174,7 @@ class MatchedEntry(object):
             ]
         )
         return {
+            '__type': str(type(self)),
             'uuid': self.get_uniq(),
             'data': data,
         }

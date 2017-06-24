@@ -15,6 +15,8 @@ import common.output
 import parser
 import parser.io.export
 
+import tests.compare
+
 
 def test_res(ctx):
     return parser.io.output_chain(
@@ -55,8 +57,10 @@ def parse_opts():
 
     if res.test is not None:
         if not os.path.exists(res.test):
-            raise ValueError('test file <{0}> not found'.format(res.test))
-        res.config.append(res.test)
+            raise ValueError('test path <{0}> not found'.format(res.test))
+        if not os.path.isdir(res.test):
+            raise ValueError('test path shall be directory')
+        res.config.append(os.path.join(res.test, 'config/config.json'))
 
     if not res.config:
         raise ValueError('no config file provided')
@@ -100,6 +104,15 @@ def execute(opts):
                 sequences=(common.fake.named(sq, i)
                            for i, sq in enumerate(ctx_output))
             )
+
+        if opts.test:
+            with timeit_ctx('comparing results'):
+                reference = tests.compare.from_fs(
+                    os.path.join(opts.test, 'sequences')
+                )
+                cmpres = tests.compare.compare(reference, list(ctx_output))
+                text_res = 'Test confirmed' if cmpres else 'Test failed'
+            print(text_res)
 
 
 if __name__ == '__main__':

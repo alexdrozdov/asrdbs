@@ -64,7 +64,13 @@
     },
     "tests": {
         "parser": {
-            "sentence": ""
+            "sentence": "",
+            "compare": [
+                "/data/anchor",
+                "/data/hidden",
+                "/data/position",
+                "/data/virtual",
+                "/data/form/ro/props/*"]
         }
     }
 }
