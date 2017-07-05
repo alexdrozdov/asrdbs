@@ -1,0 +1,22 @@
+{
+    "name": "interleaved",
+    "entries": [
+        {
+            "@id": "top",
+            "@inherit": ["once"],
+            "@interleaved": [
+                {
+                    "@id": "one-scope",
+                    "@inherit": ["once", "anchor"],
+                    "@includes": {"name": "one-scope", "is_static": true}
+                },
+                {
+                    "@id": "two",
+                    "@inherit": ["once"],
+                    "@includes": {"name": "two-scope", "is_static": true}
+                }
+            ]
+        }
+    ]
+}
+
