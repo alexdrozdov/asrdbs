@@ -6,6 +6,8 @@ import parser.lang.base.at
 import parser.build.jsonspecs
 import parser.build.preprocessor
 import parser.build.compiler
+import parser.engine.context
+import parser.engine.events
 import parser.engine.rt
 import parser.io.export
 import common.dg
@@ -31,18 +33,20 @@ class Engine(object):
         return self.__primary
 
     def new_context(self):
-        event_listener = parser.engine.rt.ContextOutputDispatcher()
-        event_forwarder = parser.engine.rt.ContextEventsForwarder(event_listener)
+        event_listener = parser.engine.events.ContextOutputDispatcher()
+        event_forwarder = parser.engine.events.ContextEventsForwarder(
+            event_listener
+        )
         ctx_callbacks = MatcherCallbacks(self)
         top_spec_matcher = parser.engine.rt.TopSpecMatcher()
 
-        intctx = parser.engine.rt.MatcherContext(
+        intctx = parser.engine.context.create_ctx(
             top_spec_matcher, event_listener, ctx_callbacks
         )
         for m in self.get_primary():
             intctx.create_ctx(m.get_name(), event_listener=event_forwarder)
 
-        return parser.engine.rt.Context(intctx, event_listener)
+        return parser.engine.context.Context(intctx, event_listener)
 
 
 class MatcherCallbacks(object):

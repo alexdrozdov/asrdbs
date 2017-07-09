@@ -1011,3 +1011,26 @@ class ForeignAnchorEntry(RtEntryBase):
 
     def get_trackable_links(self):
         pass
+
+
+def from_spec(sequence, spec, form):
+    if spec.is_sibling_leader():
+        cls_name = RtSiblingLeaderEntry
+    elif spec.is_sibling_follower():
+        cls_name = RtSiblingFollowerEntry
+    elif spec.is_sibling_closer():
+        cls_name = RtSiblingCloserEntry
+    elif spec.is_virtual():
+        cls_name = RtVirtualEntry
+    else:
+        cls_name = RtMatchEntry
+
+    form = form.copy({'ro', 'w_once', 'morf'})
+    return cls_name(
+        sequence,
+        ns(
+            form=form,
+            spec_state_def=spec,
+            rtms_offset=len(sequence)
+        )
+    )
